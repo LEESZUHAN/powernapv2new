@@ -11,45 +11,6 @@ import UserNotifications
 // 導入PowerNapViewModel
 @preconcurrency import Foundation
 
-// 靜態心電圖View
-struct HeartRateStaticView: View {
-    var body: some View {
-        GeometryReader { geometry in
-            // 簡單的靜態心電圖
-            Path { path in
-                let width = geometry.size.width
-                let height: CGFloat = 50
-                let centerY = height / 2
-                
-                // 開始點
-                path.move(to: CGPoint(x: 0, y: centerY))
-                
-                // 第一段水平線
-                path.addLine(to: CGPoint(x: width * 0.2, y: centerY))
-                
-                // 心跳波形 - P波
-                path.addLine(to: CGPoint(x: width * 0.25, y: centerY - 5))
-                path.addLine(to: CGPoint(x: width * 0.3, y: centerY))
-                
-                // QRS波群
-                path.addLine(to: CGPoint(x: width * 0.35, y: centerY - 10))
-                path.addLine(to: CGPoint(x: width * 0.4, y: centerY + 25))
-                path.addLine(to: CGPoint(x: width * 0.45, y: centerY - 15))
-                path.addLine(to: CGPoint(x: width * 0.5, y: centerY))
-                
-                // T波
-                path.addLine(to: CGPoint(x: width * 0.55, y: centerY + 8))
-                path.addLine(to: CGPoint(x: width * 0.6, y: centerY))
-                
-                // 結束水平線
-                path.addLine(to: CGPoint(x: width, y: centerY))
-            }
-            .stroke(Color.white, lineWidth: 2)
-            .frame(height: 50)
-        }
-    }
-}
-
 struct ContentView: View {
     @StateObject private var viewModel = PowerNapViewModel()
     
@@ -116,6 +77,8 @@ struct ContentView: View {
                 .font(.system(size: 16))
                 .foregroundColor(.gray)
             
+            Spacer()
+            
             // 開始按鈕
             Button(action: {
                 viewModel.startNap()
@@ -129,39 +92,36 @@ struct ContentView: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            // 測試鬧鈴按鈕
+            // 測試鬧鈴按鈕 - 放在主視圖底部，顏色更醒目
             Button(action: {
                 // 直接調用通知管理器發送通知
                 NotificationManager.shared.sendWakeupNotification()
             }) {
                 Text("測試鬧鈴")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.white)
-                    .frame(width: 120, height: 36)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
                     .background(Color.orange)
-                    .cornerRadius(18)
+                    .cornerRadius(22)
             }
             .buttonStyle(PlainButtonStyle())
             .padding(.top, 10)
-            
-            Spacer()
+            .padding(.bottom, 20)
         }
         .padding()
     }
     
     // 監測狀態視圖
     private var monitoringView: some View {
-        VStack(spacing: 25) {
+        VStack(spacing: 40) {
             Text("監測中")
-                .font(.system(size: 24, weight: .medium))
+                .font(.system(size: 28, weight: .medium))
                 .foregroundColor(.white)
             
-            // 心電圖靜態圖像
-            HeartRateStaticView()
-                .frame(height: 60)
-            
+            // 已移除心電圖，替換為簡單文字
             Text("等待入睡...")
-                .font(.system(size: 18))
+                .font(.system(size: 22))
                 .foregroundColor(.gray)
             
             Spacer()
@@ -173,11 +133,12 @@ struct ContentView: View {
                 Text("取消")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.white)
-                    .frame(width: 100, height: 44)
+                    .frame(width: 120, height: 44)
                     .background(Color.red)
                     .cornerRadius(22)
             }
             .buttonStyle(PlainButtonStyle())
+            .padding(.bottom, 20)
         }
         .padding()
     }
@@ -192,7 +153,7 @@ struct ContentView: View {
             
             // 睡眠階段指示器
             Text(sleepPhaseText)
-                .font(.system(size: 16))
+                .font(.system(size: 18))
                 .foregroundColor(.gray)
             
             Spacer()
@@ -204,11 +165,12 @@ struct ContentView: View {
                 Text("取消")
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.white)
-                    .frame(width: 100, height: 44)
+                    .frame(width: 120, height: 44)
                     .background(Color.red)
                     .cornerRadius(22)
             }
             .buttonStyle(PlainButtonStyle())
+            .padding(.bottom, 20)
         }
         .padding()
     }
