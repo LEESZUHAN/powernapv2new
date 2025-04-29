@@ -6,80 +6,45 @@
 //
 
 import SwiftUI
+import UserNotifications
 
 // 導入PowerNapViewModel
 @preconcurrency import Foundation
 
-struct HeartRateWaveView: View {
-    @State private var phase: CGFloat = 0
-    
-    // 動畫定時器
-    let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
-    
-    // 心電圖路徑點
-    private let points: [CGPoint] = [
-        CGPoint(x: 0, y: 0.5),
-        CGPoint(x: 0.1, y: 0.5),
-        CGPoint(x: 0.15, y: 0.4),
-        CGPoint(x: 0.2, y: 0.5),
-        CGPoint(x: 0.25, y: 1.0),
-        CGPoint(x: 0.3, y: 0.1),
-        CGPoint(x: 0.35, y: 0.5),
-        CGPoint(x: 0.4, y: 0.5),
-        CGPoint(x: 0.45, y: 0.5),
-        CGPoint(x: 0.5, y: 0.5),
-        CGPoint(x: 0.55, y: 0.5),
-        CGPoint(x: 0.6, y: 0.4),
-        CGPoint(x: 0.65, y: 0.5),
-        CGPoint(x: 0.7, y: 0.9),
-        CGPoint(x: 0.75, y: 0.1),
-        CGPoint(x: 0.8, y: 0.5),
-        CGPoint(x: 0.85, y: 0.5),
-        CGPoint(x: 0.9, y: 0.5),
-        CGPoint(x: 1.0, y: 0.5)
-    ]
-    
+// 靜態心電圖View
+struct HeartRateStaticView: View {
     var body: some View {
-        GeometryReader { geometry in
-            Path { path in
-                // 起始點
-                let startPoint = CGPoint(
-                    x: self.adjustedX(points[0].x, phase: phase, width: geometry.size.width),
-                    y: points[0].y * geometry.size.height
-                )
-                path.move(to: startPoint)
-                
-                // 繪製每個點
-                for i in 1..<points.count {
-                    let point = CGPoint(
-                        x: self.adjustedX(points[i].x, phase: phase, width: geometry.size.width),
-                        y: points[i].y * geometry.size.height
-                    )
-                    path.addLine(to: point)
-                }
-            }
-            .stroke(Color.white, lineWidth: 2)
+        // 簡單的靜態心電圖
+        Path { path in
+            let width = UIScreen.main.bounds.width * 0.8
+            let height: CGFloat = 50
+            let centerY = height / 2
+            
+            // 開始點
+            path.move(to: CGPoint(x: 0, y: centerY))
+            
+            // 第一段水平線
+            path.addLine(to: CGPoint(x: width * 0.2, y: centerY))
+            
+            // 心跳波形 - P波
+            path.addLine(to: CGPoint(x: width * 0.25, y: centerY - 5))
+            path.addLine(to: CGPoint(x: width * 0.3, y: centerY))
+            
+            // QRS波群
+            path.addLine(to: CGPoint(x: width * 0.35, y: centerY - 10))
+            path.addLine(to: CGPoint(x: width * 0.4, y: centerY + 25))
+            path.addLine(to: CGPoint(x: width * 0.45, y: centerY - 15))
+            path.addLine(to: CGPoint(x: width * 0.5, y: centerY))
+            
+            // T波
+            path.addLine(to: CGPoint(x: width * 0.55, y: centerY + 8))
+            path.addLine(to: CGPoint(x: width * 0.6, y: centerY))
+            
+            // 結束水平線
+            path.addLine(to: CGPoint(x: width, y: centerY))
         }
+        .stroke(Color.white, lineWidth: 2)
         .frame(height: 50)
-        .onReceive(timer) { _ in
-            // 更新相位以創建動畫效果
-            withAnimation(.linear(duration: 0.1)) {
-                phase += 0.03
-                if phase > 1 {
-                    phase = 0
-                }
-            }
-        }
-    }
-    
-    // 調整x座標以創建滾動效果
-    private func adjustedX(_ x: CGFloat, phase: CGFloat, width: CGFloat) -> CGFloat {
-        let adjustedX = x - phase
-        // 處理循環
-        if adjustedX < 0 {
-            return width + adjustedX
-        }
-        return adjustedX * width
     }
 }
 
@@ -149,8 +114,6 @@ struct ContentView: View {
                 .font(.system(size: 16))
                 .foregroundColor(.gray)
             
-            Spacer()
-            
             // 開始按鈕
             Button(action: {
                 viewModel.startNap()
@@ -164,6 +127,21 @@ struct ContentView: View {
             }
             .buttonStyle(PlainButtonStyle())
             
+            // 測試鬧鈴按鈕
+            Button(action: {
+                // 直接調用通知管理器發送通知
+                NotificationManager.shared.sendWakeupNotification()
+            }) {
+                Text("測試鬧鈴")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(width: 120, height: 36)
+                    .background(Color.orange)
+                    .cornerRadius(18)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.top, 10)
+            
             Spacer()
         }
         .padding()
@@ -176,8 +154,8 @@ struct ContentView: View {
                 .font(.system(size: 24, weight: .medium))
                 .foregroundColor(.white)
             
-            // 心電圖動畫
-            HeartRateWaveView()
+            // 心電圖靜態圖像
+            HeartRateStaticView()
                 .frame(height: 60)
             
             Text("等待入睡...")
