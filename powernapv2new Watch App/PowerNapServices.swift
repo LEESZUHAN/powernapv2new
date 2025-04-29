@@ -574,15 +574,23 @@ class NotificationManager {
     // 發送喚醒通知
     func sendWakeupNotification() {
         #if os(watchOS)
+        // 首先播放系統聲音（增強提示效果）
+        WKInterfaceDevice.current().play(.notification)
+        
         // 創建通知內容
         let content = UNMutableNotificationContent()
         content.title = "小睡結束"
         content.body = "是時候起來了！"
-        content.sound = UNNotificationSound.default
+        // 使用預設聲音（確保有聲音）
+        content.sound = UNNotificationSound.defaultCritical
         content.categoryIdentifier = "WAKEUP"
         
-        // 立即觸發通知
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        // 設置通知為高優先級
+        content.interruptionLevel = .critical
+        content.relevanceScore = 1.0
+        
+        // 立即觸發通知（不延遲）
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
         
         // 創建請求
         let request = UNNotificationRequest(
@@ -597,6 +605,16 @@ class NotificationManager {
                 self.logger.error("無法發送喚醒通知: \(error.localizedDescription)")
             } else {
                 self.logger.info("成功安排喚醒通知")
+                
+                // 延遲1秒後再次播放震動（加強效果）
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    WKInterfaceDevice.current().play(.success)
+                }
+                
+                // 再延遲1秒播放第三次
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                    WKInterfaceDevice.current().play(.start)
+                }
             }
         }
         #endif
