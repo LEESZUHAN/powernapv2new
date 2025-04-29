@@ -75,14 +75,11 @@ struct ContentView: View {
                     .foregroundColor(.gray)
                     .padding(.bottom, -5)
                 
-                // 時間選擇框高度改為35%
+                // 時間選擇框 - 移除外部自定義邊框
                 Picker("", selection: $viewModel.napDuration) {
-                    Text("5").tag(5 * 60.0)
-                    Text("10").tag(10 * 60.0)
-                    Text("15").tag(15 * 60.0)
-                    Text("20").tag(20 * 60.0)
-                    Text("25").tag(25 * 60.0)
-                    Text("30").tag(30 * 60.0)
+                    ForEach(1...30, id: \.self) { minutes in
+                        Text("\(minutes)").tag(Double(minutes * 60))
+                    }
                 }
                 .pickerStyle(.wheel)
                 .frame(height: geometry.size.height * 0.35)
@@ -161,6 +158,28 @@ struct ContentView: View {
                             Text("BPM")
                                 .foregroundColor(.gray)
                                 .font(.footnote)
+                        }
+                        
+                        Divider()
+                            .background(Color.gray)
+                            .padding(.vertical, 5)
+                        
+                        HStack {
+                            Text("運動強度:")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text(String(format: "%.4f", viewModel.currentAcceleration))
+                                .foregroundColor(viewModel.currentAcceleration > viewModel.motionThreshold ? .red : .green)
+                                .font(.system(size: 18, weight: .bold))
+                        }
+                        
+                        HStack {
+                            Text("運動閾值:")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text(String(format: "%.3f", viewModel.motionThreshold))
+                                .foregroundColor(.blue)
+                                .font(.system(size: 18, weight: .bold))
                         }
                         
                         HStack {

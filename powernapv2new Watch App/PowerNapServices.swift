@@ -133,6 +133,11 @@ extension WorkoutSessionManager: HKLiveWorkoutBuilderDelegate {
                 logger.info("最新心率數據: \(heartRate) BPM")
                 // 更新最新心率
                 latestHeartRate = heartRate
+                
+                // 發送通知
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("HeartRateUpdated"), object: nil, userInfo: ["heartRate": heartRate])
+                }
             }
         }
     }
@@ -464,6 +469,9 @@ class MotionManager {
     // 加速度閾值，用於檢測顯著運動
     private let significantAccelerationThreshold: Double = 0.1
     
+    // 添加公開屬性來存儲當前加速度值
+    private(set) var currentAcceleration: Double = 0.0
+    
     // 委派處理運動事件
     var onMotionDetected: ((Double) -> Void)?
     
@@ -517,6 +525,13 @@ class MotionManager {
             ) - 1.0 // 減去重力加速度
             
             let absAcceleration = abs(totalAcceleration)
+            
+            // 更新當前加速度值
+            DispatchQueue.main.async {
+                self.currentAcceleration = absAcceleration
+                // 發送通知以便UI更新
+                NotificationCenter.default.post(name: NSNotification.Name("AccelerationUpdated"), object: nil, userInfo: ["acceleration": absAcceleration])
+            }
             
             // 檢測是否超過閾值
             if absAcceleration > self.significantAccelerationThreshold {
@@ -643,6 +658,8 @@ class PowerNapViewModel: ObservableObject {
     @Published var heartRateThreshold: Double = 54
     @Published var isResting: Bool = false
     @Published var isProbablySleeping: Bool = false
+    @Published var currentAcceleration: Double = 0.0
+    @Published var motionThreshold: Double = 0.1  // 運動閾值，與MotionManager中的對應
     
     // 計時器
     private var napTimer: Timer?
@@ -669,10 +686,31 @@ class PowerNapViewModel: ObservableObject {
         // 初始化時可執行的設置，例如設置運動檢測回調
         setupMotionDetection()
         startStatsUpdateTimer()
+        
+        // 添加觀察者接收心率更新
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("HeartRateUpdated"),
+            object: nil,
+            queue: .main) { [weak self] notification in
+                guard let self = self,
+                      let heartRate = notification.userInfo?["heartRate"] as? Double else { return }
+                self.currentHeartRate = heartRate
+            }
+        
+        // 添加觀察者接收加速度更新
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("AccelerationUpdated"),
+            object: nil,
+            queue: .main) { [weak self] notification in
+                guard let self = self,
+                      let acceleration = notification.userInfo?["acceleration"] as? Double else { return }
+                self.currentAcceleration = acceleration
+            }
     }
     
     deinit {
         statsUpdateTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
     }
     
     // 啟動統計數據更新計時器
@@ -689,7 +727,7 @@ class PowerNapViewModel: ObservableObject {
         self.isResting = sleepDetection.isResting
         self.isProbablySleeping = sleepDetection.isProbablySleeping
         
-        // 從WorkoutManager獲取心率數據 (這裡需要給WorkoutSessionManager添加公開的心率訪問方法)
+        // 從WorkoutManager獲取心率數據 (使用通知更新，這裡作為備用)
         if let hr = workoutManager.latestHeartRate {
             self.currentHeartRate = hr
         }
@@ -697,6 +735,9 @@ class PowerNapViewModel: ObservableObject {
         // 從SleepDetectionService獲取靜止心率和閾值
         self.restingHeartRate = sleepDetection.userRHR
         self.heartRateThreshold = sleepDetection.sleepingHeartRateThreshold
+        
+        // 從MotionManager獲取當前加速度 (備用方法)
+        self.currentAcceleration = motionManager.currentAcceleration
     }
     
     // 設置運動檢測回調
