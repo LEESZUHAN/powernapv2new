@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UIBackgroundModes</key>
+	<array/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>audio</string>
+		<string>mindfulness</string>
+		<string>workout-processing</string>
+	</array>
+	<key>WKExtendedRuntimeSessionEnabled</key>
+	<true/>
+	<key>WKExtendedRuntimeSessionWatchOSVersion</key>
+	<integer>6</integer>
+	
+	<!-- 健康數據權限描述 -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>為了偵測您的入睡狀態並記錄您的 Power Nap，需要讀取心率數據、靜息心率數據和生日資訊。心率數據用於監測即時心率變化，判斷您是否入睡；靜息心率數據用於建立個人化睡眠判定基準；生日資訊用於自動判斷您的年齡組別，以套用最適合的睡眠偵測參數。</string>
+	
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>為了將您的 Power Nap 時段記錄到「健康」App 中，方便您統一查看，需要寫入睡眠分析數據。</string>
+	
+	<!-- 通知權限描述 -->
+	<key>WKNotificationUsageDescription</key>
+	<string>在您的小睡時間結束時發送通知來喚醒您</string>
+</dict>
+</plist>

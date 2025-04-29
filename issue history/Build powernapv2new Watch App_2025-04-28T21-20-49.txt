@@ -1,0 +1,21 @@
+
+Showing Recent Issues
+
+Prepare build
+error: Multiple commands produce '/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/powernapv2new Watch App.app/Info.plist'
+    note: Target 'powernapv2new Watch App' (project 'powernapv2new') has copy command from '/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Info.plist' to '/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/powernapv2new Watch App.app/Info.plist'
+    note: Target 'powernapv2new Watch App' (project 'powernapv2new') has process command with output '/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/powernapv2new Watch App.app/Info.plist'
+
+
+Multiple commands produce '/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/powernapv2new Watch App.app/Info.plist'
+
+
+Build target powernapv2new Watch App of project powernapv2new with configuration Debug
+warning: duplicate output file '/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/powernapv2new Watch App.app/Info.plist' on task: ProcessInfoPlistFile /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/powernapv2new Watch App.app/Info.plist /Users/michaellee/Documents/powernapv2new/powernapv2new-Watch-App-Info.plist (in target 'powernapv2new Watch App' from project 'powernapv2new')
+
+
+duplicate output file '/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/powernapv2new Watch App.app/Info.plist' on task: ProcessInfoPlistFile /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/powernapv2new Watch App.app/Info.plist /Users/michaellee/Documents/powernapv2new/powernapv2new-Watch-App-Info.plist
+
+
+
+Build failed    4/28/25, 9:20 PM    0.4 seconds
