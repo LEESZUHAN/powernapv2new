@@ -51,65 +51,78 @@ struct ContentView: View {
     
     // 準備狀態視圖
     private var preparingView: some View {
-        VStack(spacing: 30) {
-            Spacer()
-            
-            // 時間選擇框
-            ZStack {
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.green, lineWidth: 2)
-                    .frame(height: 60)
-                
-                Picker("休息時間", selection: $viewModel.napDuration) {
-                    Text("5:00").tag(5 * 60.0)
-                    Text("10:00").tag(10 * 60.0)
-                    Text("15:00").tag(15 * 60.0)
-                    Text("20:00").tag(20 * 60.0)
-                    Text("25:00").tag(25 * 60.0)
-                    Text("30:00").tag(30 * 60.0)
+        ScrollView {
+            VStack(spacing: 20) {
+                // 時間選擇框
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.green, lineWidth: 2)
+                        .frame(height: 60)
+                    
+                    Picker("休息時間", selection: $viewModel.napDuration) {
+                        Text("5:00").tag(5 * 60.0)
+                        Text("10:00").tag(10 * 60.0)
+                        Text("15:00").tag(15 * 60.0)
+                        Text("20:00").tag(20 * 60.0)
+                        Text("25:00").tag(25 * 60.0)
+                        Text("30:00").tag(30 * 60.0)
+                    }
+                    .pickerStyle(.wheel)
+                    .frame(height: 100)
+                    .clipped()
                 }
-                .pickerStyle(.wheel)
-                .frame(height: 100)
-                .clipped()
+                .padding(.top, 10)
+                
+                Text("分鐘")
+                    .font(.system(size: 16))
+                    .foregroundColor(.gray)
+                
+                Spacer(minLength: 20)
+                
+                // 開始按鈕
+                Button(action: {
+                    viewModel.startNap()
+                }) {
+                    Text("開始休息")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(width: 160, height: 44)
+                        .background(Color.blue)
+                        .cornerRadius(22)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                Spacer(minLength: 20)
+                
+                // 測試鬧鈴按鈕 - 清晰明顯的獨立區域
+                VStack {
+                    Divider()
+                        .background(Color.gray.opacity(0.5))
+                        .padding(.vertical, 5)
+                    
+                    Text("開發測試功能")
+                        .font(.footnote)
+                        .foregroundColor(.gray)
+                    
+                    Button(action: {
+                        // 直接調用通知管理器發送通知
+                        NotificationManager.shared.sendWakeupNotification()
+                    }) {
+                        Text("測試鬧鈴功能")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color.orange)
+                            .cornerRadius(20)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .padding(.top, 10)
+                .padding(.bottom, 15)
             }
-            
-            Text("分鐘")
-                .font(.system(size: 16))
-                .foregroundColor(.gray)
-            
-            Spacer()
-            
-            // 開始按鈕
-            Button(action: {
-                viewModel.startNap()
-            }) {
-                Text("開始休息")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.white)
-                    .frame(width: 160, height: 44)
-                    .background(Color.blue)
-                    .cornerRadius(22)
-            }
-            .buttonStyle(PlainButtonStyle())
-            
-            // 測試鬧鈴按鈕 - 放在主視圖底部，顏色更醒目
-            Button(action: {
-                // 直接調用通知管理器發送通知
-                NotificationManager.shared.sendWakeupNotification()
-            }) {
-                Text("測試鬧鈴")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Color.orange)
-                    .cornerRadius(22)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .padding(.top, 10)
-            .padding(.bottom, 20)
+            .padding()
         }
-        .padding()
     }
     
     // 監測狀態視圖
@@ -119,7 +132,7 @@ struct ContentView: View {
                 .font(.system(size: 28, weight: .medium))
                 .foregroundColor(.white)
             
-            // 已移除心電圖，替換為簡單文字
+            // 等待文字
             Text("等待入睡...")
                 .font(.system(size: 22))
                 .foregroundColor(.gray)
