@@ -16,6 +16,9 @@ class WorkoutSessionManager: NSObject, HKWorkoutSessionDelegate {
     private var workoutSession: HKWorkoutSession?
     private var workoutBuilder: HKLiveWorkoutBuilder?
     
+    // 添加心率公開屬性
+    private(set) var latestHeartRate: Double?
+    
     // 優化參數
     private let optimizedUpdateFrequency: HKUpdateFrequency = .immediate // 可調整為.immediate, .normal, 或 .reduced 以節省電力
     
@@ -128,6 +131,8 @@ extension WorkoutSessionManager: HKLiveWorkoutBuilderDelegate {
             let statistics = workoutBuilder.statistics(for: heartRateType)
             if let heartRate = statistics?.mostRecentQuantity()?.doubleValue(for: HKUnit(from: "count/min")) {
                 logger.info("最新心率數據: \(heartRate) BPM")
+                // 更新最新心率
+                latestHeartRate = heartRate
             }
         }
     }
@@ -204,13 +209,13 @@ class SleepDetectionService {
     private let motionBufferTimeInterval: TimeInterval = 5.0
     private var lastSignificantMotionDate: Date?
     
-    // 心率閾值設定
+    // 心率閾值設定 - 將userRHR改為公開
     private let minRestingHeartRate: Double = 40.0 // 最低安全閾值
-    private var userRHR: Double = 60.0 // 默認靜息心率
+    private(set) var userRHR: Double = 60.0 // 默認靜息心率，改為公開訪問
     private var userAge: Int = 30 // 默認年齡
     
-    // 根據用戶年齡和靜息心率計算的閾值
-    private var sleepingHeartRateThreshold: Double {
+    // 根據用戶年齡和靜息心率計算的閾值 - 改為公開計算屬性
+    var sleepingHeartRateThreshold: Double {
         // 基於年齡的閾值百分比
         let thresholdPercentage: Double
         if userAge < 18 {
@@ -632,9 +637,17 @@ class PowerNapViewModel: ObservableObject {
     @Published var remainingTime: TimeInterval = 0
     @Published var sleepPhase: SleepPhase = .awake
     
+    // 測試頁面顯示的數據
+    @Published var currentHeartRate: Double = 0
+    @Published var restingHeartRate: Double = 60
+    @Published var heartRateThreshold: Double = 54
+    @Published var isResting: Bool = false
+    @Published var isProbablySleeping: Bool = false
+    
     // 計時器
     private var napTimer: Timer?
     private var startTime: Date?
+    private var statsUpdateTimer: Timer?
     
     // 服務管理 - 恢復WorkoutManager
     private let workoutManager = WorkoutSessionManager.shared
@@ -655,6 +668,35 @@ class PowerNapViewModel: ObservableObject {
     init() {
         // 初始化時可執行的設置，例如設置運動檢測回調
         setupMotionDetection()
+        startStatsUpdateTimer()
+    }
+    
+    deinit {
+        statsUpdateTimer?.invalidate()
+    }
+    
+    // 啟動統計數據更新計時器
+    private func startStatsUpdateTimer() {
+        statsUpdateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            self.updateStats()
+        }
+    }
+    
+    // 更新統計數據
+    private func updateStats() {
+        // 從SleepDetectionService獲取數據
+        self.isResting = sleepDetection.isResting
+        self.isProbablySleeping = sleepDetection.isProbablySleeping
+        
+        // 從WorkoutManager獲取心率數據 (這裡需要給WorkoutSessionManager添加公開的心率訪問方法)
+        if let hr = workoutManager.latestHeartRate {
+            self.currentHeartRate = hr
+        }
+        
+        // 從SleepDetectionService獲取靜止心率和閾值
+        self.restingHeartRate = sleepDetection.userRHR
+        self.heartRateThreshold = sleepDetection.sleepingHeartRateThreshold
     }
     
     // 設置運動檢測回調

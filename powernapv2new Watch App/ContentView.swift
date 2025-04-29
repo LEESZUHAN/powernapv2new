@@ -21,6 +21,9 @@ struct ContentView: View {
         case countdown  // 倒計時狀態
     }
     
+    // 增加用於分頁控制的狀態
+    @State private var selectedTab = 0
+    
     // 根據ViewModel狀態計算UI狀態
     private var uiState: UIState {
         if !viewModel.isNapping {
@@ -33,51 +36,66 @@ struct ContentView: View {
     }
     
     var body: some View {
-        ZStack {
-            // 背景色
-            Color.black.edgesIgnoringSafeArea(.all)
-            
-            // 根據UI狀態顯示不同內容
-            switch uiState {
-            case .preparing:
-                preparingView
-            case .monitoring:
-                monitoringView
-            case .countdown:
-                countdownView
+        TabView(selection: $selectedTab) {
+            // 主頁面
+            ZStack {
+                // 背景色
+                Color.black.edgesIgnoringSafeArea(.all)
+                
+                // 根據UI狀態顯示不同內容
+                switch uiState {
+                case .preparing:
+                    preparingView
+                case .monitoring:
+                    monitoringView
+                case .countdown:
+                    countdownView
+                }
             }
+            .tag(0)
+            
+            // 測試功能頁面
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
+                testFunctionsView
+            }
+            .tag(1)
         }
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
     }
     
     // 準備狀態視圖
     private var preparingView: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // 時間選擇框
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.green, lineWidth: 2)
-                        .frame(height: 60)
-                    
-                    Picker("休息時間", selection: $viewModel.napDuration) {
-                        Text("5:00").tag(5 * 60.0)
-                        Text("10:00").tag(10 * 60.0)
-                        Text("15:00").tag(15 * 60.0)
-                        Text("20:00").tag(20 * 60.0)
-                        Text("25:00").tag(25 * 60.0)
-                        Text("30:00").tag(30 * 60.0)
-                    }
-                    .pickerStyle(.wheel)
-                    .frame(height: 100)
-                    .clipped()
+        GeometryReader { geometry in
+            VStack {
+                // 休息時間垂直間距改為0%
+                
+                Text("休息時間")
+                    .font(.headline)
+                    .foregroundColor(.gray)
+                    .padding(.bottom, -5)
+                
+                // 時間選擇框高度改為35%
+                Picker("", selection: $viewModel.napDuration) {
+                    Text("5").tag(5 * 60.0)
+                    Text("10").tag(10 * 60.0)
+                    Text("15").tag(15 * 60.0)
+                    Text("20").tag(20 * 60.0)
+                    Text("25").tag(25 * 60.0)
+                    Text("30").tag(30 * 60.0)
                 }
-                .padding(.top, 10)
+                .pickerStyle(.wheel)
+                .frame(height: geometry.size.height * 0.35)
+                .clipped()
+                .padding(.horizontal, geometry.size.width * 0.1)
                 
                 Text("分鐘")
-                    .font(.system(size: 16))
+                    .font(.subheadline)
                     .foregroundColor(.gray)
+                    .padding(.top, -5)
                 
-                Spacer(minLength: 20)
+                // 按鈕位置往上移，使用Spacer自動調整
+                Spacer()
                 
                 // 開始按鈕
                 Button(action: {
@@ -86,60 +104,131 @@ struct ContentView: View {
                     Text("開始休息")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
-                        .frame(width: 160, height: 44)
+                        .frame(width: geometry.size.width * 0.6, height: 44)
                         .background(Color.blue)
                         .cornerRadius(22)
                 }
                 .buttonStyle(PlainButtonStyle())
-                
-                Spacer(minLength: 20)
-                
-                // 測試鬧鈴按鈕 - 清晰明顯的獨立區域
-                VStack {
-                    Divider()
-                        .background(Color.gray.opacity(0.5))
-                        .padding(.vertical, 5)
-                    
+                .padding(.bottom, geometry.size.height * 0.05)  // 底部間距改為5%
+            }
+            .padding()
+        }
+    }
+    
+    // 測試功能頁面視圖 - 增加顯示心率、靜止心率和運動狀況
+    private var testFunctionsView: some View {
+        VStack {
+            ScrollView {
+                VStack(spacing: 20) {
                     Text("開發測試功能")
-                        .font(.footnote)
-                        .foregroundColor(.gray)
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.top, 10)
+                    
+                    // 心率資訊區塊
+                    VStack(spacing: 10) {
+                        HStack {
+                            Text("心率:")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text("\(Int(viewModel.currentHeartRate))")
+                                .foregroundColor(.green)
+                                .font(.system(size: 18, weight: .bold))
+                            Text("BPM")
+                                .foregroundColor(.gray)
+                                .font(.footnote)
+                        }
+                        
+                        HStack {
+                            Text("靜止心率:")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text("\(Int(viewModel.restingHeartRate))")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 18, weight: .bold))
+                            Text("BPM")
+                                .foregroundColor(.gray)
+                                .font(.footnote)
+                        }
+                        
+                        HStack {
+                            Text("閾值:")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text("\(Int(viewModel.heartRateThreshold))")
+                                .foregroundColor(.purple)
+                                .font(.system(size: 18, weight: .bold))
+                            Text("BPM")
+                                .foregroundColor(.gray)
+                                .font(.footnote)
+                        }
+                        
+                        HStack {
+                            Text("運動狀態:")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text(viewModel.isResting ? "靜止" : "活動中")
+                                .foregroundColor(viewModel.isResting ? .green : .red)
+                                .font(.system(size: 18, weight: .bold))
+                        }
+                        
+                        HStack {
+                            Text("睡眠狀態:")
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text(viewModel.isProbablySleeping ? "可能睡眠中" : "清醒")
+                                .foregroundColor(viewModel.isProbablySleeping ? .blue : .yellow)
+                                .font(.system(size: 18, weight: .bold))
+                        }
+                    }
+                    .padding()
+                    .background(Color.black.opacity(0.3))
+                    .cornerRadius(15)
+                    .padding(.horizontal)
+                    
+                    Spacer().frame(height: 20)
                     
                     Button(action: {
                         // 直接調用通知管理器發送通知
                         NotificationManager.shared.sendWakeupNotification()
                     }) {
                         Text("測試鬧鈴功能")
-                            .font(.system(size: 16, weight: .medium))
+                            .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 40)
+                            .frame(height: 50)
                             .background(Color.orange)
-                            .cornerRadius(20)
+                            .cornerRadius(25)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
                 }
-                .padding(.top, 10)
-                .padding(.bottom, 15)
+                .padding(.bottom, 20)
             }
-            .padding()
         }
+        .padding(.top, 10)
     }
     
     // 監測狀態視圖
     private var monitoringView: some View {
-        VStack(spacing: 40) {
+        VStack {
+            Spacer().frame(height: 20)
+            
             Text("監測中")
                 .font(.system(size: 28, weight: .medium))
                 .foregroundColor(.white)
+                .padding(.bottom, 10)
             
-            // 等待文字
+            Spacer()
+            
+            // 等待文字 - 接近置中
             Text("等待入睡...")
                 .font(.system(size: 22))
                 .foregroundColor(.gray)
             
             Spacer()
             
-            // 取消按鈕
+            // 取消按鈕 - 往上移
             Button(action: {
                 viewModel.stopNap()
             }) {
@@ -151,7 +240,7 @@ struct ContentView: View {
                     .cornerRadius(22)
             }
             .buttonStyle(PlainButtonStyle())
-            .padding(.bottom, 20)
+            .padding(.bottom, 30)
         }
         .padding()
     }
