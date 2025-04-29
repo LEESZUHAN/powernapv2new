@@ -14,37 +14,39 @@ import UserNotifications
 // 靜態心電圖View
 struct HeartRateStaticView: View {
     var body: some View {
-        // 簡單的靜態心電圖
-        Path { path in
-            let width = UIScreen.main.bounds.width * 0.8
-            let height: CGFloat = 50
-            let centerY = height / 2
-            
-            // 開始點
-            path.move(to: CGPoint(x: 0, y: centerY))
-            
-            // 第一段水平線
-            path.addLine(to: CGPoint(x: width * 0.2, y: centerY))
-            
-            // 心跳波形 - P波
-            path.addLine(to: CGPoint(x: width * 0.25, y: centerY - 5))
-            path.addLine(to: CGPoint(x: width * 0.3, y: centerY))
-            
-            // QRS波群
-            path.addLine(to: CGPoint(x: width * 0.35, y: centerY - 10))
-            path.addLine(to: CGPoint(x: width * 0.4, y: centerY + 25))
-            path.addLine(to: CGPoint(x: width * 0.45, y: centerY - 15))
-            path.addLine(to: CGPoint(x: width * 0.5, y: centerY))
-            
-            // T波
-            path.addLine(to: CGPoint(x: width * 0.55, y: centerY + 8))
-            path.addLine(to: CGPoint(x: width * 0.6, y: centerY))
-            
-            // 結束水平線
-            path.addLine(to: CGPoint(x: width, y: centerY))
+        GeometryReader { geometry in
+            // 簡單的靜態心電圖
+            Path { path in
+                let width = geometry.size.width
+                let height: CGFloat = 50
+                let centerY = height / 2
+                
+                // 開始點
+                path.move(to: CGPoint(x: 0, y: centerY))
+                
+                // 第一段水平線
+                path.addLine(to: CGPoint(x: width * 0.2, y: centerY))
+                
+                // 心跳波形 - P波
+                path.addLine(to: CGPoint(x: width * 0.25, y: centerY - 5))
+                path.addLine(to: CGPoint(x: width * 0.3, y: centerY))
+                
+                // QRS波群
+                path.addLine(to: CGPoint(x: width * 0.35, y: centerY - 10))
+                path.addLine(to: CGPoint(x: width * 0.4, y: centerY + 25))
+                path.addLine(to: CGPoint(x: width * 0.45, y: centerY - 15))
+                path.addLine(to: CGPoint(x: width * 0.5, y: centerY))
+                
+                // T波
+                path.addLine(to: CGPoint(x: width * 0.55, y: centerY + 8))
+                path.addLine(to: CGPoint(x: width * 0.6, y: centerY))
+                
+                // 結束水平線
+                path.addLine(to: CGPoint(x: width, y: centerY))
+            }
+            .stroke(Color.white, lineWidth: 2)
+            .frame(height: 50)
         }
-        .stroke(Color.white, lineWidth: 2)
-        .frame(height: 50)
     }
 }
 
