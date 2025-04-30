@@ -128,11 +128,12 @@
 - [x] 服務接口設計完成 (ServiceProtocols.swift)
 
 ### 第二階段
-- [x] 動作檢測服務基礎實現 (MotionService.swift - 初步實現，需要解決類型引用問題) 
-- [ ] 動作分析窗口完整實現（滑動窗口與百分比閾值判定）
-- [ ] 自適應閾值系統實現
+- [x] 動作檢測服務基礎實現 (MotionService.swift) 
+- [x] 滑動窗口機制實現 (內聯在MotionService.swift中)
+- [x] 自適應閾值系統實現 (內聯在MotionService.swift中)
+- [x] 動作分析窗口完整實現（滑動窗口與百分比閾值判定）
+- [x] 解決模塊導入問題 (通過內聯實現解決)
 - [ ] 心率監測服務基礎實現
-- [ ] 動作分析演算法實現
 - [ ] 心率分析演算法實現
 
 ### 第三階段
@@ -158,6 +159,45 @@
    - Services/Protocols/ServiceProtocols.swift - 包含所有服務協議
    - Services/MotionService.swift - 動作服務實現
    - 所有文件都確保添加到同一個Target
+
+### 模塊導入問題
+1. **問題描述**：即使正確設置了Target Membership，在新創建的文件（如SlidingWindow.swift和AdaptiveThresholdSystem.swift）中仍無法正確引用其他文件中定義的類型。
+
+2. **解決方案**：
+   - **方案一（短期）**：將核心類型直接內聯到各服務實現文件中，避免復雜的導入關係
+   ```swift
+   // 例如將SlidingWindow類直接寫在MotionService.swift中
+   private class SlidingWindow {
+       // 實現...
+   }
+   ```
+   
+   - **方案二（中期）**：創建一個共享的Utils.swift文件，包含所有輔助類
+   ```swift
+   // Utils.swift
+   import Foundation
+   
+   // 滑動窗口實現
+   public class SlidingWindow {
+       // 實現...
+   }
+   
+   // 自適應閾值系統
+   public class AdaptiveThresholdSystem {
+       // 實現...
+   }
+   ```
+   
+   - **方案三（長期）**：將共享組件移至獨立的Swift Package
+   ```swift
+   // 創建獨立的Package：PowerNapCore
+   // 然後在主項目中引用
+   import PowerNapCore
+   ```
+
+3. **執行計劃**：
+   - 已採用方案一，成功將SlidingWindow和AdaptiveThresholdSystem內聯到MotionService中
+   - 後續考慮在專案穩定後改為方案二或方案三
 
 ### 平台兼容性問題
 1. **問題描述**：不同平台（watchOS、iOS、macOS）對CoreMotion的支持不同，導致編譯警告或錯誤。
@@ -220,4 +260,23 @@
 - **初始閾值**：首次運行使用固定閾值(0.02)
 - **學習曲線**：隨著使用時間增加，閾值調整幅度逐漸減小
 - **用戶特定模型**：長期存儲用戶特定的閾值調整歷史
-- **環境因素**：考慮佩戴位置、環境振動等因素影響 
+- **環境因素**：考慮佩戴位置、環境振動等因素影響
+
+## 下一階段計劃
+
+### 心率監測服務
+1. **基本架構設計**：
+   - 參考動作服務的成功設計模式
+   - 注意可測試性和模擬功能
+
+2. **數據採集**：
+   - 從HealthKit讀取用戶心率
+   - 處理心率數據缺失和異常值
+
+3. **分析算法**：
+   - 實現心率下降檢測
+   - 自適應靜息心率判定
+   - 考慮年齡組特定的心率閾值
+
+4. **與動作服務整合**：
+   - 準備清晰的接口用於後續整合 
