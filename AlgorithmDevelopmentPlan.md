@@ -19,25 +19,74 @@
    - 定義靜止狀態閾值和時間窗口
    
    **動作分析窗口實現計劃**：
-   - **百分比閾值判定法實現**：
-     - 在指定窗口期間收集加速度數據，計算靜止時間佔比
-     - 實現滑動窗口機制，持續評估最近一段時間的動作情況
-     - 設計緩存機制，避免重複計算
+   - **滑動窗口機制實現**：
+     - 定義數據結構：使用環形緩衝區(circular buffer)或雙端隊列(deque)存儲時間戳和動作強度
+     - 窗口更新策略：每秒將新數據加入窗口，同時移除最舊的數據點
+     - 支持多窗口並行：同時維護年齡組特定窗口(1-5分鐘)和短窗口(20秒)
+     - 計算時間優化：使用增量計算法，避免每次重新計算整個窗口
+     ```swift
+     // 滑動窗口示例實現
+     class SlidingWindow {
+         private var dataPoints: [(timestamp: Date, intensity: Double)]
+         private let windowDuration: TimeInterval
+         
+         // 添加新數據點並移除過期數據
+         func addDataPoint(_ intensity: Double, timestamp: Date = Date()) {
+             dataPoints.append((timestamp, intensity))
+             let cutoffTime = timestamp.addingTimeInterval(-windowDuration)
+             dataPoints = dataPoints.filter { $0.timestamp > cutoffTime }
+         }
+         
+         // 計算靜止佔比
+         func calculateStationaryPercentage(threshold: Double) -> Double {
+             let stationarySamples = dataPoints.filter { $0.intensity < threshold }.count
+             return Double(stationarySamples) / Double(dataPoints.count)
+         }
+     }
+     ```
    
-   - **CoreMotion整合**：
-     - 使用CMAccelerometerData收集原始加速度數據
-     - 設置採樣頻率：不同窗口使用不同頻率（1-5秒/樣本）
-     - 對於睡眠期間微動分析，考慮使用CMBatchedSensorManager獲取更高精度數據
+   - **百分比閾值判定法**：
+     - 依據年齡組配置計算靜止比例要求(80%-90%)
+     - 計算公式：靜止時間佔比 = 靜止樣本數 / 總樣本數
+     - 條件滿足邏輯：當靜止佔比 ≥ 要求百分比且持續達到確認時間，判定為睡眠狀態
+     - 實時更新評估：每秒重新評估一次靜止狀態
    
-   - **靜止判定優化**：
-     - 實現動態閾值系統，根據用戶睡眠模式自適應調整
-     - 加入異常值過濾，處理環境干擾和偶發動作
-     - 專門處理睡眠中常見的小幅度動作（如翻身、伸展）
+   - **自適應閾值系統**：
+     - 數據基礎：收集最近5分鐘的動作數據樣本
+     - 統計分析：計算平均值(μ)和標準差(σ)
+     - 閾值計算：new_threshold = μ + σ
+     - 限制保護：應用0.015~0.05的硬性限制，防止極端值
+     - 平滑過渡：使用指數加權移動平均(EWMA)實現平滑閾值變化
+     ```swift
+     // 自適應閾值示例實現
+     func calculateAdaptiveThreshold(recentMotionData: [Double]) -> Double {
+         let mean = recentMotionData.reduce(0, +) / Double(recentMotionData.count)
+         let variance = recentMotionData.map { pow($0 - mean, 2) }.reduce(0, +) / Double(recentMotionData.count)
+         let stdDev = sqrt(variance)
+         
+         // 基本閾值 = 平均值 + 標準差
+         var newThreshold = mean + stdDev
+         
+         // 應用限制
+         newThreshold = max(0.015, min(0.05, newThreshold))
+         
+         // 平滑過渡 (α = 0.3, 賦予新值30%權重)
+         currentThreshold = 0.7 * currentThreshold + 0.3 * newThreshold
+         
+         return currentThreshold
+     }
+     ```
    
-   - **測試與調優**：
-     - 創建模擬各種睡眠場景的測試用例
-     - 針對不同睡眠姿勢（側睡、仰睡）優化參數
-     - 開發可視化工具，直觀展示動作分析結果
+   - **微動處理優化**：
+     - 異常值過濾：使用中值濾波器消除突發干擾
+     - 模式識別：區分有意識動作和睡眠中自然微動
+     - 頻率域分析：分析動作的頻率特徵，識別睡眠相關動作
+     - 情境自適應：在已確認睡眠狀態後提高動作閾值寬容度
+
+   - **多設備數據融合**：
+     - 若用戶同時佩戴多個設備(如手錶和耳機)，實現數據融合策略
+     - 加權算法：根據設備可靠性分配權重
+     - 衝突解決機制：當不同設備數據不一致時的決策邏輯
 
 4. **心率監測服務 (HeartRateMonitorService)**
    - 實現心率數據收集
@@ -80,7 +129,8 @@
 
 ### 第二階段
 - [x] 動作檢測服務基礎實現 (MotionService.swift - 初步實現，需要解決類型引用問題) 
-- [ ] 動作分析窗口完整實現（百分比閾值判定算法）
+- [ ] 動作分析窗口完整實現（滑動窗口與百分比閾值判定）
+- [ ] 自適應閾值系統實現
 - [ ] 心率監測服務基礎實現
 - [ ] 動作分析演算法實現
 - [ ] 心率分析演算法實現
@@ -154,4 +204,20 @@
 ### 改進建議
 - 考慮引入更細粒度的配置項，允許心率和動作分析參數獨立調整
 - 添加自適應學習機制，隨時間調整參數以適應個體特性
-- 保留年齡組作為初始配置的基礎，但允許後續微調 
+- 保留年齡組作為初始配置的基礎，但允許後續微調
+
+### 滑動窗口與自適應機制的實現細節
+
+**滑動窗口實現**：
+- **數據結構**：使用固定大小的環形緩衝區，減少內存重分配
+- **時間複雜度**：保持O(1)的添加和移除操作
+- **空間複雜度**：針對5分鐘窗口，最多存儲300個樣本點
+- **容錯設計**：處理可能的數據缺失和採樣間隔不一致問題
+- **初始化處理**：窗口未滿時的特殊邏輯
+
+**自適應閾值機制**：
+- **更新頻率**：默認每60秒重新計算一次閾值
+- **初始閾值**：首次運行使用固定閾值(0.02)
+- **學習曲線**：隨著使用時間增加，閾值調整幅度逐漸減小
+- **用戶特定模型**：長期存儲用戶特定的閾值調整歷史
+- **環境因素**：考慮佩戴位置、環境振動等因素影響 
