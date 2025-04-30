@@ -1,0 +1,258 @@
+
+Showing Recent Issues
+
+Build target powernapv2new Watch App of project powernapv2new with configuration Debug
+
+SwiftCompile normal arm64_32 Compiling\ SharedTypes.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Models/SharedTypes.swift (in target 'powernapv2new Watch App' from project 'powernapv2new')
+    cd /Users/michaellee/Documents/powernapv2new
+    builtin-swiftTaskExecution -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/ContentView.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/powernapv2newApp.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/SleepServices.swift -primary-file /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Models/SharedTypes.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/PowerNapServices.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/Protocols/ServiceProtocols.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/MotionService.swift /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources/GeneratedAssetSymbols.swift -emit-dependencies-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.d -emit-const-values-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.swiftconstvalues -emit-reference-dependencies-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.swiftdeps -serialize-diagnostics-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.dia -emit-localized-strings -emit-localized-strings-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32 -target arm64_32-apple-watchos11.2 -enable-objc-interop -sdk /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk -I /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos -F /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos -no-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -module-cache-path /Users/michaellee/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -profile-generate -profile-coverage-mapping -swift-version 5 -enforce-exclusivity\=checked -Onone -D DEBUG -serialize-debugging-options -const-gather-protocols-file /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/powernapv2new\ Watch\ App_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-experimental-feature OpaqueTypeErasure -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/michaellee/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/michaellee/Documents/powernapv2new -resource-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift -enable-anonymous-context-mangled-names -file-compilation-dir /Users/michaellee/Documents/powernapv2new -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/watchos11.2-22S97-0b3b2baea7cb8f92e0e7a0ebd9acdf21.sdkstatcache -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-generated-files.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-own-target-headers.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-all-target-headers.hmap -Xcc -iquote -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-project-headers.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/include -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources-normal/arm64_32 -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources/arm64_32 -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources -Xcc -DDEBUG\=1 -module-name powernapv2new_Watch_App -frontend-parseable-output -disable-clang-spi -target-sdk-version 11.2 -target-sdk-name watchos11.2 -external-plugin-path /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/lib/swift/host/plugins\#/Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/bin/swift-plugin-server -external-plugin-path /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/local/lib/swift/host/plugins\#/Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/bin/swift-plugin-server -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/lib/swift/host/plugins -o /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.o -index-unit-output-path /powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.o -index-store-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Index.noindex/DataStore -index-system-modules
+
+SwiftCompile normal arm64_32 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Models/SharedTypes.swift (in target 'powernapv2new Watch App' from project 'powernapv2new')
+    cd /Users/michaellee/Documents/powernapv2new
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -c /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/ContentView.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/powernapv2newApp.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/SleepServices.swift -primary-file /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Models/SharedTypes.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/PowerNapServices.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/Protocols/ServiceProtocols.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/MotionService.swift /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources/GeneratedAssetSymbols.swift -emit-dependencies-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.d -emit-const-values-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.swiftconstvalues -emit-reference-dependencies-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.swiftdeps -serialize-diagnostics-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.dia -emit-localized-strings -emit-localized-strings-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32 -target arm64_32-apple-watchos11.2 -enable-objc-interop -sdk /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk -I /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos -F /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos -no-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -module-cache-path /Users/michaellee/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -profile-generate -profile-coverage-mapping -swift-version 5 -enforce-exclusivity\=checked -Onone -D DEBUG -serialize-debugging-options -const-gather-protocols-file /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/powernapv2new\ Watch\ App_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-experimental-feature OpaqueTypeErasure -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/michaellee/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/michaellee/Documents/powernapv2new -resource-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift -enable-anonymous-context-mangled-names -file-compilation-dir /Users/michaellee/Documents/powernapv2new -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/watchos11.2-22S97-0b3b2baea7cb8f92e0e7a0ebd9acdf21.sdkstatcache -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-generated-files.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-own-target-headers.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-all-target-headers.hmap -Xcc -iquote -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-project-headers.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/include -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources-normal/arm64_32 -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources/arm64_32 -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources -Xcc -DDEBUG\=1 -module-name powernapv2new_Watch_App -frontend-parseable-output -disable-clang-spi -target-sdk-version 11.2 -target-sdk-name watchos11.2 -external-plugin-path /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/lib/swift/host/plugins\#/Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/bin/swift-plugin-server -external-plugin-path /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/local/lib/swift/host/plugins\#/Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/bin/swift-plugin-server -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/lib/swift/host/plugins -o /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.o -index-unit-output-path /powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/SharedTypes.o -index-store-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Index.noindex/DataStore -index-system-modules
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:4:13: error: invalid redeclaration of 'SleepState'
+public enum SleepState: String, Codable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:30:13: note: 'SleepState' previously declared here
+public enum SleepState {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:30:13: note: 'SleepState' previously declared here
+public enum SleepState {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:57:46: error: 'AgeGroup' is ambiguous for type lookup in this context
+    public static func forAge(_ age: Int) -> AgeGroup {
+                                             ^~~~~~~~
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:25:13: note: found this candidate
+public enum AgeGroup: String, CaseIterable, Codable, Identifiable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:34:13: note: found this candidate
+public enum AgeGroup {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:25:13: error: invalid redeclaration of 'AgeGroup'
+public enum AgeGroup: String, CaseIterable, Codable, Identifiable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:34:13: note: 'AgeGroup' previously declared here
+public enum AgeGroup {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:34:13: note: 'AgeGroup' previously declared here
+public enum AgeGroup {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:77:68: error: 'MotionIntensity' is ambiguous for type lookup in this context
+    public static func fromAcceleration(_ acceleration: Double) -> MotionIntensity {
+                                                                   ^~~~~~~~~~~~~~~
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:69:13: note: found this candidate
+public enum MotionIntensity: String, Codable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:13:13: note: found this candidate
+public enum MotionIntensity {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/MotionService.swift:17:6: note: found this candidate
+enum MotionIntensity {
+     ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:69:13: error: invalid redeclaration of 'MotionIntensity'
+public enum MotionIntensity: String, Codable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:13:13: note: 'MotionIntensity' previously declared here
+public enum MotionIntensity {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:13:13: note: 'MotionIntensity' previously declared here
+public enum MotionIntensity {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:110:31: error: ambiguous use of 'init(timeInterval:sampleInterval:requiredStationaryPercentage:)'
+    public static let short = MotionAnalysisWindow(
+                              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:104:15: note: found this candidate 
+public struct MotionAnalysisWindow {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:23:12: note: found this candidate 
+    public init(timeInterval: TimeInterval, sampleInterval: TimeInterval, requiredStationaryPercentage: Double) {
+           ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/MotionService.swift:32:8: note: found this candidate 
+struct MotionAnalysisWindow {
+       ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:116:32: error: ambiguous use of 'init(timeInterval:sampleInterval:requiredStationaryPercentage:)'
+    public static let medium = MotionAnalysisWindow(
+                               ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:104:15: note: found this candidate 
+public struct MotionAnalysisWindow {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:23:12: note: found this candidate 
+    public init(timeInterval: TimeInterval, sampleInterval: TimeInterval, requiredStationaryPercentage: Double) {
+           ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/MotionService.swift:32:8: note: found this candidate 
+struct MotionAnalysisWindow {
+       ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:122:30: error: ambiguous use of 'init(timeInterval:sampleInterval:requiredStationaryPercentage:)'
+    public static let long = MotionAnalysisWindow(
+                             ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:104:15: note: found this candidate 
+public struct MotionAnalysisWindow {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:23:12: note: found this candidate 
+    public init(timeInterval: TimeInterval, sampleInterval: TimeInterval, requiredStationaryPercentage: Double) {
+           ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/MotionService.swift:32:8: note: found this candidate 
+struct MotionAnalysisWindow {
+       ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:129:61: error: 'MotionAnalysisWindow' is ambiguous for type lookup in this context
+    public static func forAgeGroup(_ ageGroup: AgeGroup) -> MotionAnalysisWindow {
+                                                            ^~~~~~~~~~~~~~~~~~~~
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:104:15: note: found this candidate
+public struct MotionAnalysisWindow {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:18:15: note: found this candidate
+public struct MotionAnalysisWindow {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/MotionService.swift:32:8: note: found this candidate
+struct MotionAnalysisWindow {
+       ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:129:48: error: 'AgeGroup' is ambiguous for type lookup in this context
+    public static func forAgeGroup(_ ageGroup: AgeGroup) -> MotionAnalysisWindow {
+                                               ^~~~~~~~
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:25:13: note: found this candidate
+public enum AgeGroup: String, CaseIterable, Codable, Identifiable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:34:13: note: found this candidate
+public enum AgeGroup {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:104:15: error: invalid redeclaration of 'MotionAnalysisWindow'
+public struct MotionAnalysisWindow {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:18:15: note: 'MotionAnalysisWindow' previously declared here
+public struct MotionAnalysisWindow {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:18:15: note: 'MotionAnalysisWindow' previously declared here
+public struct MotionAnalysisWindow {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:142:15: error: invalid redeclaration of 'HeartRateAnalysisData'
+public struct HeartRateAnalysisData {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:38:15: note: 'HeartRateAnalysisData' previously declared here
+public struct HeartRateAnalysisData {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:38:15: note: 'HeartRateAnalysisData' previously declared here
+public struct HeartRateAnalysisData {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:172:28: error: 'SleepState' is ambiguous for type lookup in this context
+    public var sleepState: SleepState
+                           ^~~~~~~~~~
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:4:13: note: found this candidate
+public enum SleepState: String, Codable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:30:13: note: found this candidate
+public enum SleepState {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:173:33: error: 'MotionIntensity' is ambiguous for type lookup in this context
+    public var motionIntensity: MotionIntensity
+                                ^~~~~~~~~~~~~~~
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:69:13: note: found this candidate
+public enum MotionIntensity: String, Codable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:13:13: note: found this candidate
+public enum MotionIntensity {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/MotionService.swift:17:6: note: found this candidate
+enum MotionIntensity {
+     ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:179:21: error: 'SleepState' is ambiguous for type lookup in this context
+        sleepState: SleepState = .awake,
+                    ^~~~~~~~~~
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:4:13: note: found this candidate
+public enum SleepState: String, Codable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:30:13: note: found this candidate
+public enum SleepState {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:180:26: error: 'MotionIntensity' is ambiguous for type lookup in this context
+        motionIntensity: MotionIntensity = .none,
+                         ^~~~~~~~~~~~~~~
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:69:13: note: found this candidate
+public enum MotionIntensity: String, Codable {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:13:13: note: found this candidate
+public enum MotionIntensity {
+            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/MotionService.swift:17:6: note: found this candidate
+enum MotionIntensity {
+     ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:171:15: error: invalid redeclaration of 'SleepDetectionState'
+public struct SleepDetectionState {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:44:15: note: 'SleepDetectionState' previously declared here
+public struct SleepDetectionState {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:44:15: note: 'SleepDetectionState' previously declared here
+public struct SleepDetectionState {
+              ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/ContentView.swift:8:8: warning: 'SwiftUI' inconsistently imported as implementation-only
+import SwiftUI
+       ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:7:29: note: imported as implementation-only here
+@_implementationOnly import SwiftUI
+                            ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/powernapv2newApp.swift:8:8: warning: 'SwiftUI' inconsistently imported as implementation-only
+import SwiftUI
+       ^
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:7:29: note: imported as implementation-only here
+@_implementationOnly import SwiftUI
+                            ^
+/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/DerivedSources/GeneratedAssetSymbols.swift:9:8: warning: 'SwiftUI' inconsistently imported as implementation-only
+import SwiftUI
+       ^
+@_implementationOnly 
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/Protocols/ServiceProtocols.swift:7:29: note: imported as implementation-only here
+@_implementationOnly import SwiftUI
+                            ^
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:4:13: Invalid redeclaration of 'SleepState'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:57:46: 'AgeGroup' is ambiguous for type lookup in this context
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:25:13: Invalid redeclaration of 'AgeGroup'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:77:68: 'MotionIntensity' is ambiguous for type lookup in this context
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:69:13: Invalid redeclaration of 'MotionIntensity'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:110:31: Ambiguous use of 'init(timeInterval:sampleInterval:requiredStationaryPercentage:)'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:116:32: Ambiguous use of 'init(timeInterval:sampleInterval:requiredStationaryPercentage:)'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:122:30: Ambiguous use of 'init(timeInterval:sampleInterval:requiredStationaryPercentage:)'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:129:61: 'MotionAnalysisWindow' is ambiguous for type lookup in this context
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:129:48: 'AgeGroup' is ambiguous for type lookup in this context
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:104:15: Invalid redeclaration of 'MotionAnalysisWindow'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:142:15: Invalid redeclaration of 'HeartRateAnalysisData'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:172:28: 'SleepState' is ambiguous for type lookup in this context
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:173:33: 'MotionIntensity' is ambiguous for type lookup in this context
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:179:21: 'SleepState' is ambiguous for type lookup in this context
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:180:26: 'MotionIntensity' is ambiguous for type lookup in this context
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift:171:15: Invalid redeclaration of 'SleepDetectionState'
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/ContentView.swift:8:8: 'SwiftUI' inconsistently imported as implementation-only
+
+/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/powernapv2newApp.swift:8:8: 'SwiftUI' inconsistently imported as implementation-only
+
+/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/DerivedSources/GeneratedAssetSymbols.swift:9:8: 'SwiftUI' inconsistently imported as implementation-only
+
+SwiftCompile normal arm64_32 Compiling\ MotionService.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/MotionService.swift (in target 'powernapv2new Watch App' from project 'powernapv2new')
+    cd /Users/michaellee/Documents/powernapv2new
+    builtin-swiftTaskExecution -- /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/ContentView.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/powernapv2newApp.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/SleepServices.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Models/SharedTypes.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/PowerNapServices.swift /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/Protocols/ServiceProtocols.swift -primary-file /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/MotionService.swift /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources/GeneratedAssetSymbols.swift -emit-dependencies-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/MotionService.d -emit-const-values-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/MotionService.swiftconstvalues -emit-reference-dependencies-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/MotionService.swiftdeps -serialize-diagnostics-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/MotionService.dia -emit-localized-strings -emit-localized-strings-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32 -target arm64_32-apple-watchos11.2 -enable-objc-interop -sdk /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.2.sdk -I /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos -F /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos -no-color-diagnostics -enable-testing -g -debug-info-format\=dwarf -dwarf-version\=5 -module-cache-path /Users/michaellee/Library/Developer/Xcode/DerivedData/ModuleCache.noindex -profile-generate -profile-coverage-mapping -swift-version 5 -enforce-exclusivity\=checked -Onone -D DEBUG -serialize-debugging-options -const-gather-protocols-file /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/powernapv2new\ Watch\ App_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-experimental-feature OpaqueTypeErasure -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /Users/michaellee/Library/Developer/Xcode/DerivedData/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/michaellee/Documents/powernapv2new -resource-dir /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift -enable-anonymous-context-mangled-names -file-compilation-dir /Users/michaellee/Documents/powernapv2new -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -Xcc -ivfsstatcache -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/SDKStatCaches.noindex/watchos11.2-22S97-0b3b2baea7cb8f92e0e7a0ebd9acdf21.sdkstatcache -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-generated-files.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-own-target-headers.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-all-target-headers.hmap -Xcc -iquote -Xcc /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/powernapv2new\ Watch\ App-project-headers.hmap -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Products/Debug-watchos/include -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources-normal/arm64_32 -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources/arm64_32 -Xcc -I/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources -Xcc -DDEBUG\=1 -module-name powernapv2new_Watch_App -frontend-parseable-output -disable-clang-spi -target-sdk-version 11.2 -target-sdk-name watchos11.2 -external-plugin-path /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/lib/swift/host/plugins\#/Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/bin/swift-plugin-server -external-plugin-path /Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/local/lib/swift/host/plugins\#/Applications/Xcode.app/Contents/Developer/Platforms/WatchOS.platform/Developer/usr/bin/swift-plugin-server -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins -plugin-path /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/lib/swift/host/plugins -o /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/MotionService.o -index-unit-output-path /powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/Objects-normal/arm64_32/MotionService.o -index-store-path /Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Index.noindex/DataStore -index-system-modules
+
+Command SwiftCompile failed with a nonzero exit code
+
+Command SwiftCompile failed with a nonzero exit code
+
+
+
+Build failed    4/30/25, 4:04 PM    2.9 seconds
