@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import HealthKit
 
 // 這個文件提供了一個臨時的解決方案來統一類型定義
 // 在Swift項目中正確設置Target Membership和類型可見性後，
@@ -217,4 +218,22 @@ public protocol MotionServiceProtocol {
     func updateAnalysisWindow(window: MotionAnalysisWindow)
     func getMotionIntensityHistory(from: Date, to: Date) -> [Date: MotionIntensity]
     func checkStationaryCondition(for timeWindow: TimeInterval) -> Bool
+}
+
+// 心率服務協議
+public protocol HeartRateServiceProtocol {
+    var currentHeartRate: Double { get }
+    var restingHeartRate: Double { get }
+    var heartRateThreshold: Double { get }
+    var heartRatePublisher: Published<Double>.Publisher { get }
+    var restingHeartRatePublisher: Published<Double>.Publisher { get }
+    var isProbablySleepingPublisher: Published<Bool>.Publisher { get }
+    var isProbablySleeping: Bool { get }
+    var heartRateTrendPublisher: Published<Double>.Publisher { get }
+    
+    func startMonitoring()
+    func stopMonitoring()
+    func calculateHeartRateThreshold(for ageGroup: AgeGroup)
+    func getHeartRateHistory(from: Date, to: Date) -> [HeartRateAnalysisData]
+    func checkSleepCondition(motionState: Bool) -> Bool
 } 

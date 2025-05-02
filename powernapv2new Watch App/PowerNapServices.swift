@@ -6,6 +6,7 @@ import UserNotifications
 #if os(watchOS)
 import WatchKit
 #endif
+import Combine
 
 // MARK: - WorkoutSessionManager
 class WorkoutSessionManager: NSObject, HKWorkoutSessionDelegate {
@@ -620,24 +621,146 @@ class NotificationManager {
         )
         
         // 添加請求到通知中心
-        UNUserNotificationCenter.current().add(request) { error in
+        UNUserNotificationCenter.current().add(request) { [weak self] error in
+            guard let self = self else { return }
+            
             if let error = error {
                 self.logger.error("無法發送喚醒通知: \(error.localizedDescription)")
             } else {
                 self.logger.info("成功安排喚醒通知")
                 
-                // 延遲1秒後再次播放震動（加強效果）
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    WKInterfaceDevice.current().play(.success)
-                }
-                
-                // 再延遲1秒播放第三次
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                    WKInterfaceDevice.current().play(.start)
-                }
+                // 連續震動3次，模擬3-2-1倒數效果
+                self.playSeriesOfVibrations()
             }
         }
         #endif
+    }
+    
+    // 連續震動3次，模擬3-2-1倒數
+    private func playSeriesOfVibrations() {
+        #if os(watchOS)
+        // 第一次震動
+        WKInterfaceDevice.current().play(.success)
+        
+        // 延遲1秒後第二次震動
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            WKInterfaceDevice.current().play(.success)
+            
+            // 再延遲1秒播放第三次震動
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                WKInterfaceDevice.current().play(.start)
+            }
+        }
+        #endif
+    }
+}
+
+// MARK: - SleepDataLogger
+class SleepDataLogger {
+    
+    private let fileManager = FileManager.default
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        return formatter
+    }()
+    
+    // 紀錄檔案標識符
+    private var sessionId: String?
+    private var logFilePath: URL?
+    
+    static let shared = SleepDataLogger()
+    
+    private init() {}
+    
+    // 開始新的記錄會話
+    func startNewSession() {
+        // 生成唯一會話ID
+        sessionId = UUID().uuidString
+        
+        // 創建日期字符串作為文件名的一部分
+        let dateString = dateFormatter.string(from: Date())
+        let fileName = "powernap_session_\(dateString).csv"
+        
+        // 獲取文檔目錄
+        if let docsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+            // 檢查或創建LogFiles目錄
+            let logDirectory = docsDirectory.appendingPathComponent("LogFiles")
+            
+            do {
+                if !fileManager.fileExists(atPath: logDirectory.path) {
+                    try fileManager.createDirectory(at: logDirectory, withIntermediateDirectories: true)
+                }
+                
+                // 設置日誌文件路徑
+                logFilePath = logDirectory.appendingPathComponent(fileName)
+                
+                // 寫入標題行
+                let headerLine = "Timestamp,HeartRate,RestingHR,HRThreshold,HRTrend,AccelerationLevel,IsResting,IsSleeping,SleepPhase,RemainingTime,Notes\n"
+                try headerLine.write(to: logFilePath!, atomically: true, encoding: .utf8)
+                
+                print("開始睡眠數據記錄: \(fileName)")
+                
+            } catch {
+                print("創建日誌文件失敗: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    // 記錄心率和睡眠數據
+    func logSleepData(
+        heartRate: Double,
+        restingHR: Double,
+        hrThreshold: Double,
+        hrTrend: Double,
+        acceleration: Double,
+        isResting: Bool,
+        isSleeping: Bool,
+        sleepPhase: String,
+        remainingTime: TimeInterval,
+        notes: String = ""
+    ) {
+        guard let logFilePath = logFilePath else { return }
+        
+        // 格式化數據行
+        let timestamp = Date()
+        let dateString = dateFormatter.string(from: timestamp)
+        
+        let dataLine = "\(dateString),\(heartRate),\(restingHR),\(hrThreshold),\(hrTrend),\(acceleration),\(isResting),\(isSleeping),\(sleepPhase),\(remainingTime),\"\(notes)\"\n"
+        
+        // 追加到文件
+        if let fileHandle = try? FileHandle(forWritingTo: logFilePath) {
+            fileHandle.seekToEndOfFile()
+            if let data = dataLine.data(using: .utf8) {
+                fileHandle.write(data)
+            }
+            fileHandle.closeFile()
+        } else {
+            // 如果無法打開文件，嘗試創建新文件
+            try? dataLine.write(to: logFilePath, atomically: true, encoding: .utf8)
+        }
+    }
+    
+    // 結束記錄會話
+    func endSession(summary: String) {
+        guard let logFilePath = logFilePath else { return }
+        
+        // 添加會話總結
+        let summaryLine = "\n--- 會話結束 ---\n\(summary)\n"
+        
+        if let fileHandle = try? FileHandle(forWritingTo: logFilePath) {
+            fileHandle.seekToEndOfFile()
+            if let data = summaryLine.data(using: .utf8) {
+                fileHandle.write(data)
+            }
+            fileHandle.closeFile()
+            
+            print("睡眠數據記錄已完成，保存至: \(logFilePath.lastPathComponent)")
+        }
+        
+        // 重置會話變量
+        sessionId = nil
+        self.logFilePath = nil
     }
 }
 
@@ -666,12 +789,22 @@ class PowerNapViewModel: ObservableObject {
     private var startTime: Date?
     private var statsUpdateTimer: Timer?
     
-    // 服務管理 - 恢復WorkoutManager
+    // 服務管理
     private let workoutManager = WorkoutSessionManager.shared
     private let runtimeManager = ExtendedRuntimeManager.shared
     private let sleepDetection = SleepDetectionService.shared
     private let motionManager = MotionManager.shared
     private let notificationManager = NotificationManager.shared
+    private let heartRateService = HeartRateService()
+    
+    // 新增：整合睡眠服務和睡眠檢測協調器
+    private let sleepServices = SleepServices.shared
+    private var sleepDetectionCoordinator: SleepDetectionCoordinator {
+        return sleepServices.sleepDetectionCoordinator
+    }
+    
+    // 睡眠數據記錄器
+    private let sleepLogger = SleepDataLogger.shared
     
     // 睡眠階段枚舉
     enum SleepPhase {
@@ -682,20 +815,27 @@ class PowerNapViewModel: ObservableObject {
         case rem
     }
     
+    // 休息階段
+    enum NapPhase {
+        case awaitingSleep    // 等待入睡
+        case sleeping         // 正在休息倒計時
+        case waking           // 正在喚醒
+    }
+    
+    // 添加休息階段狀態
+    @Published private(set) var napPhase: NapPhase = .awaitingSleep
+    
+    // 檢測到睡眠的起始時間
+    private var sleepStartTime: Date?
+    
+    // 訂閱管理
+    private var cancellables = Set<AnyCancellable>()
+    
     init() {
         // 初始化時可執行的設置，例如設置運動檢測回調
         setupMotionDetection()
+        setupHeartRateSubscriptions()
         startStatsUpdateTimer()
-        
-        // 添加觀察者接收心率更新
-        NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("HeartRateUpdated"),
-            object: nil,
-            queue: .main) { [weak self] notification in
-                guard let self = self,
-                      let heartRate = notification.userInfo?["heartRate"] as? Double else { return }
-                self.currentHeartRate = heartRate
-            }
         
         // 添加觀察者接收加速度更新
         NotificationCenter.default.addObserver(
@@ -706,11 +846,82 @@ class PowerNapViewModel: ObservableObject {
                       let acceleration = notification.userInfo?["acceleration"] as? Double else { return }
                 self.currentAcceleration = acceleration
             }
+        
+        // 新增：訂閱SleepDetectionCoordinator的睡眠狀態更新
+        setupSleepDetectionSubscription()
     }
     
     deinit {
         statsUpdateTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
+        cancellables.forEach { $0.cancel() }
+    }
+    
+    // 新增：設置睡眠檢測協調器訂閱
+    private func setupSleepDetectionSubscription() {
+        sleepDetectionCoordinator.sleepStatePublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] sleepState in
+                guard let self = self else { return }
+                
+                // 根據協調器報告的睡眠狀態更新我們的UI狀態
+                switch sleepState {
+                case .awake:
+                    self.sleepPhase = .awake
+                case .resting:
+                    self.sleepPhase = .falling
+                case .lightSleep:
+                    self.sleepPhase = .light
+                    
+                    // 如果是第一次進入輕度睡眠狀態，且我們在等待入睡階段
+                    if self.napPhase == .awaitingSleep && self.sleepStartTime == nil {
+                        // 標記可能進入睡眠階段，但尚未完全確認
+                        self.logger.info("檢測到可能進入輕度睡眠")
+                    }
+                    
+                case .deepSleep:
+                    self.sleepPhase = .deep
+                    
+                    // 如果是第一次進入深度睡眠狀態，且我們在等待入睡階段
+                    if self.napPhase == .awaitingSleep && self.sleepStartTime == nil {
+                        self.sleepStartTime = Date()
+                        self.logger.info("檢測到深度睡眠開始，開始倒計時 \(self.napDuration) 秒")
+                        
+                        // 更新階段
+                        self.napPhase = .sleeping
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    // 設置心率服務訂閱
+    private func setupHeartRateSubscriptions() {
+        // 訂閱心率更新
+        heartRateService.heartRatePublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] heartRate in
+                self?.currentHeartRate = heartRate
+            }
+            .store(in: &cancellables)
+        
+        // 訂閱靜息心率更新
+        heartRateService.restingHeartRatePublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] restingHeartRate in
+                self?.restingHeartRate = restingHeartRate
+                // 更新閾值
+                self?.heartRateThreshold = self?.heartRateService.heartRateThreshold ?? 54
+            }
+            .store(in: &cancellables)
+        
+        // 訂閱睡眠狀態更新
+        heartRateService.isProbablySleepingPublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] isProbablySleeping in
+                self?.isProbablySleeping = isProbablySleeping
+            }
+            .store(in: &cancellables)
     }
     
     // 啟動統計數據更新計時器
@@ -725,18 +936,19 @@ class PowerNapViewModel: ObservableObject {
     private func updateStats() {
         // 從SleepDetectionService獲取數據
         self.isResting = sleepDetection.isResting
-        self.isProbablySleeping = sleepDetection.isProbablySleeping
         
-        // 從WorkoutManager獲取心率數據 (使用通知更新，這裡作為備用)
-        if let hr = workoutManager.latestHeartRate {
+        // 從WorkoutManager獲取心率數據 (我們現在優先使用HeartRateService，這裡作為備用)
+        if self.currentHeartRate == 0, let hr = workoutManager.latestHeartRate {
             self.currentHeartRate = hr
         }
         
-        // 從SleepDetectionService獲取靜止心率和閾值
-        self.restingHeartRate = sleepDetection.userRHR
-        self.heartRateThreshold = sleepDetection.sleepingHeartRateThreshold
+        // 從SleepDetectionService獲取靜止心率和閾值 (備用)
+        if self.restingHeartRate == 60 {  // 如果尚未從HeartRateService獲取
+            self.restingHeartRate = sleepDetection.userRHR
+            self.heartRateThreshold = sleepDetection.sleepingHeartRateThreshold
+        }
         
-        // 從MotionManager獲取當前加速度 (備用方法)
+        // 從MotionManager獲取當前加速度
         self.currentAcceleration = motionManager.currentAcceleration
     }
     
@@ -747,12 +959,6 @@ class PowerNapViewModel: ObservableObject {
             
             // 將運動數據傳遞給睡眠檢測服務
             self.sleepDetection.handleMotionDetected(intensity: intensity)
-            
-            // 如果運動強度非常高，可以考慮直接中斷小睡
-            if intensity > 0.5 && self.isNapping {
-                self.logger.info("檢測到強烈運動（強度: \(intensity)），考慮中斷小睡")
-                // 這裡可以選擇中斷小睡或只是記錄
-            }
         }
     }
     
@@ -762,20 +968,31 @@ class PowerNapViewModel: ObservableObject {
         
         logger.info("開始小睡會話，設定時間: \(self.napDuration) 秒")
         
+        // 開始記錄睡眠數據
+        sleepLogger.startNewSession()
+        
         // 更新狀態
         isNapping = true
         sleepPhase = .awake
-        startTime = Date()
+        napPhase = .awaitingSleep
+        startTime = Date()  // 這裡startTime暫時記錄為會話開始時間
+        sleepStartTime = nil
         remainingTime = napDuration
         
         // 啟動計時器
         setupNapTimer()
         
-        // 啟動服務 - 恢復啟動WorkoutSession
+        // 啟動服務
         workoutManager.startWorkoutSession()
         runtimeManager.startSession()
+        
+        // 使用新的SleepServices代替直接啟動舊的服務
+        sleepServices.startMonitoring()
+        
+        // 保留舊服務以保持兼容性，之後可以移除
         sleepDetection.startMonitoring()
         motionManager.startMonitoring()
+        heartRateService.startMonitoring()
     }
     
     // 停止小睡
@@ -784,16 +1001,35 @@ class PowerNapViewModel: ObservableObject {
         
         logger.info("停止小睡會話")
         
+        // 生成會話摘要
+        let sessionDuration = startTime != nil ? Date().timeIntervalSince(startTime!) : 0
+        let summary = """
+        會話持續時間: \(Int(sessionDuration))秒
+        最終睡眠階段: \(sleepPhaseText)
+        平均心率: \(Int(currentHeartRate))
+        靜息心率: \(Int(restingHeartRate))
+        心率閾值: \(Int(heartRateThreshold))
+        """
+        
+        // 結束記錄
+        sleepLogger.endSession(summary: summary)
+        
         // 更新狀態
         isNapping = false
         sleepPhase = .awake
         invalidateTimer()
         
-        // 停止服務 - 恢復停止WorkoutSession
+        // 停止服務
         workoutManager.stopWorkoutSession()
         runtimeManager.stopSession()
+        
+        // 使用新的SleepServices代替直接停止舊的服務
+        sleepServices.stopMonitoring()
+        
+        // 保留舊服務以保持兼容性，之後可以移除
         sleepDetection.stopMonitoring()
         motionManager.stopMonitoring()
+        heartRateService.stopMonitoring()
     }
     
     // 設置小睡計時器
@@ -803,59 +1039,97 @@ class PowerNapViewModel: ObservableObject {
         napTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self, self.isNapping else { return }
             
-            self.updateRemainingTime()
-            self.checkSleepState()
-            
-            // 時間到了自動結束
-            if self.remainingTime <= 0 {
-                self.wakeUp()
+            // 根據休息階段執行不同的更新
+            switch self.napPhase {
+            case .awaitingSleep:
+                // 等待入睡階段（現在主要依賴於SleepDetectionCoordinator來檢測）
+                // 不需要額外調用checkSleepState，因為我們訂閱了協調器的狀態更新
+                
+                // 如果設定了最大等待時間（例如20分鐘），可以在這裡檢查是否超時
+                // 檢查是否已經等待太久（30分鐘）
+                if let startTime = self.startTime, Date().timeIntervalSince(startTime) > 30 * 60 {
+                    self.logger.info("等待入睡超時，停止小睡")
+                    self.stopNap()
+                }
+                
+            case .sleeping:
+                // 睡眠階段，更新倒計時
+                if let sleepStartTime = self.sleepStartTime {
+                    // 計算已經睡眠的時間
+                    let elapsedSleepTime = Date().timeIntervalSince(sleepStartTime)
+                    
+                    // 更新剩餘時間
+                    self.remainingTime = max(0, self.napDuration - elapsedSleepTime)
+                    
+                    // 記錄睡眠數據
+                    self.logSleepData()
+                    
+                    // 檢查是否時間到或符合智能喚醒條件
+                    if self.remainingTime <= 0 || self.shouldWakeUpEarly() {
+                        self.wakeUp()
+                    }
+                }
+                
+            case .waking:
+                // 喚醒階段，不做特別處理
+                break
             }
         }
     }
     
-    // 更新剩餘時間
-    private func updateRemainingTime() {
-        guard let startTime = startTime else { return }
+    // 記錄睡眠數據
+    private func logSleepData() {
+        // 從心率服務獲取趨勢數據
+        let hrHistoryWindow = heartRateService.getHeartRateHistory(
+            from: Date().addingTimeInterval(-300), // 過去5分鐘
+            to: Date()
+        )
         
-        let elapsedTime = Date().timeIntervalSince(startTime)
-        remainingTime = max(0, napDuration - elapsedTime)
-    }
-    
-    // 檢查睡眠狀態
-    private func checkSleepState() {
-        // 根據SleepDetectionService的狀態來更新睡眠階段
-        if sleepDetection.isProbablySleeping {
-            if sleepDetection.isResting {
-                // 靜止且可能睡眠 -> 深度睡眠
-                if sleepPhase != .deep {
-                    logger.info("進入深度睡眠狀態")
-                    sleepPhase = .deep
-                }
-            } else {
-                // 不靜止但可能睡眠 -> REM睡眠（可能是做夢階段）
-                if sleepPhase != .rem {
-                    logger.info("進入REM睡眠狀態")
-                    sleepPhase = .rem
+        // 計算心率趨勢
+        var hrTrendIndicator = 0.0
+        if hrHistoryWindow.count >= 3 {
+            // 分析最近的心率變化
+            var downwardTrend = 0
+            var upwardTrend = 0
+            
+            for i in 1..<hrHistoryWindow.count {
+                let current = hrHistoryWindow[i].value
+                let previous = hrHistoryWindow[i-1].value
+                
+                if current < previous - 1 { // 下降超過1 BPM
+                    downwardTrend += 1
+                    upwardTrend = 0
+                } else if current > previous + 1 { // 上升超過1 BPM
+                    upwardTrend += 1
+                    downwardTrend = 0
                 }
             }
-        } else if sleepDetection.isResting {
-            // 靜止但不確定是否睡眠 -> 輕度睡眠
-            if sleepPhase == .awake {
-                logger.info("進入輕度睡眠狀態")
-                sleepPhase = .light
-            }
-        } else {
-            // 既不靜止也不確定是否睡眠 -> 清醒或即將入睡
-            if sleepPhase != .awake && sleepPhase != .falling {
-                logger.info("回到清醒狀態")
-                sleepPhase = .awake
-            }
+            
+            // 計算趨勢指標
+            hrTrendIndicator = Double(upwardTrend - downwardTrend) / Double(hrHistoryWindow.count)
         }
+        
+        // 記錄到日誌文件
+        sleepLogger.logSleepData(
+            heartRate: currentHeartRate,
+            restingHR: restingHeartRate,
+            hrThreshold: heartRateThreshold,
+            hrTrend: hrTrendIndicator,
+            acceleration: currentAcceleration,
+            isResting: isResting,
+            isSleeping: isProbablySleeping,
+            sleepPhase: sleepPhaseText,
+            remainingTime: remainingTime,
+            notes: "整合協調器檢測"
+        )
     }
     
     // 喚醒功能
     private func wakeUp() {
+        if napPhase == .waking { return }  // 避免重複喚醒
+        
         logger.info("智能喚醒觸發")
+        napPhase = .waking
         
         // 發送喚醒通知
         notificationManager.sendWakeupNotification()
@@ -872,12 +1146,50 @@ class PowerNapViewModel: ObservableObject {
     
     // 智能喚醒邏輯 - 根據睡眠階段決定最佳喚醒時間
     func shouldWakeUpEarly() -> Bool {
-        // 示例：如果處於輕度睡眠且至少已經睡了napDuration的80%，則建議喚醒
+        // 檢查是否達到最小睡眠時間
         guard let startTime = startTime else { return false }
         
         let elapsedTime = Date().timeIntervalSince(startTime)
-        let minimumNapTime = napDuration * 0.8
+        let minimumNapTime = napDuration * 0.8  // 至少完成80%設定時間
         
-        return elapsedTime >= minimumNapTime && (sleepPhase == .light || sleepPhase == .rem)
+        if elapsedTime < minimumNapTime {
+            return false  // 未達到最小休息時間，不應醒來
+        }
+        
+        // 智能喚醒條件
+        // 1. 處於輕度睡眠或REM階段 - 這些階段醒來感覺最好
+        // 2. 心率開始自然上升 - 表示身體開始準備醒來
+        // 3. 檢測到輕微運動 - 可能表示自然醒來過程開始
+        
+        let isLightOrREM = (sleepPhase == .light || sleepPhase == .rem)
+        let isHRRising = heartRateService.currentHeartRate > heartRateThreshold * 1.05
+        let hasSlightMovement = currentAcceleration > motionThreshold * 0.7 && currentAcceleration < motionThreshold * 1.2
+        
+        // 滿足以下條件之一時觸發智能喚醒
+        let shouldWake = (isLightOrREM && isHRRising) || 
+                         (isLightOrREM && hasSlightMovement) ||
+                         (isHRRising && hasSlightMovement)
+        
+        if shouldWake {
+            logger.info("智能喚醒條件滿足 - 睡眠階段: \(String(describing: self.sleepPhase)), 心率上升: \(isHRRising), 輕微運動: \(hasSlightMovement)")
+        }
+        
+        return shouldWake
+    }
+    
+    // 新屬性 - 獲取當前睡眠階段的描述文本
+    var sleepPhaseText: String {
+        switch sleepPhase {
+        case .awake:
+            return "清醒"
+        case .falling:
+            return "即將入睡"
+        case .light:
+            return "輕度睡眠"
+        case .deep:
+            return "深度睡眠"
+        case .rem:
+            return "REM睡眠"
+        }
     }
 } 
