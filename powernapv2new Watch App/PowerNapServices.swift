@@ -1557,8 +1557,8 @@ class PowerNapViewModel: ObservableObject {
         // 如果用戶表示檢測不準確，提示使用"判定寬鬆"功能
         if !wasAccurate {
             // 將此反饋保存到用戶配置文件
-            if let userId = getUserId(),
-               var profile = userProfileManager.getUserProfile(forUserId: userId) {
+            let userId = getUserId()
+            if var profile = userProfileManager.getUserProfile(forUserId: userId) {
                 profile.inaccurateDetectionCount += 1
                 userProfileManager.saveUserProfile(profile)
                 logger.info("用戶反饋：檢測不準確，累計次數：\(profile.inaccurateDetectionCount)")
@@ -1566,17 +1566,21 @@ class PowerNapViewModel: ObservableObject {
             
             // 此處不自動調整，只保存反饋數據
             // 如果需要自動調整，可以添加相關代碼
+            
+            // 注意：不要關閉反饋提示，讓UI繼續展示建議頁面
         } else {
             // 如果用戶表示檢測準確，也記錄到配置文件
-            if let userId = getUserId(),
-               var profile = userProfileManager.getUserProfile(forUserId: userId) {
+            let userId = getUserId()
+            if var profile = userProfileManager.getUserProfile(forUserId: userId) {
                 profile.accurateDetectionCount += 1
                 userProfileManager.saveUserProfile(profile)
                 logger.info("用戶反饋：檢測準確，累計次數：\(profile.accurateDetectionCount)")
             }
+            
+            // 準確反饋會在UI層自動關閉反饋提示
         }
         
-        // 關閉反饋提示
-        showingFeedbackPrompt = false
+        // 不在這裡關閉反饋提示，由UI層控制關閉時機
+        // showingFeedbackPrompt = false
     }
 } 
