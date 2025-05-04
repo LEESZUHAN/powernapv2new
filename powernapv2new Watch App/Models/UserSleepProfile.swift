@@ -1,5 +1,6 @@
 import Foundation
 import HealthKit
+import Combine
 
 /// 用戶睡眠檔案，用於保存個人化睡眠檢測參數
 public struct UserSleepProfile: Codable {
@@ -24,6 +25,10 @@ public struct UserSleepProfile: Codable {
     
     // 用戶手動調整值，範圍通常是 -0.05 到 +0.05
     public var manualAdjustmentOffset: Double = 0.0
+    
+    // 用戶反饋統計
+    public var accurateDetectionCount: Int = 0   // 用戶反饋檢測準確的次數
+    public var inaccurateDetectionCount: Int = 0 // 用戶反饋檢測不準確的次數
     
     // 創建默認配置文件
     public static func createDefault(forUserId userId: String, ageGroup: AgeGroup) -> UserSleepProfile {
@@ -53,7 +58,9 @@ public struct UserSleepProfile: Codable {
             averageSleepHR: nil as Double?,
             minSleepHR: nil as Double?,
             sleepHRVariance: nil as Double?,
-            truePositiveRate: nil as Double?
+            truePositiveRate: nil as Double?,
+            accurateDetectionCount: 0,
+            inaccurateDetectionCount: 0
         )
     }
     
@@ -261,13 +268,15 @@ public class UserSleepProfileManager {
         // 確保有足夠數據進行分析
         guard !recentSessions.isEmpty else { return nil }
         
+        // 過濾出已完成的會話（有結束時間的）
+        _ = recentSessions.filter { $0.endTime != nil }
+        
         // 1. 收集睡眠心率數據
         let allHeartRates = recentSessions.flatMap { $0.heartRates }
         guard !allHeartRates.isEmpty else { return nil }
         
         // 從近期會話中提取有用的統計數據
         let sessionsWithSleepDetected = recentSessions.filter { $0.detectedSleepTime != nil }
-        let completedSessions = recentSessions.filter { $0.endTime != nil }
         
         // 創建初始優化閾值
         var optimizedThresholds = OptimizedThresholds()

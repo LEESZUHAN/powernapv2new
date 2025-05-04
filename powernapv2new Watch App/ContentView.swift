@@ -46,65 +46,72 @@ struct ContentView: View {
     }
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // 主頁面
-            ZStack {
-                // 背景色
-                Color.black.edgesIgnoringSafeArea(.all)
+        ZStack {
+            TabView(selection: $selectedTab) {
+                // 主頁面
+                ZStack {
+                    // 背景色
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    
+                    // 根據UI狀態顯示不同內容
+                    switch uiState {
+                    case .preparing:
+                        preparingView
+                    case .monitoring:
+                        monitoringView
+                    case .countdown:
+                        countdownView
+                    }
+                }
+                .tag(0)
                 
-                // 根據UI狀態顯示不同內容
-                switch uiState {
-                case .preparing:
-                    preparingView
-                case .monitoring:
-                    monitoringView
-                case .countdown:
-                    countdownView
+                // 測試功能頁面
+                ZStack {
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    testFunctionsView
+                }
+                .tag(1)
+                
+                // 數據記錄頁面
+                ZStack {
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    dataLogsView
+                }
+                .tag(2)
+                
+                // 新增：設置頁面
+                ZStack {
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    settingsView
+                }
+                .tag(3)
+            }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
+            // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
+            .background(
+                GeometryReader { geometry in
+                    Color.clear
+                        .preference(key: TabViewHeightPreference.self, value: geometry.size.height)
+                }
+            )
+            // 使用onPreferenceChange代替onAppear以避免每次頁面切換都重新加載
+            .onPreferenceChange(TabViewHeightPreference.self) { _ in 
+                // 只在首次加載時執行
+                if logFiles.isEmpty {
+                    loadLogFiles()
+                }
+                
+                // 從ViewModel加載設置值
+                if thresholdOffset == 0.0 && sleepSensitivity == 0.5 {
+                    thresholdOffset = viewModel.userHRThresholdOffset
+                    sleepSensitivity = viewModel.sleepSensitivity
+                    selectedAgeGroup = viewModel.userSelectedAgeGroup
                 }
             }
-            .tag(0)
             
-            // 測試功能頁面
-            ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
-                testFunctionsView
-            }
-            .tag(1)
-            
-            // 數據記錄頁面
-            ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
-                dataLogsView
-            }
-            .tag(2)
-            
-            // 新增：設置頁面
-            ZStack {
-                Color.black.edgesIgnoringSafeArea(.all)
-                settingsView
-            }
-            .tag(3)
-        }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-        // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
-        .background(
-            GeometryReader { geometry in
-                Color.clear
-                    .preference(key: TabViewHeightPreference.self, value: geometry.size.height)
-            }
-        )
-        // 使用onPreferenceChange代替onAppear以避免每次頁面切換都重新加載
-        .onPreferenceChange(TabViewHeightPreference.self) { _ in 
-            // 只在首次加載時執行
-            if logFiles.isEmpty {
-                loadLogFiles()
-            }
-            
-            // 從ViewModel加載設置值
-            if thresholdOffset == 0.0 && sleepSensitivity == 0.5 {
-                thresholdOffset = viewModel.userHRThresholdOffset
-                sleepSensitivity = viewModel.sleepSensitivity
-                selectedAgeGroup = viewModel.userSelectedAgeGroup
+            // 反饋提示覆蓋層
+            if viewModel.showingFeedbackPrompt {
+                feedbackPromptView
             }
         }
     }
@@ -607,6 +614,76 @@ struct ContentView: View {
         return filename
             .replacingOccurrences(of: "powernap_session_", with: "")
             .replacingOccurrences(of: ".csv", with: "")
+    }
+    
+    // 添加反饋提示視圖
+    private var feedbackPromptView: some View {
+        ZStack {
+            // 半透明背景
+            Color.black.opacity(0.85)
+                .edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 15) {
+                Text("睡眠檢測準確嗎？")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.top, 10)
+                
+                HStack(spacing: 20) {
+                    // 準確按鈕
+                    Button(action: {
+                        viewModel.processFeedback(wasAccurate: true)
+                    }) {
+                        VStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 36))
+                                .foregroundColor(.green)
+                            Text("準確")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                        }
+                        .frame(width: 80, height: 80)
+                        .background(Color.gray.opacity(0.2))
+                        .cornerRadius(10)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // 不準確按鈕
+                    Button(action: {
+                        viewModel.processFeedback(wasAccurate: false)
+                    }) {
+                        VStack {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 36))
+                                .foregroundColor(.red)
+                            Text("不準確")
+                                .font(.caption)
+                                .foregroundColor(.white)
+                        }
+                        .frame(width: 80, height: 80)
+                        .background(Color.gray.opacity(0.2))
+                        .cornerRadius(10)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .padding(.vertical, 15)
+                
+                // 關閉按鈕
+                Button(action: {
+                    viewModel.showingFeedbackPrompt = false
+                }) {
+                    Text("暫不評價")
+                        .font(.footnote)
+                        .foregroundColor(.gray)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.bottom, 10)
+            }
+            .padding()
+            .background(Color.black)
+            .cornerRadius(15)
+            .shadow(radius: 10)
+        }
     }
 }
 

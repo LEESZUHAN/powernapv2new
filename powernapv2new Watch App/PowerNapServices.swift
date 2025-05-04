@@ -930,6 +930,10 @@ class PowerNapViewModel: ObservableObject {
     @Published var thresholdOptimizationStatus: String = ""
     @Published private(set) var isOptimizingThreshold: Bool = false
     
+    // MARK: - 用戶反饋相關
+    @Published var showingFeedbackPrompt: Bool = false // 控制是否顯示反饋提示
+    @Published var lastFeedbackDate: Date? // 最近一次提供反饋的日期
+    
     init() {
         // 確保napDuration和napMinutes保持同步
         $napDuration
@@ -1309,6 +1313,22 @@ class PowerNapViewModel: ObservableObject {
         
         // 新增：會話結束後嘗試優化閾值（由SleepServices內部決定是否執行）
         // 在SleepServices中已經實現在停止監測時嘗試優化閾值
+        
+        // 檢查是否應該顯示反饋提示
+        // 只有當用戶實際開始了睡眠監測，且時間超過一定閾值才顯示
+        if sleepStartTime != nil || napPhase != .awaitingSleep {
+            // 延遲一秒顯示反饋提示，讓用戶有時間看到結果
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                self.showingFeedbackPrompt = true
+                
+                // 10秒後自動隱藏反饋提示
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                    if self.showingFeedbackPrompt {
+                        self.showingFeedbackPrompt = false
+                    }
+                }
+            }
+        }
     }
     
     // 設置小睡計時器
@@ -1527,5 +1547,36 @@ class PowerNapViewModel: ObservableObject {
             // 用戶配置可能也更新了
             currentUserProfile = profile
         }
+    }
+    
+    // 處理用戶反饋
+    func processFeedback(wasAccurate: Bool) {
+        // 記錄用戶反饋
+        lastFeedbackDate = Date()
+        
+        // 如果用戶表示檢測不準確，提示使用"判定寬鬆"功能
+        if !wasAccurate {
+            // 將此反饋保存到用戶配置文件
+            if let userId = getUserId(),
+               var profile = userProfileManager.getUserProfile(forUserId: userId) {
+                profile.inaccurateDetectionCount += 1
+                userProfileManager.saveUserProfile(profile)
+                logger.info("用戶反饋：檢測不準確，累計次數：\(profile.inaccurateDetectionCount)")
+            }
+            
+            // 此處不自動調整，只保存反饋數據
+            // 如果需要自動調整，可以添加相關代碼
+        } else {
+            // 如果用戶表示檢測準確，也記錄到配置文件
+            if let userId = getUserId(),
+               var profile = userProfileManager.getUserProfile(forUserId: userId) {
+                profile.accurateDetectionCount += 1
+                userProfileManager.saveUserProfile(profile)
+                logger.info("用戶反饋：檢測準確，累計次數：\(profile.accurateDetectionCount)")
+            }
+        }
+        
+        // 關閉反饋提示
+        showingFeedbackPrompt = false
     }
 } 
