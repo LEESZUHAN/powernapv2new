@@ -868,11 +868,13 @@ struct HeartRateInfoView: View {
                     Spacer()
                     
                     // 格式化日期為「MM/dd」格式
-                    let dateFormatter = DateFormatter()
-                    dateFormatter.dateFormat = "MM/dd"
-                    let dateString = dateFormatter.string(from: lastUpdate)
+                    let formattedDate: String = {
+                        let dateFormatter = DateFormatter()
+                        dateFormatter.dateFormat = "MM/dd"
+                        return dateFormatter.string(from: lastUpdate)
+                    }()
                     
-                    Text(dateString)
+                    Text(formattedDate)
                         .foregroundColor(.white)
                         .font(.system(size: 14))
                 }
