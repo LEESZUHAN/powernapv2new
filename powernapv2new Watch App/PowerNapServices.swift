@@ -43,6 +43,31 @@ class WorkoutSessionManager: NSObject, HKWorkoutSessionDelegate {
         workoutConfiguration.activityType = .mindAndBody // 最省電的活動類型
         workoutConfiguration.locationType = .indoor
         
+        // 先檢查HealthKit授權狀態
+        let typesToRead: Set<HKObjectType> = [
+            HKObjectType.quantityType(forIdentifier: .heartRate)!,
+            HKObjectType.quantityType(forIdentifier: .restingHeartRate)!
+        ]
+        
+        healthStore.requestAuthorization(toShare: nil, read: typesToRead) { [weak self] success, error in
+            guard let self = self, success else {
+                if let error = error {
+                    self?.logger.error("HealthKit授權失敗: \(error.localizedDescription)")
+                } else {
+                    self?.logger.error("HealthKit授權被拒絕")
+                }
+                return
+            }
+            
+            // 授權成功後創建並啟動會話
+            DispatchQueue.main.async {
+                self.createAndStartWorkoutSession(with: workoutConfiguration)
+            }
+        }
+    }
+    
+    // 將會話創建邏輯分離為獨立方法
+    private func createAndStartWorkoutSession(with workoutConfiguration: HKWorkoutConfiguration) {
         do {
             // 創建workoutSession
             #if os(watchOS)
@@ -60,7 +85,9 @@ class WorkoutSessionManager: NSObject, HKWorkoutSessionDelegate {
             
             // 啟動session
             workoutSession?.startActivity(with: Date())
-            workoutBuilder?.beginCollection(withStart: Date()) { success, error in
+            workoutBuilder?.beginCollection(withStart: Date()) { [weak self] success, error in
+                guard let self = self else { return }
+                
                 if let error = error {
                     self.logger.error("無法開始數據收集: \(error.localizedDescription)")
                     return
@@ -85,21 +112,41 @@ class WorkoutSessionManager: NSObject, HKWorkoutSessionDelegate {
             return
         }
         
-        workoutSession.end()
+        // 在結束workoutSession前先結束數據收集
+        // 使用同步方法確保順序正確
+        let group = DispatchGroup()
+        var endCollectionError: Error?
         
-        workoutBuilder?.endCollection(withEnd: Date()) { success, error in
+        group.enter()
+        workoutBuilder?.endCollection(withEnd: Date()) { [weak self] success, error in
+            defer { group.leave() }
+            
             if let error = error {
-                self.logger.error("無法結束數據收集: \(error.localizedDescription)")
+                self?.logger.error("無法結束數據收集: \(error.localizedDescription)")
+                endCollectionError = error
                 return
             }
             
             if success {
-                self.logger.info("成功結束數據收集")
-                
-                // 棄用workout數據，因為這只是一個休息會話
-                self.workoutBuilder?.discardWorkout()
+                self?.logger.info("成功結束數據收集")
             }
         }
+        
+        // 等待數據收集結束，然後再結束會話
+        // 設置超時防止無限等待
+        let result = group.wait(timeout: .now() + 2.0)
+        
+        if result == .timedOut {
+            logger.warning("等待結束數據收集超時，繼續結束會話")
+        } else if endCollectionError != nil {
+            logger.warning("結束數據收集出錯，嘗試忽略錯誤並繼續結束會話")
+        }
+        
+        // 結束會話
+        workoutSession.end()
+        
+        // 棄用workout數據，因為這只是一個休息會話
+        workoutBuilder?.discardWorkout()
         #endif
         
         logger.info("停止HKWorkoutSession")
@@ -476,6 +523,10 @@ class MotionManager {
     // 委派處理運動事件
     var onMotionDetected: ((Double) -> Void)?
     
+    // 上次通知時間 - 用於限制通知頻率
+    private var lastNotificationTime: Date = Date(timeIntervalSince1970: 0)
+    private let minNotificationInterval: TimeInterval = 0.5 // 最小通知間隔0.5秒
+    
     // 檔案記錄
     private let fileURL: URL? = {
         if let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
@@ -488,6 +539,8 @@ class MotionManager {
     
     private init() {
         motionQueue.name = "com.yourdomain.powernapv2new.motionQueue"
+        motionQueue.qualityOfService = .utility // 降低優先級以節省電量
+        
         // 創建日誌檔案
         if let fileURL = fileURL {
             let initialText = "--- 動作日誌開始於 \(Date()) ---\n"
@@ -527,32 +580,42 @@ class MotionManager {
             
             let absAcceleration = abs(totalAcceleration)
             
-            // 更新當前加速度值
+            // 更新當前加速度值 - 使用主線程
             DispatchQueue.main.async {
                 self.currentAcceleration = absAcceleration
-                // 發送通知以便UI更新
-                NotificationCenter.default.post(name: NSNotification.Name("AccelerationUpdated"), object: nil, userInfo: ["acceleration": absAcceleration])
-            }
-            
-            // 檢測是否超過閾值
-            if absAcceleration > self.significantAccelerationThreshold {
-                self.logger.info("檢測到顯著運動，強度: \(absAcceleration)")
                 
-                // 寫入日誌檔案
-                self.logMotionData(detected: true, intensity: absAcceleration)
-                
-                // 通知監聽者
-                DispatchQueue.main.async {
-                    self.onMotionDetected?(absAcceleration)
+                // 檢查是否超過通知間隔限制 - 避免過於頻繁的通知
+                let now = Date()
+                if now.timeIntervalSince(self.lastNotificationTime) >= self.minNotificationInterval {
+                    // 發送通知以便UI更新
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("AccelerationUpdated"), 
+                        object: nil, 
+                        userInfo: ["acceleration": absAcceleration]
+                    )
+                    self.lastNotificationTime = now
                 }
-            } else {
-                // 記錄低於閾值的運動
-                self.logMotionData(detected: false, intensity: absAcceleration)
+                
+                // 檢測是否超過閾值
+                if absAcceleration > self.significantAccelerationThreshold {
+                    self.logger.info("檢測到顯著運動，強度: \(absAcceleration)")
+                    
+                    // 寫入日誌檔案
+                    self.logMotionData(detected: true, intensity: absAcceleration)
+                    
+                    // 通知監聽者 - 也應用通知間隔限制
+                    if now.timeIntervalSince(self.lastNotificationTime) >= self.minNotificationInterval {
+                        self.onMotionDetected?(absAcceleration)
+                    }
+                } else {
+                    // 記錄低於閾值的運動
+                    self.logMotionData(detected: false, intensity: absAcceleration)
+                }
             }
         }
         #endif
         
-        logger.info("開始運動監測")
+        logger.info("動作監測已啟動")
     }
     
     // 停止監測運動
@@ -565,19 +628,40 @@ class MotionManager {
         #endif
     }
     
-    // 記錄動作數據到文件
+    // 記錄動作數據到文件 - 改為使用批量寫入
+    private var pendingLogData: [String] = []
+    private var lastLogWriteTime: Date = Date()
+    private let logFlushInterval: TimeInterval = 5.0 // 每5秒寫入一次
+    
     private func logMotionData(detected: Bool, intensity: Double) {
         let timestamp = Date()
         let logString = "時間: \(timestamp), 檢測到運動: \(detected), 強度: \(intensity)\n"
         
-        // 寫入到文件，方便稍後查看
-        if let fileURL = fileURL {
+        // 添加到待寫入數據
+        pendingLogData.append(logString)
+        
+        // 如果達到指定間隔或數據量較大，執行寫入
+        if timestamp.timeIntervalSince(lastLogWriteTime) >= logFlushInterval || pendingLogData.count > 20 {
+            flushLogData()
+        }
+    }
+    
+    // 批量寫入日誌數據
+    private func flushLogData() {
+        guard !pendingLogData.isEmpty, let fileURL = fileURL else { return }
+        
+        let dataToWrite = pendingLogData.joined()
+        pendingLogData.removeAll()
+        lastLogWriteTime = Date()
+        
+        // 使用後台線程寫入
+        DispatchQueue.global(qos: .background).async {
             if let fileHandle = try? FileHandle(forWritingTo: fileURL) {
                 fileHandle.seekToEndOfFile()
-                if let data = logString.data(using: .utf8) {
+                if let data = dataToWrite.data(using: .utf8) {
                     fileHandle.write(data)
                 }
-                fileHandle.closeFile()
+                try? fileHandle.close()
             }
         }
     }
@@ -772,6 +856,7 @@ class PowerNapViewModel: ObservableObject {
     // 狀態管理
     @Published var isNapping = false
     @Published var napDuration: TimeInterval = 20 * 60  // 默認20分鐘
+    @Published var napMinutes: Int = 20  // 默認20分鐘 - 用於Picker
     @Published var remainingTime: TimeInterval = 0
     @Published var sleepPhase: SleepPhase = .awake
     
@@ -783,6 +868,12 @@ class PowerNapViewModel: ObservableObject {
     @Published var isProbablySleeping: Bool = false
     @Published var currentAcceleration: Double = 0.0
     @Published var motionThreshold: Double = 0.1  // 運動閾值，與MotionManager中的對應
+    
+    // 新增：用戶閾值調整
+    @Published var userHRThresholdOffset: Double = 0.0 // 用戶心率閾值調整值
+    @Published var userSelectedAgeGroup: AgeGroup? // 用戶選擇的年齡組
+    @Published var sleepSensitivity: Double = 0.5 // 睡眠敏感度（0-低靈敏度，1-高靈敏度）
+    @Published var showingThresholdConfirmation: Bool = false // 判定寬鬆確認狀態
     
     // 計時器
     private var napTimer: Timer?
@@ -802,6 +893,10 @@ class PowerNapViewModel: ObservableObject {
     private var sleepDetectionCoordinator: SleepDetectionCoordinator {
         return sleepServices.sleepDetectionCoordinator
     }
+    
+    // 新增：用戶配置文件管理
+    private let userProfileManager = UserSleepProfileManager.shared
+    private var currentUserProfile: UserSleepProfile?
     
     // 睡眠數據記錄器
     private let sleepLogger = SleepDataLogger.shared
@@ -832,6 +927,11 @@ class PowerNapViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     
     init() {
+        // 確保napDuration和napMinutes保持同步
+        $napDuration
+            .map { Int($0 / 60) }
+            .assign(to: &$napMinutes)
+        
         // 初始化時可執行的設置，例如設置運動檢測回調
         setupMotionDetection()
         setupHeartRateSubscriptions()
@@ -849,6 +949,9 @@ class PowerNapViewModel: ObservableObject {
         
         // 新增：訂閱SleepDetectionCoordinator的睡眠狀態更新
         setupSleepDetectionSubscription()
+        
+        // 新增：載入用戶配置文件
+        loadUserProfile()
     }
     
     deinit {
@@ -962,6 +1065,161 @@ class PowerNapViewModel: ObservableObject {
         }
     }
     
+    // 新增：載入用戶配置文件
+    private func loadUserProfile() {
+        let userId = getUserId()
+        
+        // 從UserSleepProfileManager獲取用戶配置文件
+        if let profile = userProfileManager.getUserProfile(forUserId: userId) {
+            currentUserProfile = profile
+            
+            // 使用配置文件中的設置更新UI
+            userHRThresholdOffset = profile.manualAdjustmentOffset
+            userSelectedAgeGroup = profile.ageGroup
+            
+            // 計算實際使用的心率閾值
+            updateHeartRateThreshold()
+            
+            logger.info("已載入用戶配置文件: ID=\(userId)")
+        } else {
+            // 如果沒有現有配置文件，創建一個默認的
+            let userAge = 35 // 默認假設用戶35歲
+            let ageGroup = AgeGroup.forAge(userAge)
+            
+            let newProfile = UserSleepProfile.createDefault(forUserId: userId, ageGroup: ageGroup)
+            currentUserProfile = newProfile
+            userProfileManager.saveUserProfile(newProfile)
+            
+            userSelectedAgeGroup = ageGroup
+            
+            logger.info("創建並保存了新的用戶配置文件: ID=\(userId)")
+        }
+    }
+    
+    // 新增：獲取用戶ID
+    private func getUserId() -> String {
+        let defaults = UserDefaults.standard
+        let userIdKey = "com.yourdomain.powernapv2new.userId"
+        
+        if let savedId = defaults.string(forKey: userIdKey) {
+            return savedId
+        }
+        
+        // 創建新的用戶ID
+        let newId = UUID().uuidString
+        defaults.set(newId, forKey: userIdKey)
+        return newId
+    }
+    
+    // 新增：更新心率閾值
+    func updateHeartRateThreshold() {
+        guard let profile = currentUserProfile else { return }
+        
+        // 基於當前靜息心率和用戶配置計算心率閾值
+        let baseThreshold = restingHeartRate * profile.hrThresholdPercentage
+        let adjustedThreshold = baseThreshold * (1 + userHRThresholdOffset)
+        
+        // 使用敏感度調整最終閾值
+        let sensitivityAdjustment = (1 - sleepSensitivity) * 0.1 // 0-10% 變化
+        let finalThreshold = adjustedThreshold * (1 + sensitivityAdjustment)
+        
+        // 更新UI顯示的閾值
+        heartRateThreshold = finalThreshold
+        
+        // 更新心率服務中的閾值
+        heartRateService.setCustomHeartRateThreshold(finalThreshold)
+        
+        logger.info("更新心率閾值: \(finalThreshold) BPM (基礎閾值: \(baseThreshold), 用戶調整: \(self.userHRThresholdOffset), 敏感度調整: \(sensitivityAdjustment))")
+    }
+    
+    // 新增：設置用戶心率閾值偏移
+    func setUserHeartRateThresholdOffset(_ offset: Double) {
+        // 獲取用戶當前的累計偏移值
+        let _ = userHRThresholdOffset
+        
+        // 計算新的累計偏移值
+        let newCumulativeOffset = offset  // 直接使用提供的偏移值，支持大幅調整
+        
+        // 檢查累計後的閾值是否在合理範圍內
+        // 開發階段使用更寬的範圍：70%-110%
+        let _ = self.restingHeartRate * AgeGroup.adult.heartRateThresholdPercentage // 基礎為90%
+        let adjustedThreshold = self.restingHeartRate * (AgeGroup.adult.heartRateThresholdPercentage + newCumulativeOffset)
+        
+        // 開發階段擴大閾值範圍
+        let minThreshold = self.restingHeartRate * 0.70 // 下限：RHR的70%
+        let maxThreshold = self.restingHeartRate * 1.10 // 上限：RHR的110%（開發階段）
+        
+        // 如果調整後的閾值超出範圍，限制偏移值
+        if adjustedThreshold < minThreshold {
+            let limitedOffset = 0.70 / AgeGroup.adult.heartRateThresholdPercentage - 1.0
+            userHRThresholdOffset = limitedOffset
+            logger.info("閾值調整已達下限(RHR的70%)")
+        } else if adjustedThreshold > maxThreshold {
+            let limitedOffset = 1.10 / AgeGroup.adult.heartRateThresholdPercentage - 1.0
+            userHRThresholdOffset = limitedOffset
+            logger.info("閾值調整已達上限(RHR的110%)")
+        } else {
+            // 在合理範圍內，接受新的累計偏移值
+            userHRThresholdOffset = newCumulativeOffset
+        }
+        
+        // 四捨五入到最接近的0.01，確保顯示與實際值完全匹配
+        let roundedOffset = (userHRThresholdOffset * 100).rounded() / 100
+        userHRThresholdOffset = roundedOffset
+        
+        // 更新用戶配置文件
+        if var profile = currentUserProfile {
+            profile.manualAdjustmentOffset = roundedOffset
+            userProfileManager.saveUserProfile(profile)
+            currentUserProfile = profile
+        }
+        
+        // 更新心率閾值
+        updateHeartRateThreshold()
+        
+        // 顯示實際使用的閾值百分比
+        let actualPercentage = (AgeGroup.adult.heartRateThresholdPercentage + roundedOffset) * 100
+        logger.info("用戶調整了心率閾值：現在為RHR的\(String(format: "%.1f", actualPercentage))% (偏移值：\(roundedOffset))")
+    }
+    
+    // 新增：設置睡眠敏感度
+    func setSleepSensitivity(_ sensitivity: Double) {
+        // 限制敏感度在 0 到 1 之間
+        let limitedSensitivity = min(max(sensitivity, 0), 1)
+        sleepSensitivity = limitedSensitivity
+        
+        // 更新心率閾值
+        updateHeartRateThreshold()
+        
+        logger.info("用戶調整了睡眠敏感度: \(limitedSensitivity)")
+    }
+    
+    // 新增：設置用戶年齡組
+    func setUserAgeGroup(_ ageGroup: AgeGroup) {
+        userSelectedAgeGroup = ageGroup
+        
+        // 更新用戶配置文件
+        let userId = getUserId()
+        
+        if var profile = currentUserProfile {
+            // 更新現有配置文件
+            profile = UserSleepProfile.createDefault(forUserId: userId, ageGroup: ageGroup)
+            profile.manualAdjustmentOffset = userHRThresholdOffset // 保留用戶調整值
+            userProfileManager.saveUserProfile(profile)
+            currentUserProfile = profile
+        } else {
+            // 創建新配置文件
+            let newProfile = UserSleepProfile.createDefault(forUserId: userId, ageGroup: ageGroup)
+            userProfileManager.saveUserProfile(newProfile)
+            currentUserProfile = newProfile
+        }
+        
+        // 更新心率閾值
+        updateHeartRateThreshold()
+        
+        logger.info("用戶設置了年齡組: \(String(describing: ageGroup))")
+    }
+    
     // 開始小睡
     func startNap() {
         guard !isNapping else { return }
@@ -979,20 +1237,30 @@ class PowerNapViewModel: ObservableObject {
         sleepStartTime = nil
         remainingTime = napDuration
         
+        // 在啟動服務前更新心率閾值
+        updateHeartRateThreshold()
+        
         // 啟動計時器
         setupNapTimer()
         
-        // 啟動服務
-        workoutManager.startWorkoutSession()
+        // 按順序啟動服務，確保依賴關係正確
+        // 1. 首先啟動運行時服務
         runtimeManager.startSession()
         
-        // 使用新的SleepServices代替直接啟動舊的服務
+        // 2. 然後啟動運動和姿勢監測
+        motionManager.startMonitoring()
+        
+        // 3. 接著啟動心率服務
+        heartRateService.startMonitoring()
+        
+        // 4. 啟動睡眠檢測服務
+        sleepDetection.startMonitoring()
+        
+        // 5. 整合的睡眠服務
         sleepServices.startMonitoring()
         
-        // 保留舊服務以保持兼容性，之後可以移除
-        sleepDetection.startMonitoring()
-        motionManager.startMonitoring()
-        heartRateService.startMonitoring()
+        // 6. 最後啟動HealthKit會話
+        workoutManager.startWorkoutSession()
     }
     
     // 停止小睡
@@ -1001,35 +1269,36 @@ class PowerNapViewModel: ObservableObject {
         
         logger.info("停止小睡會話")
         
-        // 生成會話摘要
-        let sessionDuration = startTime != nil ? Date().timeIntervalSince(startTime!) : 0
-        let summary = """
-        會話持續時間: \(Int(sessionDuration))秒
-        最終睡眠階段: \(sleepPhaseText)
-        平均心率: \(Int(currentHeartRate))
-        靜息心率: \(Int(restingHeartRate))
-        心率閾值: \(Int(heartRateThreshold))
-        """
+        // 按相反順序停止服務
+        // 1. 首先停止HealthKit會話
+        workoutManager.stopWorkoutSession()
         
-        // 結束記錄
-        sleepLogger.endSession(summary: summary)
+        // 2. 停止睡眠監測服務
+        sleepServices.stopMonitoring()
+        sleepDetection.stopMonitoring()
+        
+        // 3. 停止心率和運動監測
+        heartRateService.stopMonitoring()
+        motionManager.stopMonitoring()
+        
+        // 4. 最後停止運行時服務
+        runtimeManager.stopSession()
+        
+        // 更新用戶配置文件
+        updateUserProfileAfterSession()
+        
+        // 停止計時器
+        invalidateTimer()
+        statsUpdateTimer?.invalidate()
+        statsUpdateTimer = nil
         
         // 更新狀態
         isNapping = false
+        napPhase = .awaitingSleep
         sleepPhase = .awake
-        invalidateTimer()
         
-        // 停止服務
-        workoutManager.stopWorkoutSession()
-        runtimeManager.stopSession()
-        
-        // 使用新的SleepServices代替直接停止舊的服務
-        sleepServices.stopMonitoring()
-        
-        // 保留舊服務以保持兼容性，之後可以移除
-        sleepDetection.stopMonitoring()
-        motionManager.stopMonitoring()
-        heartRateService.stopMonitoring()
+        // 保存會話數據
+        sleepLogger.endSession(summary: "小睡會話已完成")
     }
     
     // 設置小睡計時器
@@ -1191,5 +1460,16 @@ class PowerNapViewModel: ObservableObject {
         case .rem:
             return "REM睡眠"
         }
+    }
+    
+    // 會話結束後更新用戶配置文件
+    private func updateUserProfileAfterSession() {
+        let userId = getUserId()
+        
+        // 更新用戶配置文件中的統計數據
+        userProfileManager.updateUserProfile(forUserId: userId, restingHR: restingHeartRate)
+        
+        // 重新加載用戶配置文件以獲取最新的設置
+        loadUserProfile()
     }
 } 
