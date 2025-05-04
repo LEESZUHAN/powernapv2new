@@ -23,6 +23,9 @@ class SleepServices {
         return coordinator
     }()
     
+    /// 心率閾值優化器 - 負責自動分析睡眠數據並優化心率閾值
+    private(set) lazy var heartRateThresholdOptimizer = HeartRateThresholdOptimizer()
+    
     // 使用者睡眠檔案管理器
     var userProfileManager: UserSleepProfileManager {
         return UserSleepProfileManager.shared
@@ -31,6 +34,11 @@ class SleepServices {
     // 發布者
     @Published private(set) var isMonitoring: Bool = false
     var isMonitoringPublisher: Published<Bool>.Publisher { $isMonitoring }
+    
+    // 優化狀態發布者
+    var optimizationStatusPublisher: Published<HeartRateThresholdOptimizer.OptimizationStatus>.Publisher {
+        return heartRateThresholdOptimizer.optimizationStatusPublisher
+    }
     
     // MARK: - 初始化
     private init() {
@@ -75,6 +83,36 @@ class SleepServices {
                 )
             }
             .store(in: &cancellables)
+            
+        // 訂閱閾值優化器狀態
+        heartRateThresholdOptimizer.optimizationStatusPublisher
+            .sink { [weak self] status in
+                guard let self = self else { return }
+                
+                switch status {
+                case .optimized(let result):
+                    // 優化成功，更新心率服務的閾值
+                    self.logger.info("閾值優化完成: 從 \(result.previousThreshold) 到 \(result.newThreshold) (\(result.adjustmentType.rawValue))")
+                    
+                    // 獲取用戶ID和靜息心率
+                    if let userId = self.getUserId() {
+                        if let profile = userProfileManager.getUserProfile(forUserId: userId) {
+                            // 重新計算並設置心率閾值
+                            let newThreshold = self.heartRateService.restingHeartRate * profile.adjustedThresholdPercentage
+                            self.heartRateService.setCustomHeartRateThreshold(newThreshold)
+                            
+                            self.logger.info("已更新心率閾值: \(newThreshold) BPM (RHR \(self.heartRateService.restingHeartRate) × \(profile.adjustedThresholdPercentage))")
+                        }
+                    }
+                    
+                case .failed(let error):
+                    self.logger.error("閾值優化失敗: \(error)")
+                    
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
     }
     
     // MARK: - 公開方法
@@ -97,6 +135,25 @@ class SleepServices {
         sleepDetectionCoordinator.stopMonitoring()
         
         isMonitoring = false
+        
+        // 睡眠會話結束時，嘗試優化閾值
+        checkAndOptimizeThreshold()
+    }
+    
+    /// 檢查並優化心率閾值
+    /// - Parameter force: 是否強制優化
+    /// - Returns: 是否會執行優化（異步結果）
+    @discardableResult
+    func checkAndOptimizeThreshold(force: Bool = false) -> Bool {
+        guard let userId = getUserId() else {
+            logger.warning("無法獲取用戶ID，無法優化閾值")
+            return false
+        }
+        
+        let restingHR = heartRateService.restingHeartRate
+        
+        logger.info("嘗試優化心率閾值 - 用戶ID: \(userId), 靜息心率: \(restingHR)")
+        return heartRateThresholdOptimizer.checkAndOptimizeThreshold(userId: userId, restingHR: restingHR, force: force)
     }
     
     /// 更新當前睡眠會話的狀態
@@ -130,5 +187,22 @@ class SleepServices {
     /// 檢測到的睡眠開始時間
     var detectedSleepTime: Date? {
         return sleepDetectionCoordinator.detectedSleepTime
+    }
+    
+    /// 獲取用戶ID
+    private func getUserId() -> String? {
+        // 使用UserDefaults存儲和檢索用戶ID
+        let defaults = UserDefaults.standard
+        let userIdKey = "com.yourdomain.powernapv2new.userId"
+        
+        // 檢查是否已有用戶ID
+        if let savedId = defaults.string(forKey: userIdKey) {
+            return savedId
+        }
+        
+        // 創建新的用戶ID
+        let newId = UUID().uuidString
+        defaults.set(newId, forKey: userIdKey)
+        return newId
     }
 }

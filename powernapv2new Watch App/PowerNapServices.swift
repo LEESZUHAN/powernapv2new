@@ -896,7 +896,7 @@ class PowerNapViewModel: ObservableObject {
     
     // 新增：用戶配置文件管理
     private let userProfileManager = UserSleepProfileManager.shared
-    private var currentUserProfile: UserSleepProfile?
+    @Published private(set) var currentUserProfile: UserSleepProfile?
     
     // 睡眠數據記錄器
     private let sleepLogger = SleepDataLogger.shared
@@ -925,6 +925,10 @@ class PowerNapViewModel: ObservableObject {
     
     // 訂閱管理
     private var cancellables = Set<AnyCancellable>()
+    
+    // 添加與閾值優化相關的屬性
+    @Published var thresholdOptimizationStatus: String = ""
+    @Published private(set) var isOptimizingThreshold: Bool = false
     
     init() {
         // 確保napDuration和napMinutes保持同步
@@ -1081,6 +1085,9 @@ class PowerNapViewModel: ObservableObject {
             updateHeartRateThreshold()
             
             logger.info("已載入用戶配置文件: ID=\(userId)")
+            
+            // 新增：嘗試自動優化閾值（不強制，僅在滿足條件時執行）
+            checkForAutomaticThresholdOptimization(userId: userId)
         } else {
             // 如果沒有現有配置文件，創建一個默認的
             let userAge = 35 // 默認假設用戶35歲
@@ -1299,6 +1306,9 @@ class PowerNapViewModel: ObservableObject {
         
         // 保存會話數據
         sleepLogger.endSession(summary: "小睡會話已完成")
+        
+        // 新增：會話結束後嘗試優化閾值（由SleepServices內部決定是否執行）
+        // 在SleepServices中已經實現在停止監測時嘗試優化閾值
     }
     
     // 設置小睡計時器
@@ -1471,5 +1481,51 @@ class PowerNapViewModel: ObservableObject {
         
         // 重新加載用戶配置文件以獲取最新的設置
         loadUserProfile()
+    }
+    
+    // 添加一個新方法來處理自動閾值優化
+    private func checkForAutomaticThresholdOptimization(userId: String) {
+        // 使用SleepServices的心率閾值優化器
+        let optimizing = sleepServices.checkAndOptimizeThreshold()
+        if optimizing {
+            logger.info("已啟動自動心率閾值優化")
+        }
+        
+        // 訂閱優化結果
+        sleepServices.optimizationStatusPublisher
+            .sink { [weak self] status in
+                guard let self = self else { return }
+                
+                switch status {
+                case .optimized(let result):
+                    // 優化成功，通知用戶
+                    self.logger.info("心率閾值已自動優化：\(String(format: "%.1f", result.previousThreshold * 100))% → \(String(format: "%.1f", result.newThreshold * 100))%")
+                    
+                    // 當閾值發生變化時，我們接收到了變化值，但也需要更新自己的閾值記錄
+                    self.refreshThresholdAfterOptimization(userId: userId)
+                    
+                case .failed(let error):
+                    self.logger.warning("心率閾值優化失敗：\(error)")
+                    
+                default:
+                    break
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    // 添加一個刷新閾值的方法
+    private func refreshThresholdAfterOptimization(userId: String) {
+        // 重新獲取用戶配置，以取得最新的閾值設定
+        if let profile = userProfileManager.getUserProfile(forUserId: userId) {
+            // 更新 ViewModel 中的數據
+            userHRThresholdOffset = profile.manualAdjustmentOffset
+            
+            // 更新當前閾值
+            updateHeartRateThreshold()
+            
+            // 用戶配置可能也更新了
+            currentUserProfile = profile
+        }
     }
 } 
