@@ -308,6 +308,80 @@ struct ContentView: View {
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
+                    
+                    // 添加情境測試區域標題
+                    Text("情境測試區")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.top, 15)
+                    
+                    // 情境1：用戶入睡，系統正確檢測到
+                    Button(action: {
+                        feedbackStage = .initial
+                        viewModel.simulateScenario1Feedback()
+                    }) {
+                        Text("情境1：正確檢測睡眠")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color.green)
+                            .cornerRadius(20)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 5)
+                    
+                    // 情境2：用戶入睡，系統未檢測到
+                    Button(action: {
+                        feedbackStage = .initial
+                        viewModel.simulateScenario2Feedback()
+                    }) {
+                        Text("情境2：未檢測到睡眠")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color.blue)
+                            .cornerRadius(20)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 5)
+                    
+                    // 情境3：用戶未入睡，系統誤判為睡眠
+                    Button(action: {
+                        feedbackStage = .initial
+                        viewModel.simulateScenario3Feedback()
+                    }) {
+                        Text("情境3：誤判為睡眠")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color.red)
+                            .cornerRadius(20)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 5)
+                    
+                    // 情境4：用戶未入睡，系統正確未檢測
+                    Button(action: {
+                        feedbackStage = .initial
+                        viewModel.simulateScenario4Feedback()
+                    }) {
+                        Text("情境4：正確未檢測")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color.orange)
+                            .cornerRadius(20)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 5)
                 }
                 .padding(.bottom, 20)
             }
@@ -706,166 +780,216 @@ struct ContentView: View {
                 Group {
                     switch feedbackStage {
                     case .initial:
-                        // 初始反饋問題
-                        Text("睡眠檢測準確嗎？")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding(.top, 10)
-                        
-                        HStack(spacing: 20) {
-                            // 準確按鈕
-                            Button(action: {
-                                feedbackWasAccurate = true
-                                feedbackStage = .thanks
-                                
-                                // 處理反饋
-                                viewModel.processFeedback(wasAccurate: true)
-                                
-                                // 3秒後關閉
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                                    viewModel.showingFeedbackPrompt = false
-                                    feedbackStage = .initial // 重置狀態
-                                }
-                            }) {
-                                VStack {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 36))
-                                        .foregroundColor(.green)
-                                    Text("準確")
-                                        .font(.caption)
-                                        .foregroundColor(.white)
-                                }
-                                .frame(width: 80, height: 80)
-                                .background(Color.gray.opacity(0.2))
-                                .cornerRadius(10)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                            
-                            // 不準確按鈕
-                            Button(action: {
-                                feedbackWasAccurate = false
-                                feedbackStage = .suggestion
-                                
-                                // 處理反饋
-                                viewModel.processFeedback(wasAccurate: false)
-                            }) {
-                                VStack {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 36))
-                                        .foregroundColor(.red)
-                                    Text("不準確")
-                                        .font(.caption)
-                                        .foregroundColor(.white)
-                                }
-                                .frame(width: 80, height: 80)
-                                .background(Color.gray.opacity(0.2))
-                                .cornerRadius(10)
-                            }
-                            .buttonStyle(PlainButtonStyle())
-                        }
-                        .padding(.vertical, 15)
-                        
-                        // 關閉按鈕
-                        Button(action: {
-                            viewModel.showingFeedbackPrompt = false
-                            feedbackStage = .initial // 重置狀態
-                        }) {
-                            Text("暫不評價")
-                                .font(.footnote)
-                                .foregroundColor(.gray)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.bottom, 10)
+                        // 初始反饋問題內容
+                        initialFeedbackView
                     
                     case .suggestion:
                         // 建議調整頁面
-                        Text("需要調整檢測靈敏度？")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding(.top, 10)
-                        
-                        Text("您可以到設置頁面點擊「判定寬鬆」按鈕來增加閾值")
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                        
-                        // 展示按鈕圖示作為視覺輔助
-                        HStack {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .foregroundColor(.blue)
-                            
-                            Text("判定寬鬆")
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 8)
-                                .background(Color.blue)
-                                .cornerRadius(8)
-                                .foregroundColor(.white)
-                            
-                            Image(systemName: "arrow.left.circle.fill")
-                                .foregroundColor(.blue)
-                        }
-                        .padding()
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(10)
-                        .padding(.vertical, 10)
-                        
-                        // 前往設置按鈕
-                        Button(action: {
-                            viewModel.showingFeedbackPrompt = false
-                            feedbackStage = .initial
-                            selectedTab = 3 // 切換到設置頁面 (第4個標籤)
-                        }) {
-                            Text("前往設置")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(Color.blue)
-                                .cornerRadius(8)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 5)
-                        
-                        // 關閉按鈕
-                        Button(action: {
-                            viewModel.showingFeedbackPrompt = false
-                            feedbackStage = .initial
-                        }) {
-                            Text("稍後再說")
-                                .font(.footnote)
-                                .foregroundColor(.gray)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .padding(.bottom, 10)
+                        suggestionFeedbackView
                     
                     case .thanks:
                         // 感謝頁面
-                        VStack(spacing: 15) {
-                            Image(systemName: "heart.fill")
-                                .font(.system(size: 48))
-                                .foregroundColor(.pink)
-                                .padding(.top, 10)
-                            
-                            Text("感謝您的反饋！")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                            
-                            Text(feedbackWasAccurate ? "我們將繼續優化睡眠檢測" : "您的反饋已記錄")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.vertical, 20)
+                        thanksFeedbackView
                     }
                 }
             }
-            .padding()
-            .background(Color.black)
-            .cornerRadius(15)
-            .shadow(radius: 10)
         }
+        .padding()
+        .background(Color.black)
+        .cornerRadius(15)
+        .shadow(radius: 10)
+    }
+    
+    // 初始反饋問題視圖
+    private var initialFeedbackView: some View {
+        VStack {
+            Text("睡眠檢測準確嗎？")
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding(.top, 10)
+            
+            HStack(spacing: 20) {
+                // 準確按鈕
+                Button(action: {
+                    feedbackWasAccurate = true
+                    feedbackStage = .thanks
+                    
+                    // 處理反饋
+                    viewModel.processFeedback(wasAccurate: true)
+                    
+                    // 3秒後關閉
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        viewModel.showingFeedbackPrompt = false
+                        feedbackStage = .initial // 重置狀態
+                    }
+                }) {
+                    VStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 36))
+                            .foregroundColor(.green)
+                        Text("準確")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 80, height: 80)
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(10)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                // 不準確按鈕
+                Button(action: {
+                    feedbackWasAccurate = false
+                    feedbackStage = .suggestion
+                    
+                    // 處理反饋
+                    viewModel.processFeedback(wasAccurate: false)
+                }) {
+                    VStack {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 36))
+                            .foregroundColor(.red)
+                        Text("不準確")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 80, height: 80)
+                    .background(Color.gray.opacity(0.2))
+                    .cornerRadius(10)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.vertical, 15)
+            
+            // 關閉按鈕
+            Button(action: {
+                viewModel.showingFeedbackPrompt = false
+                feedbackStage = .initial // 重置狀態
+            }) {
+                Text("暫不評價")
+                    .font(.footnote)
+                    .foregroundColor(.gray)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.bottom, 10)
+        }
+    }
+    
+    // 建議調整頁面視圖
+    private var suggestionFeedbackView: some View {
+        VStack {
+            Text("需要調整檢測靈敏度？")
+                .font(.headline)
+                .foregroundColor(.white)
+                .padding(.top, 10)
+            
+            // 根據當前情境提供不同建議
+            if viewModel.lastFeedbackType == .falsePositive {
+                // 情境3: 用戶未入睡但系統誤判為睡眠
+                Text("系統似乎過於寬鬆地判定您入睡了。您可以到設置頁面點擊「判定嚴謹」按鈕來降低閾值")
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                // 展示按鈕圖示作為視覺輔助
+                HStack {
+                    Image(systemName: "arrow.left.circle.fill")
+                        .foregroundColor(.red)
+                    
+                    Text("判定嚴謹")
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.8))
+                        .cornerRadius(8)
+                        .foregroundColor(.white)
+                    
+                    Image(systemName: "arrow.right.circle.fill")
+                        .foregroundColor(.red)
+                }
+                .padding()
+                .background(Color.gray.opacity(0.2))
+                .cornerRadius(10)
+                .padding(.vertical, 10)
+            } else {
+                // 情境2: 用戶入睡但系統未檢測到
+                Text("系統似乎無法檢測到您已入睡。您可以到設置頁面點擊「判定寬鬆」按鈕來增加閾值")
+                    .font(.caption)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                
+                // 展示按鈕圖示作為視覺輔助
+                HStack {
+                    Image(systemName: "arrow.left.circle.fill")
+                        .foregroundColor(.blue)
+                    
+                    Text("判定寬鬆")
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.blue)
+                        .cornerRadius(8)
+                        .foregroundColor(.white)
+                    
+                    Image(systemName: "arrow.right.circle.fill")
+                        .foregroundColor(.blue)
+                }
+                .padding()
+                .background(Color.gray.opacity(0.2))
+                .cornerRadius(10)
+                .padding(.vertical, 10)
+            }
+            
+            // 前往設置按鈕
+            Button(action: {
+                viewModel.showingFeedbackPrompt = false
+                feedbackStage = .initial
+                selectedTab = 3 // 切換到設置頁面 (第4個標籤)
+            }) {
+                Text("前往設置")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(Color.blue)
+                    .cornerRadius(8)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, 20)
+            .padding(.vertical, 5)
+            
+            // 關閉按鈕
+            Button(action: {
+                viewModel.showingFeedbackPrompt = false
+                feedbackStage = .initial
+            }) {
+                Text("稍後再說")
+                    .font(.footnote)
+                    .foregroundColor(.gray)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.bottom, 10)
+        }
+    }
+    
+    // 感謝頁面視圖
+    private var thanksFeedbackView: some View {
+        VStack(spacing: 15) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.pink)
+                .padding(.top, 10)
+            
+            Text("感謝您的反饋！")
+                .font(.headline)
+                .foregroundColor(.white)
+            
+            Text(feedbackWasAccurate ? "我們將繼續優化睡眠檢測" : "您的反饋已記錄")
+                .font(.caption)
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.vertical, 20)
     }
 }
 
@@ -887,7 +1011,7 @@ struct ThresholdAdjustmentView: View {
                 .font(.headline)
                 .foregroundColor(.white)
             
-            Text("若系統沒偵測到睡眠，可提高閾值")
+            Text("調整睡眠檢測的閾值標準")
                 .font(.caption)
                 .foregroundColor(.gray)
             
@@ -902,15 +1026,16 @@ struct ThresholdAdjustmentView: View {
             }
             .padding(.top, 5)
             
-            // 單一"判定寬鬆"按鈕及確認機制
+            // 確認機制
             if viewModel.showingThresholdConfirmation {
                 Button(action: {
-                    // 確認增加閾值
-                    let newValue = viewModel.userHRThresholdOffset + 0.05 // 一次增加5%
+                    // 確認閾值調整
+                    let newValue = viewModel.pendingThresholdOffset ?? (viewModel.userHRThresholdOffset + 0.05)
                     viewModel.setUserHeartRateThresholdOffset(newValue)
                     viewModel.showingThresholdConfirmation = false
+                    viewModel.pendingThresholdOffset = nil
                 }) {
-                    Text("確認提高閾值")
+                    Text("確認調整閾值")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -920,25 +1045,73 @@ struct ThresholdAdjustmentView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
                 .padding(.top, 5)
-            } else {
+                
                 Button(action: {
-                    // 顯示確認按鈕
-                    viewModel.showingThresholdConfirmation = true
-                    
-                    // 5秒後自動取消確認狀態
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                        viewModel.showingThresholdConfirmation = false
-                    }
+                    // 取消確認
+                    viewModel.showingThresholdConfirmation = false
+                    viewModel.pendingThresholdOffset = nil
                 }) {
-                    Text("判定寬鬆")
+                    Text("取消")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(Color.blue)
+                        .background(Color.gray.opacity(0.5))
                         .cornerRadius(8)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .padding(.top, 5)
+            } else {
+                // 雙按鈕佈局
+                HStack(spacing: 10) {
+                    // 判定嚴謹按鈕 - 降低閾值
+                    Button(action: {
+                        // 設置待確認的閾值調整為降低5%
+                        viewModel.pendingThresholdOffset = viewModel.userHRThresholdOffset - 0.05
+                        viewModel.showingThresholdConfirmation = true
+                        
+                        // 5秒後自動取消確認狀態
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                            if viewModel.showingThresholdConfirmation {
+                                viewModel.showingThresholdConfirmation = false
+                                viewModel.pendingThresholdOffset = nil
+                            }
+                        }
+                    }) {
+                        Text("判定嚴謹")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.red.opacity(0.8))
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    // 判定寬鬆按鈕 - 增加閾值
+                    Button(action: {
+                        // 設置待確認的閾值調整為增加5%
+                        viewModel.pendingThresholdOffset = viewModel.userHRThresholdOffset + 0.05
+                        viewModel.showingThresholdConfirmation = true
+                        
+                        // 5秒後自動取消確認狀態
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                            if viewModel.showingThresholdConfirmation {
+                                viewModel.showingThresholdConfirmation = false
+                                viewModel.pendingThresholdOffset = nil
+                            }
+                        }
+                    }) {
+                        Text("判定寬鬆")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.blue)
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
                 .padding(.top, 5)
             }
         }
@@ -1000,13 +1173,13 @@ struct SensitivitySettingView: View {
             .padding(.vertical, 5)
             
             HStack {
-                Text("低")
+                Text("嚴謹")
                     .font(.caption2)
                     .foregroundColor(.blue)
                 
                 Spacer()
                 
-                Text("高")
+                Text("寬鬆")
                     .font(.caption2)
                     .foregroundColor(.red)
             }

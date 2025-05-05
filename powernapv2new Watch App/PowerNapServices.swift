@@ -587,29 +587,29 @@ class MotionManager {
                 // 檢查是否超過通知間隔限制 - 避免過於頻繁的通知
                 let now = Date()
                 if now.timeIntervalSince(self.lastNotificationTime) >= self.minNotificationInterval {
-                    // 發送通知以便UI更新
+                // 發送通知以便UI更新
                     NotificationCenter.default.post(
                         name: NSNotification.Name("AccelerationUpdated"), 
                         object: nil, 
                         userInfo: ["acceleration": absAcceleration]
                     )
                     self.lastNotificationTime = now
-                }
+            }
+            
+            // 檢測是否超過閾值
+            if absAcceleration > self.significantAccelerationThreshold {
+                self.logger.info("檢測到顯著運動，強度: \(absAcceleration)")
                 
-                // 檢測是否超過閾值
-                if absAcceleration > self.significantAccelerationThreshold {
-                    self.logger.info("檢測到顯著運動，強度: \(absAcceleration)")
-                    
-                    // 寫入日誌檔案
-                    self.logMotionData(detected: true, intensity: absAcceleration)
-                    
+                // 寫入日誌檔案
+                self.logMotionData(detected: true, intensity: absAcceleration)
+                
                     // 通知監聽者 - 也應用通知間隔限制
                     if now.timeIntervalSince(self.lastNotificationTime) >= self.minNotificationInterval {
-                        self.onMotionDetected?(absAcceleration)
-                    }
-                } else {
-                    // 記錄低於閾值的運動
-                    self.logMotionData(detected: false, intensity: absAcceleration)
+                    self.onMotionDetected?(absAcceleration)
+                }
+            } else {
+                // 記錄低於閾值的運動
+                self.logMotionData(detected: false, intensity: absAcceleration)
                 }
             }
         }
@@ -727,12 +727,12 @@ class NotificationManager {
         WKInterfaceDevice.current().play(.success)
         
         // 延遲1秒後第二次震動
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            WKInterfaceDevice.current().play(.success)
-            
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    WKInterfaceDevice.current().play(.success)
+                
             // 再延遲1秒播放第三次震動
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                WKInterfaceDevice.current().play(.start)
+                    WKInterfaceDevice.current().play(.start)
             }
         }
         #endif
@@ -874,6 +874,7 @@ class PowerNapViewModel: ObservableObject {
     @Published var userSelectedAgeGroup: AgeGroup? // 用戶選擇的年齡組
     @Published var sleepSensitivity: Double = 0.5 // 睡眠敏感度（0-低靈敏度，1-高靈敏度）
     @Published var showingThresholdConfirmation: Bool = false // 判定寬鬆確認狀態
+    @Published var pendingThresholdOffset: Double? = nil // 待確認的閾值調整值
     
     // 計時器
     private var napTimer: Timer?
@@ -931,8 +932,16 @@ class PowerNapViewModel: ObservableObject {
     @Published private(set) var isOptimizingThreshold: Bool = false
     
     // MARK: - 用戶反饋相關
+    enum FeedbackType {
+        case falsePositive  // 系統誤判為睡眠（過於寬鬆）
+        case falseNegative  // 系統未檢測到睡眠（過於嚴謹）
+        case accurate       // 判斷準確
+        case unknown        // 未知
+    }
+    
     @Published var showingFeedbackPrompt: Bool = false // 控制是否顯示反饋提示
     @Published var lastFeedbackDate: Date? // 最近一次提供反饋的日期
+    @Published var lastFeedbackType: FeedbackType = .unknown // 最近一次反饋的類型
     
     init() {
         // 確保napDuration和napMinutes保持同步
@@ -1055,8 +1064,8 @@ class PowerNapViewModel: ObservableObject {
         
         // 從SleepDetectionService獲取靜止心率和閾值 (備用)
         if self.restingHeartRate == 60 {  // 如果尚未從HeartRateService獲取
-            self.restingHeartRate = sleepDetection.userRHR
-            self.heartRateThreshold = sleepDetection.sleepingHeartRateThreshold
+        self.restingHeartRate = sleepDetection.userRHR
+        self.heartRateThreshold = sleepDetection.sleepingHeartRateThreshold
         }
         
         // 從MotionManager獲取當前加速度
@@ -1344,20 +1353,24 @@ class PowerNapViewModel: ObservableObject {
                 // 等待入睡階段（現在主要依賴於SleepDetectionCoordinator來檢測）
                 // 不需要額外調用checkSleepState，因為我們訂閱了協調器的狀態更新
                 
-                // 如果設定了最大等待時間（例如20分鐘），可以在這裡檢查是否超時
+                // 檢查是否超時，使用新的超時機制
+                checkSleepWaitTimeout()
+                
+                /* 舊的超時檢查邏輯，替換為新方法
                 // 檢查是否已經等待太久（30分鐘）
                 if let startTime = self.startTime, Date().timeIntervalSince(startTime) > 30 * 60 {
                     self.logger.info("等待入睡超時，停止小睡")
                     self.stopNap()
                 }
+                */
                 
             case .sleeping:
                 // 睡眠階段，更新倒計時
                 if let sleepStartTime = self.sleepStartTime {
                     // 計算已經睡眠的時間
                     let elapsedSleepTime = Date().timeIntervalSince(sleepStartTime)
-                    
-                    // 更新剩餘時間
+    
+    // 更新剩餘時間
                     self.remainingTime = max(0, self.napDuration - elapsedSleepTime)
                     
                     // 記錄睡眠數據
@@ -1445,6 +1458,10 @@ class PowerNapViewModel: ObservableObject {
     
     // 智能喚醒邏輯 - 根據睡眠階段決定最佳喚醒時間
     func shouldWakeUpEarly() -> Bool {
+        // 暫時禁用智能喚醒功能
+        return false
+        
+        /* 以下為原功能代碼，暫時註釋
         // 檢查是否達到最小睡眠時間
         guard let startTime = startTime else { return false }
         
@@ -1474,6 +1491,7 @@ class PowerNapViewModel: ObservableObject {
         }
         
         return shouldWake
+        */
     }
     
     // 新屬性 - 獲取當前睡眠階段的描述文本
@@ -1554,8 +1572,19 @@ class PowerNapViewModel: ObservableObject {
         // 記錄用戶反饋
         lastFeedbackDate = Date()
         
-        // 如果用戶表示檢測不準確，提示使用"判定寬鬆"功能
+        // 如果用戶表示檢測不準確，提示使用調整功能
         if !wasAccurate {
+            // 根據當前睡眠狀態確定是哪種不準確類型
+            if sleepPhase == .light || sleepPhase == .deep {
+                // 如果系統認為用戶在睡眠狀態，但用戶反饋不準確，則是誤判（過於寬鬆）
+                lastFeedbackType = .falsePositive
+                logger.info("用戶反饋：系統誤判為睡眠（過於寬鬆）")
+            } else {
+                // 如果系統認為用戶未睡眠，但用戶反饋不準確，則是漏檢（過於嚴謹）
+                lastFeedbackType = .falseNegative
+                logger.info("用戶反饋：系統未檢測到睡眠（過於嚴謹）")
+            }
+            
             // 將此反饋保存到用戶配置文件
             let userId = getUserId()
             if var profile = userProfileManager.getUserProfile(forUserId: userId) {
@@ -1570,6 +1599,8 @@ class PowerNapViewModel: ObservableObject {
             // 注意：不要關閉反饋提示，讓UI繼續展示建議頁面
         } else {
             // 如果用戶表示檢測準確，也記錄到配置文件
+            lastFeedbackType = .accurate
+            
             let userId = getUserId()
             if var profile = userProfileManager.getUserProfile(forUserId: userId) {
                 profile.accurateDetectionCount += 1
@@ -1582,5 +1613,71 @@ class PowerNapViewModel: ObservableObject {
         
         // 不在這裡關閉反饋提示，由UI層控制關閉時機
         // showingFeedbackPrompt = false
+    }
+    
+    // MARK: - 測試反饋功能
+    
+    // 測試情境1：用戶入睡，系統正確檢測到
+    func simulateScenario1Feedback() {
+        // 模擬正確檢測到睡眠的情況
+        sleepPhase = .deep
+        napPhase = .sleeping
+        isProbablySleeping = true
+        
+        // 顯示反饋提示
+        showingFeedbackPrompt = true
+        lastFeedbackType = .accurate
+        
+        logger.info("測試情境1：模擬系統正確檢測到睡眠")
+    }
+    
+    // 測試情境2：用戶入睡，系統未檢測到
+    func simulateScenario2Feedback() {
+        // 模擬未檢測到睡眠的情況
+        sleepPhase = .awake
+        napPhase = .awaitingSleep
+        isProbablySleeping = false
+        
+        // 顯示反饋提示，並設置反饋類型為未檢測到(過於嚴謹)
+        showingFeedbackPrompt = true
+        lastFeedbackType = .falseNegative
+        
+        logger.info("測試情境2：模擬系統未檢測到睡眠")
+    }
+    
+    // 測試情境3：用戶未入睡，系統誤判為睡眠
+    func simulateScenario3Feedback() {
+        // 模擬誤判為睡眠的情況
+        sleepPhase = .light
+        napPhase = .sleeping
+        isProbablySleeping = true
+        
+        // 顯示反饋提示，並設置反饋類型為誤判(過於寬鬆)
+        showingFeedbackPrompt = true
+        lastFeedbackType = .falsePositive
+        
+        logger.info("測試情境3：模擬系統誤判為睡眠")
+    }
+    
+    // 測試情境4：用戶未入睡，系統正確未檢測
+    func simulateScenario4Feedback() {
+        // 模擬正確未檢測到睡眠的情況
+        sleepPhase = .awake
+        napPhase = .awaitingSleep
+        isProbablySleeping = false
+        
+        // 顯示反饋提示
+        showingFeedbackPrompt = true
+        lastFeedbackType = .accurate
+        
+        logger.info("測試情境4：模擬系統正確未檢測到睡眠")
+    }
+    
+    // 修改等待入睡超時時間為40分鐘
+    private func checkSleepWaitTimeout() {
+        if let startTime = self.startTime, Date().timeIntervalSince(startTime) > 40 * 60 {
+            self.logger.info("等待入睡超時(40分鐘)，停止小睡")
+            self.stopNap()
+        }
     }
 } 
