@@ -30,21 +30,36 @@ public struct UserSleepProfile: Codable {
     public var accurateDetectionCount: Int = 0   // 用戶反饋檢測準確的次數
     public var inaccurateDetectionCount: Int = 0 // 用戶反饋檢測不準確的次數
     
+    // 新增: 靜止比例相關參數
+    public var baseRestingRatioThreshold: Double // 基於年齡組的基礎靜止比例
+    public var restingRatioAdjustment: Double = 0.0 // 用戶調整值，範圍-0.1到0.1之間
+    
+    // 獲取有效的靜止比例閾值
+    public var effectiveRestingRatioThreshold: Double {
+        // 應用用戶調整，但確保結果在0.5到0.95之間
+        let adjusted = baseRestingRatioThreshold + restingRatioAdjustment
+        return min(max(adjusted, 0.5), 0.95)
+    }
+    
     // 創建默認配置文件
     public static func createDefault(forUserId userId: String, ageGroup: AgeGroup) -> UserSleepProfile {
         let baseThreshold: Double
         let minDuration: Int
+        let baseRestingRatio: Double
         
         switch ageGroup {
         case .teen:
             baseThreshold = 0.875 // 87.5% for teens
             minDuration = 120     // 2分鐘
+            baseRestingRatio = 0.80 // 80% 靜止比例
         case .adult:
             baseThreshold = 0.9   // 90% for adults
             minDuration = 180     // 3分鐘
+            baseRestingRatio = 0.75 // 75% 靜止比例
         case .senior:
             baseThreshold = 0.935 // 93.5% for seniors
             minDuration = 240     // 4分鐘
+            baseRestingRatio = 0.70 // 70% 靜止比例
         }
         
         return UserSleepProfile(
@@ -60,7 +75,9 @@ public struct UserSleepProfile: Codable {
             sleepHRVariance: nil as Double?,
             truePositiveRate: nil as Double?,
             accurateDetectionCount: 0,
-            inaccurateDetectionCount: 0
+            inaccurateDetectionCount: 0,
+            baseRestingRatioThreshold: baseRestingRatio,
+            restingRatioAdjustment: 0.0
         )
     }
     
@@ -179,6 +196,9 @@ public struct OptimizedThresholds {
     // 確認持續時間（秒）
     var confirmationDuration: TimeInterval = 180
     
+    // 靜止比例閾值 - 新增
+    var restingRatioThreshold: Double = 0.75
+    
     // 確認時間的上下限（秒）
     static let minConfirmationTime: TimeInterval = 60  // 最短1分鐘
     static let maxConfirmationTime: TimeInterval = 360 // 最長6分鐘
@@ -186,6 +206,10 @@ public struct OptimizedThresholds {
     // 心率閾值百分比的上下限
     static let minThresholdPercentage: Double = 0.80  // 最低降至RHR的80%
     static let maxThresholdPercentage: Double = 0.95  // 最高不超過RHR的95%
+    
+    // 靜止比例的上下限 - 新增
+    static let minRestingRatio: Double = 0.5  // 最低要求50%靜止
+    static let maxRestingRatio: Double = 0.95 // 最高要求95%靜止
 }
 
 /// 用戶睡眠配置管理器
@@ -296,6 +320,9 @@ public class UserSleepProfileManager {
         // 3. 睡眠確認時間分析
         var adjustedDuration: TimeInterval = 180  // 默認3分鐘
         
+        // 4. 靜止比例分析
+        var adjustedRestingRatio = profile.effectiveRestingRatioThreshold
+        
         // 分析睡眠檢測時間
         if !sessionsWithSleepDetected.isEmpty {
             // 計算平均睡眠檢測時間（從會話開始到睡眠檢測）
@@ -320,7 +347,7 @@ public class UserSleepProfileManager {
             }
         }
         
-        // 4. 睡眠狀態穩定性分析
+        // 5. 睡眠狀態穩定性分析
         let stableHeartRates = recentSessions.filter { session in
             // 檢查心率在會話中的穩定性
             let rates = session.heartRates
@@ -340,12 +367,17 @@ public class UserSleepProfileManager {
         
         // 如果用戶心率通常很穩定，可以更依賴心率
         if !stableHeartRates.isEmpty && stableHeartRates.count > recentSessions.count / 2 {
-            // 心率穩定用戶，可以稍微提高閾值要求（更嚴格）
-            adjustedThreshold += 0.02
-            print("用戶心率穩定，調整閾值更嚴格")
+            // 移除心率閾值調整，只保留動作相關調整
+            // 心率穩定時可以略微降低靜止比例要求
+            adjustedRestingRatio -= 0.03
+            print("用戶心率穩定，靜止要求適當降低")
+        } else {
+            // 心率不穩定用戶，增加靜止比例要求
+            adjustedRestingRatio += 0.03
+            print("用戶心率不穩定，增加靜止比例要求")
         }
         
-        // 5. 用戶反饋數據分析
+        // 6. 用戶反饋數據分析
         let sessionsWithFeedback = recentSessions.filter { $0.userFeedback != SleepSession.SleepFeedback.none }
         
         // 初始化變數，放在if條件外面以擴大作用域
@@ -360,15 +392,17 @@ public class UserSleepProfileManager {
             
             // 根據錯誤類型調整閾值
             if falsePositives > totalWithFeedback / 3 {
-                // 較多假陽性，提高閾值要求
-                adjustedThreshold += 0.03
-                print("較多假陽性反饋，提高閾值要求")
+                // 較多假陽性，移除心率閾值調整，只調整靜止比例
+                // 同時增加靜止比例要求
+                adjustedRestingRatio += 0.05
+                print("較多假陽性反饋，增加靜止比例要求")
             }
             
             if falseNegatives > totalWithFeedback / 3 {
-                // 較多假陰性，降低閾值要求
-                adjustedThreshold -= 0.04
-                print("較多假陰性反饋，降低閾值要求")
+                // 較多假陰性，移除心率閾值調整，只調整靜止比例
+                // 同時降低靜止比例要求
+                adjustedRestingRatio -= 0.05
+                print("較多假陰性反饋，降低靜止比例要求")
             }
             
             // 根據用戶反饋調整時間
@@ -393,11 +427,16 @@ public class UserSleepProfileManager {
         adjustedDuration = min(max(adjustedDuration, OptimizedThresholds.minConfirmationTime), 
                               OptimizedThresholds.maxConfirmationTime)
         
+        // 確保靜止比例在合理範圍內
+        adjustedRestingRatio = min(max(adjustedRestingRatio, OptimizedThresholds.minRestingRatio),
+                                  OptimizedThresholds.maxRestingRatio)
+        
         // 設置優化後的閾值
         optimizedThresholds.thresholdPercentage = adjustedThreshold
         optimizedThresholds.confirmationDuration = adjustedDuration
+        optimizedThresholds.restingRatioThreshold = adjustedRestingRatio
         
-        print("優化閾值：心率閾值百分比 \(adjustedThreshold)，確認時間 \(adjustedDuration)秒")
+        print("優化閾值：心率閾值百分比 \(adjustedThreshold)，確認時間 \(adjustedDuration)秒，靜止比例 \(adjustedRestingRatio)")
         
         return optimizedThresholds
     }
@@ -516,7 +555,7 @@ public class UserSleepProfileManager {
                     userProfile.sleepHRVariance = sqrt(variance)
                     
                     // 記錄優化信息
-                    print("用戶睡眠檔案已更新 - 閾值: \(userProfile.hrThresholdPercentage), 持續時間: \(userProfile.minDurationSeconds)秒")
+                    print("用戶睡眠檔案已更新 - 閾值: \(userProfile.hrThresholdPercentage), 持續時間: \(userProfile.minDurationSeconds)秒, 靜止比例: \(userProfile.effectiveRestingRatioThreshold)")
                     print("睡眠統計 - 平均: \(userProfile.averageSleepHR ?? 0), 最低: \(userProfile.minSleepHR ?? 0), 變異: \(userProfile.sleepHRVariance ?? 0)")
                 }
                 

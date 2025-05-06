@@ -158,6 +158,19 @@ class HeartRateService: HeartRateServiceProtocol {
         logger.info("使用基於年齡組的默認閾值：\(self.heartRateThreshold) (RHR \(self.restingHeartRate) × \(ageGroup.heartRateThresholdPercentage))")
     }
     
+    /// 設置自定義心率閾值
+    /// - Parameter threshold: 新的心率閾值
+    func setCustomHeartRateThreshold(_ threshold: Double) {
+        // 確保閾值在合理範圍內
+        let minSafeThreshold = self.restingHeartRate * 0.7 // 不低於RHR的70%
+        let maxSafeThreshold = self.restingHeartRate * 0.95 // 不高於RHR的95%
+        
+        let safeThreshold = min(max(threshold, minSafeThreshold), maxSafeThreshold)
+        
+        self.heartRateThreshold = safeThreshold
+        logger.info("設置自定義心率閾值：\(safeThreshold) BPM")
+    }
+    
     func getHeartRateHistory(from: Date, to: Date) -> [HeartRateAnalysisData] {
         return heartRateHistory.filter { 
             $0.timestamp >= from && $0.timestamp <= to 

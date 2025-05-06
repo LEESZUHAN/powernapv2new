@@ -672,13 +672,25 @@ class NotificationManager {
     
     private let logger = Logger(subsystem: "com.yourdomain.powernapv2new", category: "NotificationManager")
     
+    // 新增：跟踪喚醒狀態
+    @Published var isAlarmActive = false
+    private var alarmRepeater: Timer?
+    private var vibrationTimer: Timer?
+    private var alarmCount = 0
+    // 移除最大重複次數限制，讓鬧鈴持續響直到用戶明確關閉
+    // private let maxAlarmRepeat = 10 // 最多重複10次
+    
     static let shared = NotificationManager()
     
     private init() {}
     
-    // 發送喚醒通知
+    // 發送喚醒通知 - 改進版
     func sendWakeupNotification() {
         #if os(watchOS)
+        // 設置為活動狀態
+        isAlarmActive = true
+        alarmCount = 0
+        
         // 首先播放系統聲音（增強提示效果）
         WKInterfaceDevice.current().play(.notification)
         
@@ -713,14 +725,81 @@ class NotificationManager {
             } else {
                 self.logger.info("成功安排喚醒通知")
                 
-                // 連續震動3次，模擬3-2-1倒數效果
-                self.playSeriesOfVibrations()
+                // 開始連續震動和重複通知
+                self.startContinuousAlarms()
             }
         }
         #endif
     }
     
-    // 連續震動3次，模擬3-2-1倒數
+    // 新增：開始連續鬧鈴和震動
+    private func startContinuousAlarms() {
+        // 停止任何當前運行的計時器
+        stopAlarmTimers()
+        
+        #if os(watchOS)
+        // 立即播放第一次震動
+        WKInterfaceDevice.current().play(.success)
+        
+        // 設置震動計時器，每2秒一次
+        vibrationTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            guard let self = self, self.isAlarmActive else { return }
+            
+            // 播放震動（循環使用不同模式）
+            if self.alarmCount % 3 == 0 {
+                WKInterfaceDevice.current().play(.success)
+            } else if self.alarmCount % 3 == 1 {
+                WKInterfaceDevice.current().play(.notification)
+            } else {
+                WKInterfaceDevice.current().play(.start)
+            }
+            
+            self.alarmCount += 1
+            
+            // 移除自動停止的代碼，鬧鈴將持續響直到用戶手動關閉
+        }
+        
+        // 設置重複通知計時器，每5秒重複一次通知
+        alarmRepeater = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+            guard let self = self, self.isAlarmActive else { return }
+            
+            // 創建並觸發新的通知
+            let content = UNMutableNotificationContent()
+            content.title = "小睡時間結束"
+            // 修改通知訊息，移除次數顯示，強調需要手動關閉
+            content.body = "請立即起床並關閉鬧鈴！"
+            content.sound = UNNotificationSound.defaultCritical
+            
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+            
+            let request = UNNotificationRequest(
+                identifier: "wakeupNotification-repeat-\(Date().timeIntervalSince1970)",
+                content: content,
+                trigger: trigger
+            )
+            
+            UNUserNotificationCenter.current().add(request)
+        }
+        #endif
+    }
+    
+    // 新增：停止全部鬧鈴
+    func stopAlarms() {
+        isAlarmActive = false
+        stopAlarmTimers()
+        logger.info("已停止鬧鈴")
+    }
+    
+    // 停止鬧鈴計時器
+    private func stopAlarmTimers() {
+        alarmRepeater?.invalidate()
+        alarmRepeater = nil
+        
+        vibrationTimer?.invalidate()
+        vibrationTimer = nil
+    }
+    
+    // 連續震動3次，模擬3-2-1倒數 (保留原方法以兼容性)
     private func playSeriesOfVibrations() {
         #if os(watchOS)
         // 第一次震動
@@ -942,6 +1021,10 @@ class PowerNapViewModel: ObservableObject {
     @Published var showingFeedbackPrompt: Bool = false // 控制是否顯示反饋提示
     @Published var lastFeedbackDate: Date? // 最近一次提供反饋的日期
     @Published var lastFeedbackType: FeedbackType = .unknown // 最近一次反饋的類型
+    
+    // 新增：鬧鈴狀態跟踪
+    @Published var isAlarmSounding: Bool = false // 鬧鈴是否正在響
+    @Published var showAlarmDismissUI: Bool = false // 是否顯示關閉鬧鈴UI
     
     init() {
         // 確保napDuration和napMinutes保持同步
@@ -1211,6 +1294,23 @@ class PowerNapViewModel: ObservableObject {
         // 更新心率閾值
         updateHeartRateThreshold()
         
+        // 新增：調整靜止比例要求 - 範圍±5%
+        // 靈敏度0.0(極嚴謹)時對應-5%靜止要求
+        // 靈敏度0.5(中性)時對應0%調整
+        // 靈敏度1.0(極寬鬆)時對應+5%靜止要求
+        let restingRatioAdjustment = (limitedSensitivity * 0.1) - 0.05
+        
+        // 更新用戶檔案中的靜止比例調整值
+        if var profile = currentUserProfile {
+            profile.restingRatioAdjustment = restingRatioAdjustment
+            userProfileManager.saveUserProfile(profile)
+            currentUserProfile = profile
+            
+            // 記錄實際生效的靜止比例
+            let effectiveRatio = profile.effectiveRestingRatioThreshold
+            logger.info("靜止比例調整: \(String(format: "%.1f", restingRatioAdjustment * 100))% (有效比例: \(String(format: "%.1f", effectiveRatio * 100))%)")
+        }
+        
         logger.info("用戶調整了睡眠敏感度: \(limitedSensitivity)")
     }
     
@@ -1440,14 +1540,52 @@ class PowerNapViewModel: ObservableObject {
     private func wakeUp() {
         if napPhase == .waking { return }  // 避免重複喚醒
         
-        logger.info("智能喚醒觸發")
+        logger.info("開始喚醒流程 - 鬧鈴將持續響直到用戶手動關閉")
         napPhase = .waking
+        
+        // 設置鬧鈴狀態
+        isAlarmSounding = true
+        showAlarmDismissUI = true
         
         // 發送喚醒通知
         notificationManager.sendWakeupNotification()
         
+        // 訂閱鬧鈴狀態
+        NotificationCenter.default.publisher(for: NSNotification.Name("AlarmDismissed"))
+            .sink { [weak self] _ in
+                self?.handleAlarmDismissed()
+            }
+            .store(in: &cancellables)
+    }
+    
+    // 新增：處理鬧鈴被關閉
+    func handleAlarmDismissed() {
+        isAlarmSounding = false
+        showAlarmDismissUI = false
+        
         // 停止小睡
         stopNap()
+        
+        // 顯示反饋提示
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.showingFeedbackPrompt = true
+            
+            // 10秒後自動隱藏反饋提示
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                if self.showingFeedbackPrompt {
+                    self.showingFeedbackPrompt = false
+                }
+            }
+        }
+    }
+    
+    // 新增：使用者手動關閉鬧鈴
+    func dismissAlarm() {
+        // 停止鬧鈴
+        notificationManager.stopAlarms()
+        
+        // 發送通知
+        NotificationCenter.default.post(name: NSNotification.Name("AlarmDismissed"), object: nil)
     }
     
     // 取消計時器

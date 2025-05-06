@@ -127,6 +127,11 @@ struct ContentView: View {
             if viewModel.showingFeedbackPrompt {
                 feedbackPromptView
             }
+            
+            // 新增：鬧鈴關閉UI覆蓋層
+            if viewModel.showAlarmDismissUI {
+                alarmDismissView
+            }
         }
     }
     
@@ -382,6 +387,27 @@ struct ContentView: View {
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal, 20)
                     .padding(.top, 5)
+                    
+                    // 新增：測試鬧鈴喚醒流程
+                    Button(action: {
+                        // 觸發整個喚醒流程
+                        viewModel.isAlarmSounding = true
+                        viewModel.showAlarmDismissUI = true
+                        
+                        // 啟動鬧鈴通知和震動
+                        NotificationManager.shared.sendWakeupNotification()
+                    }) {
+                        Text("測試鬧鈴喚醒流程")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.red)
+                            .cornerRadius(20)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
                 }
                 .padding(.bottom, 20)
             }
@@ -991,6 +1017,50 @@ struct ContentView: View {
         }
         .padding(.vertical, 20)
     }
+    
+    // 新增：鬧鈴關閉UI覆蓋層
+    private var alarmDismissView: some View {
+        ZStack {
+            // 半透明背景
+            Color.black.opacity(0.85)
+                .edgesIgnoringSafeArea(.all)
+            
+            VStack(spacing: 20) {
+                // 鬧鈴圖標
+                Image(systemName: "alarm.fill")
+                    .font(.system(size: 48))
+                    .foregroundColor(.red)
+                    .padding(.bottom, 10)
+                
+                Text("小睡結束")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text("是時候起來了！")
+                    .font(.system(size: 18))
+                    .foregroundColor(.gray)
+                
+                // 單個大型按鈕，簡單明了
+                Button(action: {
+                    viewModel.dismissAlarm()
+                }) {
+                    Text("關閉鬧鈴")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.top, 20)
+            }
+            .padding(25)
+            .background(Color.black.opacity(0.8))
+            .cornerRadius(20)
+            .padding(.horizontal, 15)
+        }
+    }
 }
 
 // 自定義PreferenceKey用於避免不必要的更新
@@ -1128,6 +1198,24 @@ struct SensitivitySettingView: View {
     @ObservedObject var viewModel: PowerNapViewModel
     @Binding var sleepSensitivity: Double
     
+    // 計算調整值：從-5%到+5%（修改為直覺一致的計算方式）
+    private var adjustmentValue: Int {
+        // 新公式：讓sleepSensitivity從0.0到1.0對應-5%到+5%
+        let adjustment = (viewModel.sleepSensitivity * 10) - 5
+        return Int(adjustment)
+    }
+    
+    // 生成顯示文字，包含正負號
+    private var adjustmentDisplay: String {
+        if adjustmentValue > 0 {
+            return "+\(adjustmentValue)%"
+        } else if adjustmentValue < 0 {
+            return "\(adjustmentValue)%"
+        } else {
+            return "0%"
+        }
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("睡眠檢測敏感度")
@@ -1153,7 +1241,8 @@ struct SensitivitySettingView: View {
                 
                 Spacer()
                 
-                Text("\(Int(viewModel.sleepSensitivity * 100))%")
+                // 修改顯示格式：從百分比改為調整值
+                Text(adjustmentDisplay)
                     .font(.system(size: 22, weight: .medium))
                     .foregroundColor(.white)
                 

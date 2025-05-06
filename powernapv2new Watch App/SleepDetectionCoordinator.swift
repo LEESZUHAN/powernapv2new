@@ -32,6 +32,26 @@ public class SleepDetectionCoordinator {
     private var isHeartRateLow: Bool = false
     private var heartRateTrend: Double = 0
     
+    // 滑動窗口數據結構
+    private struct WindowData {
+        let timestamp: Date
+        let isHeartRateBelowThreshold: Bool
+        let isResting: Bool
+    }
+    
+    // 滑動窗口和相關屬性
+    private var sleepDetectionWindow: [WindowData] = []
+    private let maxWindowSize = 360 // 最大窗口大小(秒)
+    
+    // 靜止比例閾值常數
+    private func getRestingRatioThreshold(for ageGroup: AgeGroup) -> Double {
+        switch ageGroup {
+        case .teen: return 0.80  // 青少年需要80%的靜止時間
+        case .adult: return 0.75 // 成人需要75%的靜止時間
+        case .senior: return 0.70 // 銀髮族需要70%的靜止時間
+        }
+    }
+    
     // 狀態轉換穩定性變量
     private var motionDisruptionCount: Int = 0  // 動作干擾計數
     private var heartRateIncreaseCount: Int = 0  // 心率上升計數
@@ -119,6 +139,81 @@ public class SleepDetectionCoordinator {
             .store(in: &cancellables)
     }
     
+    // 新增: 更新數據窗口方法
+    private func updateDataWindow(heartRateBelowThreshold: Bool, isResting: Bool) {
+        let now = Date()
+        
+        // 添加新數據點
+        let newData = WindowData(
+            timestamp: now,
+            isHeartRateBelowThreshold: heartRateBelowThreshold,
+            isResting: isResting
+        )
+        sleepDetectionWindow.append(newData)
+        
+        // 移除超過窗口大小的數據
+        let cutoffTime = now.addingTimeInterval(-Double(maxWindowSize))
+        sleepDetectionWindow.removeAll { $0.timestamp < cutoffTime }
+    }
+    
+    // 新增: 計算窗口內靜止比例的方法
+    private func calculateRestingRatio(for duration: TimeInterval) -> Double {
+        let now = Date()
+        let cutoffTime = now.addingTimeInterval(-duration)
+        
+        // 獲取時間窗口內的數據
+        let windowData = sleepDetectionWindow.filter { $0.timestamp >= cutoffTime }
+        
+        if windowData.isEmpty {
+            return 0.0
+        }
+        
+        // 計算靜止記錄占比
+        let restingCount = windowData.filter { $0.isResting }.count
+        return Double(restingCount) / Double(windowData.count)
+    }
+    
+    // 新增: 計算心率低於閾值的比例
+    private func calculateHeartRateBelowThresholdRatio(for duration: TimeInterval) -> Double {
+        let now = Date()
+        let cutoffTime = now.addingTimeInterval(-duration)
+        
+        let windowData = sleepDetectionWindow.filter { $0.timestamp >= cutoffTime }
+        
+        if windowData.isEmpty {
+            return 0.0
+        }
+        
+        let belowThresholdCount = windowData.filter { $0.isHeartRateBelowThreshold }.count
+        return Double(belowThresholdCount) / Double(windowData.count)
+    }
+    
+    // 新增: 獲取窗口持續時間
+    private func getWindowDuration() -> TimeInterval {
+        guard let oldestData = sleepDetectionWindow.min(by: { $0.timestamp < $1.timestamp }),
+              let newestData = sleepDetectionWindow.max(by: { $0.timestamp < $1.timestamp }) else {
+            return 0
+        }
+        
+        return newestData.timestamp.timeIntervalSince(oldestData.timestamp)
+    }
+    
+    // 新增: 獲取進入深度睡眠所需的持續時間（秒），同時考慮靜止比例
+    private func getCurrentRequiredDuration() -> TimeInterval {
+        // 從UserSleepProfileManager獲取用戶檔案，使用其優化後的參數
+        guard let userProfileManager = getUserProfileManager(),
+              let userId = getUserId(),
+              let profile = userProfileManager.getUserProfile(forUserId: userId) else {
+            // 無法獲取用戶檔案時使用預設值
+            return getDefaultDurationForAgeGroup(getUserAgeGroup())
+        }
+        
+        // 使用用戶檔案中已優化的持續時間
+        // 確保持續時間在合理範圍內
+        let duration = TimeInterval(profile.minDurationSeconds)
+        return min(max(duration, 60), 360) // 限制在1-6分鐘範圍內
+    }
+    
     /// 評估並更新睡眠狀態
     private func evaluateSleepState() {
         // 確保監測中
@@ -129,6 +224,26 @@ public class SleepDetectionCoordinator {
         let isCurrentHeartRateLow = isHeartRateLow
         let currentHeartRateTrend = heartRateTrend
         
+        // 更新數據窗口 - 加入當前狀態數據
+        updateDataWindow(heartRateBelowThreshold: isCurrentHeartRateLow, isResting: isCurrentlyStationary)
+        
+        // 使用傳統方法評估基本睡眠狀態轉換
+        evaluateBasicSleepStateTransitions(
+            isCurrentlyStationary: isCurrentlyStationary,
+            isCurrentHeartRateLow: isCurrentHeartRateLow,
+            currentHeartRateTrend: currentHeartRateTrend
+        )
+        
+        // 使用增強的滑動窗口方法評估深度睡眠確認
+        evaluateDeepSleepWithRatioCheck()
+    }
+    
+    /// 使用傳統方法評估基本睡眠狀態轉換
+    private func evaluateBasicSleepStateTransitions(
+        isCurrentlyStationary: Bool,
+        isCurrentHeartRateLow: Bool,
+        currentHeartRateTrend: Double
+    ) {
         // 根據當前狀態應用不同的轉換邏輯
         switch sleepState {
         case .awake:
@@ -217,83 +332,50 @@ public class SleepDetectionCoordinator {
                 transitionToState(SleepState.awake)
             }
             
-        case .lightSleep:
-            // 輕度睡眠→清醒：檢測到動作或心率明顯上升
-            if !isCurrentlyStationary && currentHeartRateTrend > 0.2 {
-                // 動作加上心率上升趨勢，更可靠地判定為醒來
-                transitionToState(SleepState.awake)
-                return
-            } else if !isCurrentlyStationary {
-                // 只有動作，累計動作干擾
-                motionDisruptionCount += 1
-                
-                // 需要連續多次動作幹擾才轉換狀態
-                if motionDisruptionCount >= 3 {
-                    transitionToState(SleepState.resting)
-                    motionDisruptionCount = 0
-                }
-                return
-            } else {
-                // 靜止狀態重置干擾計數
-                motionDisruptionCount = 0
-            }
+        case .lightSleep, .deepSleep:
+            // 使用滑動窗口方法評估，簡化此處邏輯
+            break
+        }
+    }
+    
+    /// 使用增強的滑動窗口方法評估深度睡眠確認
+    private func evaluateDeepSleepWithRatioCheck() {
+        // 只在輕度睡眠狀態評估進階確認
+        if sleepState != .lightSleep {
+            return
+        }
+        
+        // 獲取當前配置
+        let requiredDuration = getCurrentRequiredDuration() // 基於年齡組或用戶設定的確認時間
+        let currentAgeGroup = getUserAgeGroup()
+        let restingRatioThreshold = getRestingRatioThreshold(for: currentAgeGroup)
+        
+        // 檢查窗口是否足夠長
+        let windowDuration = getWindowDuration()
+        guard windowDuration >= requiredDuration else {
+            // 數據收集不足，繼續等待
+            return
+        }
+        
+        // 計算指標
+        let hrBelowThresholdRatio = calculateHeartRateBelowThresholdRatio(for: requiredDuration)
+        let restingRatio = calculateRestingRatio(for: requiredDuration)
+        
+        // 綜合判斷 - 需要90%的心率低於閾值且達到年齡組要求的靜止比例
+        let hrConditionMet = hrBelowThresholdRatio >= 0.9 // 90%的時間心率低於閾值
+        let restingConditionMet = restingRatio >= restingRatioThreshold
+        
+        // 記錄判斷結果
+        logger.info("睡眠評估: 心率條件\(hrConditionMet ? "滿足" : "不滿足")(\(hrBelowThresholdRatio*100)%), 靜止條件\(restingConditionMet ? "滿足" : "不滿足")(\(restingRatio*100)%)")
+        
+        // 只有同時滿足心率和靜止比例條件才轉換到深度睡眠
+        if hrConditionMet && restingConditionMet {
+            transitionToState(SleepState.deepSleep)
             
-            // 輕度睡眠→靜止休息：心率回升但仍靜止
-            if !isCurrentHeartRateLow && isCurrentlyStationary {
-                heartRateIncreaseCount += 1
-                
-                // 需要多次心率回升確認才能轉換狀態
-                if heartRateIncreaseCount >= 3 {
-                    transitionToState(SleepState.resting)
-                    heartRateIncreaseCount = 0
-                }
-                return
-            } else {
-                // 心率仍低，重置心率上升計數
-                heartRateIncreaseCount = 0
-            }
-            
-            // 輕度睡眠→深度睡眠：持續低心率和靜止一段時間
-            if isCurrentHeartRateLow && isCurrentlyStationary {
-                currentStateDuration += 1
-                
-                // 獲取需要的持續時間（根據用戶檔案或年齡組）
-                let requiredDuration = getRequiredDurationForDeepSleep()
-                
-                if currentStateDuration >= requiredDuration {
-                    transitionToState(SleepState.deepSleep)
-                    // 記錄睡眠檢測時間
-                    if detectedSleepTime == nil {
-                        detectedSleepTime = Date()
-                        logger.info("檢測到睡眠，時間：\(self.detectedSleepTime!)")
-                    }
-                }
-            } else {
-                // 條件不滿足時緩慢減少計時
-                if currentStateDuration > 0 {
-                    currentStateDuration -= 0.5
-                }
-            }
-            
-        case .deepSleep:
-            // 深度睡眠→清醒：明顯動作和心率趨勢上升
-            if !isCurrentlyStationary && currentHeartRateTrend > 0.2 {
-                // 要求同時有明顯動作和心率趨勢上升才認為是完全醒來
-                transitionToState(SleepState.awake)
-                return
-            }
-            
-            // 深度睡眠→輕度睡眠：心率回升或輕微動作
-            if (!isCurrentHeartRateLow && isCurrentlyStationary) || 
-               (currentHeartRateTrend > 0.1 && !isCurrentlyStationary) {
-                currentStateDuration += 1
-                // 需要連續30秒變化才轉為輕度睡眠
-                if currentStateDuration >= 30 {
-                    transitionToState(SleepState.lightSleep)
-                }
-            } else {
-                // 保持深度睡眠
-                currentStateDuration = 0
+            // 記錄睡眠檢測時間
+            if detectedSleepTime == nil {
+                detectedSleepTime = Date()
+                logger.info("檢測到睡眠，時間：\(self.detectedSleepTime!)")
             }
         }
     }
@@ -406,7 +488,7 @@ public class SleepDetectionCoordinator {
                 transitionToState(isMotionInRestRange ? SleepState.resting : SleepState.awake)
             } else {
                 // 在淺度睡眠中，檢查是否持續足夠長的時間進入深度睡眠
-                let requiredDuration = getRequiredDurationForDeepSleep()
+                let requiredDuration = getCurrentRequiredDuration()
                 
                 if currentStateDuration >= requiredDuration {
                     transitionToState(SleepState.deepSleep)
