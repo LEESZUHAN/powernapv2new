@@ -1244,16 +1244,17 @@ class PowerNapViewModel: ObservableObject {
     func updateHeartRateThreshold() {
         guard let profile = currentUserProfile else { return }
         
-        // 基於當前靜息心率和用戶配置計算心率閾值
-        let baseThreshold = restingHeartRate * profile.hrThresholdPercentage
-        let adjustedThreshold = baseThreshold * (1 + userHRThresholdOffset)
+        // 修正：直接使用設定的百分比計算閾值
+        // 不再使用基礎閾值和用戶調整的間接計算
         
-        // 修正：敏感度調整邏輯
-        // 使用sleepSensitivity直接影響閾值
-        // 敏感度高(接近1)=寬鬆=閾值高（讓更高的心率仍被判定為睡眠）
-        // 敏感度低(接近0)=嚴謹=閾值低（只有較低的心率才被判定為睡眠）
+        // 獲取目標百分比（成人默認0.9，加上用戶調整）
+        let targetPercentage = profile.hrThresholdPercentage + userHRThresholdOffset
+        
+        // 應用敏感度調整
         let sensitivityAdjustment = sleepSensitivity * 0.1 // 0-10% 變化
-        let finalThreshold = adjustedThreshold * (1 + sensitivityAdjustment)
+        
+        // 直接計算最終閾值
+        let finalThreshold = restingHeartRate * targetPercentage * (1 + sensitivityAdjustment)
         
         // 更新UI顯示的閾值
         heartRateThreshold = finalThreshold
@@ -1263,39 +1264,35 @@ class PowerNapViewModel: ObservableObject {
         
         // 計算並記錄實際的閾值百分比(相對於RHR)
         let actualPercentage = (finalThreshold / restingHeartRate) * 100
+        let basePercentage = targetPercentage * 100
         
-        logger.info("更新心率閾值: \(finalThreshold) BPM (基礎閾值: \(baseThreshold), 用戶調整: \(self.userHRThresholdOffset), 敏感度調整: \(sensitivityAdjustment), 實際百分比: \(String(format: "%.1f", actualPercentage))%)")
+        logger.info("更新心率閾值: \(finalThreshold) BPM (目標百分比: \(String(format: "%.1f", basePercentage))%, 敏感度調整: \(sensitivityAdjustment), 實際百分比: \(String(format: "%.1f", actualPercentage))%)")
     }
     
     // 新增：設置用戶心率閾值偏移
     func setUserHeartRateThresholdOffset(_ offset: Double) {
-        // 獲取用戶當前的累計偏移值
-        let _ = userHRThresholdOffset
-        
         // 計算新的累計偏移值
-        let newCumulativeOffset = offset  // 直接使用提供的偏移值，支持大幅調整
+        let newOffset = offset  // 直接使用提供的偏移值
         
-        // 檢查累計後的閾值是否在合理範圍內
+        // 獲取基礎百分比（成人為0.9或90%）
+        let basePercentage = AgeGroup.adult.heartRateThresholdPercentage
+        
+        // 計算目標百分比
+        let targetPercentage = basePercentage + newOffset
+        
+        // 檢查目標百分比是否在合理範圍內
         // 開發階段使用更寬的範圍：70%-110%
-        let _ = self.restingHeartRate * AgeGroup.adult.heartRateThresholdPercentage // 基礎為90%
-        let adjustedThreshold = self.restingHeartRate * (AgeGroup.adult.heartRateThresholdPercentage + newCumulativeOffset)
-        
-        // 開發階段擴大閾值範圍
-        let minThreshold = self.restingHeartRate * 0.70 // 下限：RHR的70%
-        let maxThreshold = self.restingHeartRate * 1.10 // 上限：RHR的110%（開發階段）
-        
-        // 如果調整後的閾值超出範圍，限制偏移值
-        if adjustedThreshold < minThreshold {
-            let limitedOffset = 0.70 / AgeGroup.adult.heartRateThresholdPercentage - 1.0
-            userHRThresholdOffset = limitedOffset
+        if targetPercentage < 0.70 {
+            // 下限：RHR的70%
+            userHRThresholdOffset = 0.70 - basePercentage
             logger.info("閾值調整已達下限(RHR的70%)")
-        } else if adjustedThreshold > maxThreshold {
-            let limitedOffset = 1.10 / AgeGroup.adult.heartRateThresholdPercentage - 1.0
-            userHRThresholdOffset = limitedOffset
+        } else if targetPercentage > 1.10 {
+            // 上限：RHR的110%
+            userHRThresholdOffset = 1.10 - basePercentage
             logger.info("閾值調整已達上限(RHR的110%)")
         } else {
             // 在合理範圍內，接受新的累計偏移值
-            userHRThresholdOffset = newCumulativeOffset
+            userHRThresholdOffset = newOffset
         }
         
         // 四捨五入到最接近的0.01，確保顯示與實際值完全匹配
@@ -1312,18 +1309,15 @@ class PowerNapViewModel: ObservableObject {
         // 更新心率閾值
         updateHeartRateThreshold()
         
-        // 修正：確保顯示的百分比與實際計算一致
-        // 直接使用基礎百分比加上調整值
-        let basePercentage = AgeGroup.adult.heartRateThresholdPercentage
-        let targetPercentage = basePercentage + roundedOffset
-        let displayPercentage = targetPercentage * 100
+        // 顯示百分比（直接從偏移值計算）
+        let displayPercentage = (basePercentage + roundedOffset) * 100
         
-        // 進行敏感度調整後的實際百分比
+        // 考慮敏感度調整後的實際百分比
         let sensitivityAdjustment = sleepSensitivity * 0.1
-        let effectivePercentage = targetPercentage * (1 + sensitivityAdjustment)
+        let effectivePercentage = (basePercentage + roundedOffset) * (1 + sensitivityAdjustment)
         let effectiveDisplayPercentage = effectivePercentage * 100
         
-        logger.info("用戶調整了心率閾值：顯示為RHR的\(String(format: "%.1f", displayPercentage))%，實際為\(String(format: "%.1f", effectiveDisplayPercentage))% (偏移值：\(roundedOffset))")
+        logger.info("用戶調整了心率閾值：設定為RHR的\(String(format: "%.1f", displayPercentage))%，含敏感度調整後為\(String(format: "%.1f", effectiveDisplayPercentage))% (偏移值：\(roundedOffset))")
     }
     
     // 新增：設置睡眠敏感度
