@@ -128,9 +128,9 @@ struct ContentView: View {
                 feedbackPromptView
             }
             
-            // 新增：鬧鈴關閉UI覆蓋層
-            if viewModel.showAlarmDismissUI {
-                alarmDismissView
+            // 鬧鈴停止UI覆蓋層
+            if viewModel.showingAlarmStopUI {
+                alarmStopView
             }
         }
     }
@@ -388,22 +388,17 @@ struct ContentView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 5)
                     
-                    // 新增：測試鬧鈴喚醒流程
+                    // 添加模擬計時結束按鈕
                     Button(action: {
-                        // 觸發整個喚醒流程
-                        viewModel.isAlarmSounding = true
-                        viewModel.showAlarmDismissUI = true
-                        
-                        // 啟動鬧鈴通知和震動
-                        NotificationManager.shared.sendWakeupNotification()
+                        viewModel.simulateTimerEnd()
                     }) {
-                        Text("測試鬧鈴喚醒流程")
+                        Text("測試鬧鈴流程")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(Color.red)
-                            .cornerRadius(20)
+                            .cornerRadius(25)
                     }
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal, 20)
@@ -1018,47 +1013,51 @@ struct ContentView: View {
         .padding(.vertical, 20)
     }
     
-    // 新增：鬧鈴關閉UI覆蓋層
-    private var alarmDismissView: some View {
+    // 鬧鈴停止UI覆蓋層
+    private var alarmStopView: some View {
         ZStack {
             // 半透明背景
             Color.black.opacity(0.85)
                 .edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 20) {
-                // 鬧鈴圖標
                 Image(systemName: "alarm.fill")
-                    .font(.system(size: 48))
+                    .font(.system(size: 60))
                     .foregroundColor(.red)
-                    .padding(.bottom, 10)
+                    .padding(.top, 20)
                 
-                Text("小睡結束")
-                    .font(.system(size: 24, weight: .bold))
+                Text("小睡結束！")
+                    .font(.title3)
+                    .fontWeight(.bold)
                     .foregroundColor(.white)
                 
-                Text("是時候起來了！")
-                    .font(.system(size: 18))
-                    .foregroundColor(.gray)
+                Text("現在是時候起來了")
+                    .font(.body)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                    .padding(.bottom, 10)
                 
-                // 單個大型按鈕，簡單明了
                 Button(action: {
-                    viewModel.dismissAlarm()
+                    // 停止鬧鈴
+                    viewModel.stopAlarm()
                 }) {
-                    Text("關閉鬧鈴")
-                        .font(.system(size: 20, weight: .bold))
+                    Text("停止鬧鈴")
+                        .font(.system(size: 18, weight: .medium))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 15)
-                        .background(Color.blue)
-                        .cornerRadius(12)
+                        .padding(.vertical, 16)
+                        .background(Color.red)
+                        .cornerRadius(14)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .padding(.top, 20)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
-            .padding(25)
-            .background(Color.black.opacity(0.8))
-            .cornerRadius(20)
-            .padding(.horizontal, 15)
+            .padding()
+            .background(Color.black)
+            .cornerRadius(15)
+            .shadow(radius: 10)
         }
     }
 }

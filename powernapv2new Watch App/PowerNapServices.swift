@@ -668,153 +668,179 @@ class MotionManager {
 }
 
 // MARK: - NotificationManager
-class NotificationManager {
+class NotificationManager: NSObject {
     
     private let logger = Logger(subsystem: "com.yourdomain.powernapv2new", category: "NotificationManager")
     
-    // 新增：跟踪喚醒狀態
-    @Published var isAlarmActive = false
-    private var alarmRepeater: Timer?
-    private var vibrationTimer: Timer?
-    private var alarmCount = 0
-    // 移除最大重複次數限制，讓鬧鈴持續響直到用戶明確關閉
-    // private let maxAlarmRepeat = 10 // 最多重複10次
+    // 鬧鈴相關屬性
+    private var alarmTimer: Timer?
+    private let alarmDuration: TimeInterval = 180 // 3分鐘持續響鈴
+    private var alarmStartTime: Date?
+    private var notificationCount = 0
+    
+    // 發布鬧鈴狀態
+    @Published var isAlarmActive: Bool = false
+    var alarmStatePublisher: Published<Bool>.Publisher { $isAlarmActive }
     
     static let shared = NotificationManager()
     
-    private init() {}
+    private override init() {
+        super.init()
+        
+        // 設置通知代理
+        UNUserNotificationCenter.current().delegate = self
+    }
     
-    // 發送喚醒通知 - 改進版
+    // 發送喚醒通知 - 持續模式
     func sendWakeupNotification() {
         #if os(watchOS)
-        // 設置為活動狀態
-        isAlarmActive = true
-        alarmCount = 0
+        // 標記鬧鈴開始
+        DispatchQueue.main.async {
+            self.isAlarmActive = true
+        }
+        alarmStartTime = Date()
+        notificationCount = 0
         
-        // 首先播放系統聲音（增強提示效果）
+        // 播放系統聲音和震動
         WKInterfaceDevice.current().play(.notification)
         
-        // 創建通知內容
+        // 發送首次通知
+        sendNotificationWithDelay(0.1, identifier: "initial")
+        
+        // 設置鬧鈴持續時間計時器
+        alarmTimer = Timer.scheduledTimer(withTimeInterval: alarmDuration, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.stopContinuousAlarm()
+            }
+        }
+        
+        // 安排多個通知，作為鬧鈴序列
+        scheduleNotificationSequence()
+        #endif
+    }
+    
+    // 發送帶延遲的通知
+    private func sendNotificationWithDelay(_ delay: TimeInterval, identifier: String) {
         let content = UNMutableNotificationContent()
         content.title = "小睡結束"
         content.body = "是時候起來了！"
-        // 使用預設聲音（確保有聲音）
         content.sound = UNNotificationSound.defaultCritical
         content.categoryIdentifier = "WAKEUP"
-        
-        // 設置通知為高優先級
-        content.interruptionLevel = .critical
+        content.interruptionLevel = .timeSensitive
         content.relevanceScore = 1.0
         
-        // 立即觸發通知（不延遲）
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+        // 設置延遲
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
         
-        // 創建請求
+        // 創建請求，使用遞增計數確保標識符唯一
+        notificationCount += 1
         let request = UNNotificationRequest(
-            identifier: "wakeupNotification-\(Date().timeIntervalSince1970)",
+            identifier: "wakeup-\(identifier)-\(notificationCount)-\(Date().timeIntervalSince1970)",
             content: content,
             trigger: trigger
         )
         
         // 添加請求到通知中心
         UNUserNotificationCenter.current().add(request) { [weak self] error in
-            guard let self = self else { return }
-            
             if let error = error {
-                self.logger.error("無法發送喚醒通知: \(error.localizedDescription)")
-            } else {
-                self.logger.info("成功安排喚醒通知")
-                
-                // 開始連續震動和重複通知
-                self.startContinuousAlarms()
+                self?.logger.error("通知發送失敗: \(error.localizedDescription)")
             }
         }
-        #endif
     }
     
-    // 新增：開始連續鬧鈴和震動
-    private func startContinuousAlarms() {
-        // 停止任何當前運行的計時器
-        stopAlarmTimers()
+    // 安排通知序列
+    private func scheduleNotificationSequence() {
+        // 設計一個節奏感強的通知序列，每個節拍包含2-3個通知
         
+        // 第一節拍（15秒）
+        sendNotificationWithDelay(4, identifier: "beat1-1")
+        sendNotificationWithDelay(7, identifier: "beat1-2")
+        sendNotificationWithDelay(10, identifier: "beat1-3")
+        sendNotificationWithDelay(15, identifier: "beat1-4")
+        
+        // 第二節拍（30秒）
+        sendNotificationWithDelay(30, identifier: "beat2-1")
+        sendNotificationWithDelay(32, identifier: "beat2-2")
+        sendNotificationWithDelay(35, identifier: "beat2-3")
+        
+        // 第三節拍（45秒）
+        sendNotificationWithDelay(45, identifier: "beat3-1")
+        sendNotificationWithDelay(47, identifier: "beat3-2")
+        sendNotificationWithDelay(50, identifier: "beat3-3")
+        
+        // 一分鐘提醒（更強烈）
+        sendNotificationWithDelay(60, identifier: "minute1-1")
+        sendNotificationWithDelay(61, identifier: "minute1-2")
+        sendNotificationWithDelay(63, identifier: "minute1-3")
+        
+        // 90秒提醒
+        sendNotificationWithDelay(90, identifier: "second90-1")
+        sendNotificationWithDelay(92, identifier: "second90-2")
+        sendNotificationWithDelay(95, identifier: "second90-3")
+        
+        // 二分鐘提醒（更強烈）
+        sendNotificationWithDelay(120, identifier: "minute2-1")
+        sendNotificationWithDelay(121, identifier: "minute2-2")
+        sendNotificationWithDelay(123, identifier: "minute2-3")
+        
+        // 150秒提醒
+        sendNotificationWithDelay(150, identifier: "second150-1")
+        sendNotificationWithDelay(152, identifier: "second150-2")
+        sendNotificationWithDelay(155, identifier: "second150-3")
+        
+        // 三分鐘提醒（最後一輪）
+        sendNotificationWithDelay(175, identifier: "final-1")
+        sendNotificationWithDelay(177, identifier: "final-2")
+        sendNotificationWithDelay(179, identifier: "final-3")
+    }
+    
+    // 停止持續鬧鈴
+    func stopContinuousAlarm() {
+        alarmTimer?.invalidate()
+        alarmTimer = nil
+        
+        // 取消所有待處理的通知
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        
+        // 標記鬧鈴已停止 - 確保在主線程上執行
+        DispatchQueue.main.async {
+            self.isAlarmActive = false
+        }
+        
+        logger.info("鬧鈴已停止")
+    }
+    
+    // 檢查鬧鈴是否已響過一段時間
+    func getAlarmElapsedTime() -> TimeInterval? {
+        guard let startTime = alarmStartTime, isAlarmActive else {
+            return nil
+        }
+        return Date().timeIntervalSince(startTime)
+    }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+extension NotificationManager: UNUserNotificationCenterDelegate {
+    // 在前台時接收通知
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        // 允許在前台顯示通知，包括聲音和提醒
+        completionHandler([.banner, .sound, .list])
+        
+        // 在前台模式下，增強通知效果
         #if os(watchOS)
-        // 立即播放第一次震動
-        WKInterfaceDevice.current().play(.success)
-        
-        // 設置震動計時器，每2秒一次
-        vibrationTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            guard let self = self, self.isAlarmActive else { return }
-            
-            // 播放震動（循環使用不同模式）
-            if self.alarmCount % 3 == 0 {
-                WKInterfaceDevice.current().play(.success)
-            } else if self.alarmCount % 3 == 1 {
+        if isAlarmActive {
+            // 播放震動效果
+            DispatchQueue.main.async {
                 WKInterfaceDevice.current().play(.notification)
-            } else {
-                WKInterfaceDevice.current().play(.start)
-            }
-            
-            self.alarmCount += 1
-            
-            // 移除自動停止的代碼，鬧鈴將持續響直到用戶手動關閉
-        }
-        
-        // 設置重複通知計時器，每5秒重複一次通知
-        alarmRepeater = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            guard let self = self, self.isAlarmActive else { return }
-            
-            // 創建並觸發新的通知
-            let content = UNMutableNotificationContent()
-            content.title = "小睡時間結束"
-            // 修改通知訊息，移除次數顯示，強調需要手動關閉
-            content.body = "請立即起床並關閉鬧鈴！"
-            content.sound = UNNotificationSound.defaultCritical
-            
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
-            
-            let request = UNNotificationRequest(
-                identifier: "wakeupNotification-repeat-\(Date().timeIntervalSince1970)",
-                content: content,
-                trigger: trigger
-            )
-            
-            UNUserNotificationCenter.current().add(request)
-        }
-        #endif
-    }
-    
-    // 新增：停止全部鬧鈴
-    func stopAlarms() {
-        isAlarmActive = false
-        stopAlarmTimers()
-        logger.info("已停止鬧鈴")
-    }
-    
-    // 停止鬧鈴計時器
-    private func stopAlarmTimers() {
-        alarmRepeater?.invalidate()
-        alarmRepeater = nil
-        
-        vibrationTimer?.invalidate()
-        vibrationTimer = nil
-    }
-    
-    // 連續震動3次，模擬3-2-1倒數 (保留原方法以兼容性)
-    private func playSeriesOfVibrations() {
-        #if os(watchOS)
-        // 第一次震動
-        WKInterfaceDevice.current().play(.success)
-        
-        // 延遲1秒後第二次震動
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    WKInterfaceDevice.current().play(.success)
-                
-            // 再延遲1秒播放第三次震動
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                    WKInterfaceDevice.current().play(.start)
             }
         }
         #endif
+    }
+    
+    // 處理用戶與通知的交互
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // 用戶點擊了通知，可以添加特定行為
+        completionHandler()
     }
 }
 
@@ -1022,9 +1048,9 @@ class PowerNapViewModel: ObservableObject {
     @Published var lastFeedbackDate: Date? // 最近一次提供反饋的日期
     @Published var lastFeedbackType: FeedbackType = .unknown // 最近一次反饋的類型
     
-    // 新增：鬧鈴狀態跟踪
-    @Published var isAlarmSounding: Bool = false // 鬧鈴是否正在響
-    @Published var showAlarmDismissUI: Bool = false // 是否顯示關閉鬧鈴UI
+    // MARK: - 喚醒UI控制相關
+    @Published var showingAlarmStopUI: Bool = false // 控制是否顯示鬧鈴停止界面
+    @Published var alarmStopped: Bool = false // 鬧鈴是否已停止
     
     init() {
         // 確保napDuration和napMinutes保持同步
@@ -1540,52 +1566,10 @@ class PowerNapViewModel: ObservableObject {
     private func wakeUp() {
         if napPhase == .waking { return }  // 避免重複喚醒
         
-        logger.info("開始喚醒流程 - 鬧鈴將持續響直到用戶手動關閉")
-        napPhase = .waking
+        logger.info("喚醒流程觸發")
         
-        // 設置鬧鈴狀態
-        isAlarmSounding = true
-        showAlarmDismissUI = true
-        
-        // 發送喚醒通知
-        notificationManager.sendWakeupNotification()
-        
-        // 訂閱鬧鈴狀態
-        NotificationCenter.default.publisher(for: NSNotification.Name("AlarmDismissed"))
-            .sink { [weak self] _ in
-                self?.handleAlarmDismissed()
-            }
-            .store(in: &cancellables)
-    }
-    
-    // 新增：處理鬧鈴被關閉
-    func handleAlarmDismissed() {
-        isAlarmSounding = false
-        showAlarmDismissUI = false
-        
-        // 停止小睡
-        stopNap()
-        
-        // 顯示反饋提示
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.showingFeedbackPrompt = true
-            
-            // 10秒後自動隱藏反饋提示
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
-                if self.showingFeedbackPrompt {
-                    self.showingFeedbackPrompt = false
-                }
-            }
-        }
-    }
-    
-    // 新增：使用者手動關閉鬧鈴
-    func dismissAlarm() {
-        // 停止鬧鈴
-        notificationManager.stopAlarms()
-        
-        // 發送通知
-        NotificationCenter.default.post(name: NSNotification.Name("AlarmDismissed"), object: nil)
+        // 使用新的喚醒流程
+        startWakeUpSequence()
     }
     
     // 取消計時器
@@ -1817,5 +1801,74 @@ class PowerNapViewModel: ObservableObject {
             self.logger.info("等待入睡超時(40分鐘)，停止小睡")
             self.stopNap()
         }
+    }
+    
+    // 鬧鈴停止後的處理
+    private func handleAlarmStopped() {
+        // 確保只執行一次
+        guard !alarmStopped else { return }
+        alarmStopped = true
+        
+        // 顯示反饋提示（如果適用）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // 顯示反饋提示，讓用戶評價睡眠檢測
+            self.showingFeedbackPrompt = true
+            
+            // 10秒後自動隱藏反饋提示
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                if self.showingFeedbackPrompt {
+                    self.showingFeedbackPrompt = false
+                }
+            }
+        }
+        
+        // 完全重置狀態，返回準備狀態
+        isNapping = false
+        sleepPhase = .awake
+        napPhase = .awaitingSleep
+        logger.info("喚醒流程完成，返回準備狀態")
+    }
+    
+    // 啟動喚醒流程
+    func startWakeUpSequence() {
+        // 更新狀態
+        napPhase = .waking
+        showingAlarmStopUI = true
+        alarmStopped = false
+        
+        // 發送喚醒通知（持續模式）
+        notificationManager.sendWakeupNotification()
+        
+        // 訂閱鬧鈴狀態變化
+        notificationManager.alarmStatePublisher
+            .sink { [weak self] isActive in
+                if !isActive {
+                    // 鬧鈴已停止（可能是超時或用戶手動停止）
+                    self?.handleAlarmStopped()
+                }
+            }
+            .store(in: &cancellables)
+        
+        logger.info("喚醒流程已啟動，顯示關閉鬧鈴界面")
+    }
+    
+    // 停止鬧鈴
+    func stopAlarm() {
+        notificationManager.stopContinuousAlarm()
+        alarmStopped = true
+        
+        // 隱藏鬧鈴停止UI
+        showingAlarmStopUI = false
+        
+        logger.info("用戶手動停止鬧鈴")
+        
+        // 後續流程處理
+        handleAlarmStopped()
+    }
+    
+    // 模擬計時結束
+    func simulateTimerEnd() {
+        logger.info("模擬計時結束")
+        startWakeUpSequence()
     }
 } 
