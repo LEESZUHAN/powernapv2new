@@ -1442,6 +1442,10 @@ class PowerNapViewModel: ObservableObject {
         // 更新用戶配置文件
         updateUserProfileAfterSession()
         
+        // 新增：更新收斂算法的會話計數
+        let userId = getUserId()
+        userProfileManager.incrementSessionsCount(forUserId: userId)
+        
         // 停止計時器
         invalidateTimer()
         statsUpdateTimer?.invalidate()
@@ -1703,47 +1707,76 @@ class PowerNapViewModel: ObservableObject {
         // 記錄用戶反饋
         lastFeedbackDate = Date()
         
-        // 如果用戶表示檢測不準確，提示使用調整功能
-        if !wasAccurate {
+        // 獲取用戶ID
+        let userId = getUserId()
+        
+        if wasAccurate {
+            // 用戶表示檢測準確
+            lastFeedbackType = .accurate
+            
+            if var profile = userProfileManager.getUserProfile(forUserId: userId) {
+                profile.accurateDetectionCount += 1
+                userProfileManager.saveUserProfile(profile)
+                logger.info("用戶反饋：檢測準確，累計次數：\(profile.accurateDetectionCount)")
+                
+                // 應用收斂算法 - 準確反饋減少確認時間(除非是測試情境)
+                if !isSimulatingFeedback() {
+                    userProfileManager.adjustConfirmationTime(
+                        forUserId: userId, 
+                        direction: -1,  // 減少確認時間
+                        fromFeedback: true
+                    )
+                }
+            }
+        } else {
+            // 用戶表示檢測不準確
+            
             // 根據當前睡眠狀態確定是哪種不準確類型
             if sleepPhase == .light || sleepPhase == .deep {
-                // 如果系統認為用戶在睡眠狀態，但用戶反饋不準確，則是誤判（過於寬鬆）
+                // 誤報：系統認為用戶在睡眠狀態，但實際未入睡(過於寬鬆)
                 lastFeedbackType = .falsePositive
                 logger.info("用戶反饋：系統誤判為睡眠（過於寬鬆）")
+                
+                // 應用收斂算法 - 增加確認時間(除非是測試情境)
+                if !isSimulatingFeedback() {
+                    userProfileManager.adjustConfirmationTime(
+                        forUserId: userId, 
+                        direction: 1,  // 增加確認時間
+                        fromFeedback: true
+                    )
+                }
             } else {
-                // 如果系統認為用戶未睡眠，但用戶反饋不準確，則是漏檢（過於嚴謹）
+                // 漏報：系統認為用戶未睡眠，但實際已入睡(過於嚴謹)
                 lastFeedbackType = .falseNegative
                 logger.info("用戶反饋：系統未檢測到睡眠（過於嚴謹）")
+                
+                // 應用收斂算法 - 減少確認時間(除非是測試情境)
+                if !isSimulatingFeedback() {
+                    userProfileManager.adjustConfirmationTime(
+                        forUserId: userId, 
+                        direction: -1,  // 減少確認時間
+                        fromFeedback: true
+                    )
+                }
             }
             
             // 將此反饋保存到用戶配置文件
-            let userId = getUserId()
             if var profile = userProfileManager.getUserProfile(forUserId: userId) {
                 profile.inaccurateDetectionCount += 1
                 userProfileManager.saveUserProfile(profile)
                 logger.info("用戶反饋：檢測不準確，累計次數：\(profile.inaccurateDetectionCount)")
             }
-            
-            // 此處不自動調整，只保存反饋數據
-            // 如果需要自動調整，可以添加相關代碼
-            
-            // 注意：不要關閉反饋提示，讓UI繼續展示建議頁面
-        } else {
-            // 如果用戶表示檢測準確，也記錄到配置文件
-            lastFeedbackType = .accurate
-            
-            let userId = getUserId()
-            if var profile = userProfileManager.getUserProfile(forUserId: userId) {
-                profile.accurateDetectionCount += 1
-                userProfileManager.saveUserProfile(profile)
-                logger.info("用戶反饋：檢測準確，累計次數：\(profile.accurateDetectionCount)")
-            }
-            
-            // 準確反饋會在UI層自動關閉反饋提示
         }
         
         // 不在這裡關閉反饋提示，由UI層控制關閉時機
-        // showingFeedbackPrompt = false
+    }
+    
+    // 判斷是否正在模擬反饋(測試模式)
+    private func isSimulatingFeedback() -> Bool {
+        // 檢查是否是通過測試按鈕模擬的反饋
+        return lastFeedbackType == .accurate && !isNapping ||
+               lastFeedbackType == .falseNegative && !isNapping ||
+               lastFeedbackType == .falsePositive && !isNapping
     }
     
     // MARK: - 測試反饋功能

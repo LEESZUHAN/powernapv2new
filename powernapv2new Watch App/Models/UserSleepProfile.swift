@@ -34,6 +34,12 @@ public struct UserSleepProfile: Codable {
     public var baseRestingRatioThreshold: Double // 基於年齡組的基礎靜止比例
     public var restingRatioAdjustment: Double = 0.0 // 用戶調整值，範圍-0.1到0.1之間
     
+    // 新增: 睡眠確認時間收斂算法相關參數
+    public var consecutiveDurationAdjustments: Int = 0 // 連續同方向的時間調整次數
+    public var lastDurationAdjustmentDirection: Int = 0 // 最後一次時間調整方向 (-1:減少, 0:無, 1:增加)
+    public var sessionsSinceLastDurationAdjustment: Int = 0 // 自上次時間調整後的會話數
+    public var durationAdjustmentStopped: Bool = false // 時間調整是否已經停止
+    
     // 獲取有效的靜止比例閾值
     public var effectiveRestingRatioThreshold: Double {
         // 應用用戶調整，但確保結果在0.5到0.95之間
@@ -77,7 +83,11 @@ public struct UserSleepProfile: Codable {
             accurateDetectionCount: 0,
             inaccurateDetectionCount: 0,
             baseRestingRatioThreshold: baseRestingRatio,
-            restingRatioAdjustment: 0.0
+            restingRatioAdjustment: 0.0,
+            consecutiveDurationAdjustments: 0,
+            lastDurationAdjustmentDirection: 0,
+            sessionsSinceLastDurationAdjustment: 0,
+            durationAdjustmentStopped: false
         )
     }
     
@@ -562,6 +572,89 @@ public class UserSleepProfileManager {
                 // 保存更新後的檔案
                 saveUserProfile(userProfile)
             }
+        }
+    }
+    
+    // MARK: - 睡眠確認時間收斂算法
+    
+    /// 計算基於連續調整次數的調整幅度(秒)
+    private func calculateAdjustmentAmount(for consecutiveCount: Int) -> TimeInterval {
+        switch consecutiveCount {
+        case 0: return 30.0
+        case 1: return 15.0
+        case 2: return 7.0
+        case 3: return 3.0
+        case 4: return 1.5
+        case 5: return 0.7
+        case 6: return 0.3
+        case 7: return 0.1
+        default: return 0.0  // 第8次以後停止調整
+        }
+    }
+    
+    /// 獲取進行下一次調整所需的會話數
+    private func getRequiredSessionsCount(forAdjustment adjustmentCount: Int) -> Int {
+        switch adjustmentCount {
+        case 0: return 2  // 首次調整需要2次會話
+        case 1: return 3  // 第二次調整需要3次會話
+        default: return 4 // 第三次及以後需要4次會話
+        }
+    }
+    
+    /// 應用收斂算法調整睡眠確認時間
+    public func adjustConfirmationTime(
+        forUserId userId: String, 
+        direction: Int,  // -1=減少, 1=增加
+        fromFeedback: Bool = false
+    ) {
+        // 獲取配置文件
+        guard var profile = getUserProfile(forUserId: userId) else { return }
+        
+        // 如果已停止調整且不是來自用戶反饋，則不調整
+        if profile.durationAdjustmentStopped && !fromFeedback { return }
+        
+        // 檢查是否達到所需會話數
+        let requiredSessions = getRequiredSessionsCount(forAdjustment: profile.consecutiveDurationAdjustments)
+        if profile.sessionsSinceLastDurationAdjustment < requiredSessions && !fromFeedback { return }
+        
+        // 檢查方向是否改變
+        if direction != profile.lastDurationAdjustmentDirection && profile.lastDurationAdjustmentDirection != 0 {
+            // 方向改變，重置連續計數
+            profile.consecutiveDurationAdjustments = 0
+        }
+        
+        // 計算調整幅度
+        let adjustmentAmount = calculateAdjustmentAmount(for: profile.consecutiveDurationAdjustments)
+        
+        // 應用調整
+        let currentDuration = TimeInterval(profile.minDurationSeconds)
+        let newDuration = currentDuration + (Double(direction) * adjustmentAmount)
+        
+        // 確保在合理範圍內(1-6分鐘)
+        let finalDuration = min(max(newDuration, 60), 360)
+        profile.minDurationSeconds = Int(finalDuration)
+        
+        // 更新追蹤變數
+        profile.lastDurationAdjustmentDirection = direction
+        profile.consecutiveDurationAdjustments += 1
+        profile.sessionsSinceLastDurationAdjustment = 0
+        
+        // 檢查是否應該停止調整
+        if profile.consecutiveDurationAdjustments >= 8 {
+            profile.durationAdjustmentStopped = true
+        }
+        
+        // 保存更新後的配置
+        saveUserProfile(profile)
+        
+        print("收斂調整：睡眠確認時間調整為\(finalDuration)秒 (方向:\(direction), 連續次數:\(profile.consecutiveDurationAdjustments))")
+    }
+    
+    /// 更新睡眠會話後的會話計數
+    public func incrementSessionsCount(forUserId userId: String) {
+        if var profile = getUserProfile(forUserId: userId) {
+            profile.sessionsSinceLastDurationAdjustment += 1
+            saveUserProfile(profile)
         }
     }
 } 
