@@ -1719,14 +1719,7 @@ class PowerNapViewModel: ObservableObject {
                 userProfileManager.saveUserProfile(profile)
                 logger.info("用戶反饋：檢測準確，累計次數：\(profile.accurateDetectionCount)")
                 
-                // 應用收斂算法 - 準確反饋減少確認時間(除非是測試情境)
-                if !isSimulatingFeedback() {
-                    userProfileManager.adjustConfirmationTime(
-                        forUserId: userId, 
-                        direction: -1,  // 減少確認時間
-                        fromFeedback: true
-                    )
-                }
+                // 準確反饋不再調整確認時間，因為系統已經表現良好
             }
         } else {
             // 用戶表示檢測不準確
@@ -1912,5 +1905,90 @@ class PowerNapViewModel: ObservableObject {
     func simulateTimerEnd() {
         logger.info("模擬計時結束")
         startWakeUpSequence()
+    }
+    
+    // MARK: - 更新睡眠確認時間
+    func updateSleepConfirmationTime(_ seconds: Int) {
+        logger.info("更新睡眠確認時間: \(seconds) 秒")
+        
+        let userId = getUserId()
+        
+        if var profile = userProfileManager.getUserProfile(forUserId: userId) {
+            // 更新確認時間
+            profile.minDurationSeconds = seconds
+            
+            // 手動調整時，暫停自動收斂
+            profile.durationAdjustmentStopped = true
+            
+            // 保存到用戶配置管理器
+            userProfileManager.saveUserProfile(profile)
+            
+            // 更新當前用戶配置引用
+            currentUserProfile = profile
+            
+            // 若當前正在進行監測，則需要更新閾值
+            if isNapping {
+                updateHeartRateThreshold()
+            }
+        }
+    }
+    
+    // MARK: - 重置睡眠確認時間
+    func resetSleepConfirmationTime() {
+        logger.info("重置睡眠確認時間")
+        
+        let userId = getUserId()
+        
+        if var profile = userProfileManager.getUserProfile(forUserId: userId) {
+            // 獲取該年齡組的默認值
+            let defaultProfile = UserSleepProfile.createDefault(forUserId: userId, ageGroup: profile.ageGroup)
+            
+            // 重置確認時間到預設值
+            profile.minDurationSeconds = defaultProfile.minDurationSeconds
+            
+            // 重新啟用自動收斂
+            profile.durationAdjustmentStopped = false
+            profile.consecutiveDurationAdjustments = 0
+            profile.lastDurationAdjustmentDirection = 0
+            profile.sessionsSinceLastDurationAdjustment = 0
+            
+            // 保存到用戶配置管理器
+            userProfileManager.saveUserProfile(profile)
+            
+            // 更新當前用戶配置引用
+            currentUserProfile = profile
+            
+            // 若當前正在進行監測，則需要更新閾值
+            if isNapping {
+                updateHeartRateThreshold()
+            }
+            
+            logger.info("睡眠確認時間已重置為 \(profile.minDurationSeconds) 秒，並重新啟用智慧學習")
+        }
+    }
+    
+    // MARK: - 繼續智慧學習
+    func continueSleepLearning() {
+        logger.info("繼續智慧學習")
+        
+        let userId = getUserId()
+        
+        if var profile = userProfileManager.getUserProfile(forUserId: userId) {
+            // 重新啟用自動收斂，但保留當前的確認時間值
+            profile.durationAdjustmentStopped = false
+            
+            // 重置收斂狀態，但保留當前時間
+            profile.consecutiveDurationAdjustments = 0
+            profile.lastDurationAdjustmentDirection = 0
+            profile.sessionsSinceLastDurationAdjustment = 0
+            
+            // 保存到用戶配置管理器
+            userProfileManager.saveUserProfile(profile)
+            
+            // 更新當前用戶配置引用
+            currentUserProfile = profile
+            
+            logger.info("基於當前設定值 \(profile.minDurationSeconds) 秒繼續智慧學習")
+        }
     }
 } 

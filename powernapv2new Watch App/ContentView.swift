@@ -760,26 +760,122 @@ struct ContentView: View {
     
     // 新增：設置頁面
     private var settingsView: some View {
-        VStack {
-            Text("睡眠設置")
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .padding(.top, 10)
-            
+        NavigationView {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 25) {
-                    // 使用拆分後的子視圖組件
-                    ThresholdAdjustmentView(viewModel: viewModel)
-                    SensitivitySettingView(viewModel: viewModel, sleepSensitivity: $sleepSensitivity)
-                    AgeGroupSettingView(viewModel: viewModel, selectedAgeGroup: $selectedAgeGroup)
-                    HeartRateInfoView(viewModel: viewModel)
-                    ResetSettingsButton(viewModel: viewModel, thresholdOffset: $thresholdOffset, sleepSensitivity: $sleepSensitivity)
+                VStack(alignment: .leading, spacing: 0) {
+                    // 標題改為左上角小標題風格
+                    Text("設定")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                        .padding(.bottom, 8)
+                    
+                    // 統一的列表項風格
+                    VStack(spacing: 8) {
+                        // 睡眠確認時間設定
+                        NavigationLink(destination: SleepConfirmationTimeSettingView(viewModel: viewModel)) {
+                            settingRow(
+                                icon: "clock",
+                                title: "睡眠確認時間",
+                                iconColor: .blue
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 心率閾值調整 - 導航到新的次頁
+                        NavigationLink(destination: HeartRateThresholdSettingView(viewModel: viewModel)) {
+                            settingRow(
+                                icon: "heart.text.square",
+                                title: "心率閾值",
+                                iconColor: .red
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 睡眠檢測敏感度 - 導航到新的次頁
+                        NavigationLink(destination: SensitivityDetailSettingView(viewModel: viewModel, sleepSensitivity: $sleepSensitivity)) {
+                            settingRow(
+                                icon: "gauge",
+                                title: "檢測敏感度",
+                                iconColor: .orange
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 年齡組設置 - 導航到新的次頁
+                        NavigationLink(destination: AgeGroupDetailSettingView(viewModel: viewModel, selectedAgeGroup: $selectedAgeGroup)) {
+                            settingRow(
+                                icon: "person.3",
+                                title: "年齡組設置",
+                                iconColor: .green
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal)
+                    
+                    // 心率信息視圖
+                    VStack(spacing: 0) {
+                        Text("心率信息")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal)
+                            .padding(.top, 24)
+                            .padding(.bottom, 5)
+                        
+                        HeartRateInfoView(viewModel: viewModel)
+                    }
+                    
+                    // 重設按鈕
+                    Button(action: {
+                        // 重置設置
+                        thresholdOffset = 0.0
+                        sleepSensitivity = 0.5
+                        viewModel.setUserHeartRateThresholdOffset(0.0)
+                        viewModel.setSleepSensitivity(0.5)
+                    }) {
+                        Text("重設所有設置參數")
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal)
+                    .padding(.top, 20)
                 }
                 .padding(.bottom, 20)
             }
+            .navigationBarHidden(true)
+            .background(Color.black)
         }
-        .navigationBarHidden(true)
+    }
+    
+    // 設置行項目通用視圖 - 簡化設計
+    private func settingRow(icon: String, title: String, iconColor: Color) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(iconColor)
+                .font(.system(size: 20))
+                .frame(width: 32, height: 32)
+            
+            Text(title)
+                .foregroundColor(.white)
+                .font(.system(size: 16))
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 10)
+        .background(Color(white: 0.18))
+        .cornerRadius(10)
     }
     
     // 格式化日誌文件名
@@ -1070,136 +1166,142 @@ struct TabViewHeightPreference: PreferenceKey {
     }
 }
 
-/// 心率閾值調整視圖
-struct ThresholdAdjustmentView: View {
+/// 心率閾值設置詳細頁面
+struct HeartRateThresholdSettingView: View {
+    @Environment(\.presentationMode) private var presentationMode
     @ObservedObject var viewModel: PowerNapViewModel
     
+    // 計算當前基礎閾值百分比
+    private var basePercentage: Double {
+        if let profile = viewModel.currentUserProfile {
+            return profile.hrThresholdPercentage
+        } else if let ageGroup = viewModel.userSelectedAgeGroup {
+            return ageGroup.heartRateThresholdPercentage
+        } else {
+            return 0.9 // 默認值，如果無法獲取
+        }
+    }
+    
+    // 當前閾值顯示
+    private var currentThresholdText: String {
+        return "RHR的\(Int((basePercentage + viewModel.userHRThresholdOffset) * 100))%"
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("心率閾值調整")
-                .font(.headline)
-                .foregroundColor(.white)
-            
-            Text("調整睡眠檢測的閾值標準")
-                .font(.caption)
-                .foregroundColor(.gray)
-            
-            // 顯示當前設置
-            HStack {
-                Text("當前閾值:")
-                    .foregroundColor(.gray)
-                Spacer()
-                Text("RHR的\(Int((0.9 + viewModel.userHRThresholdOffset) * 100))%")
-                    .foregroundColor(.white)
-                    .font(.system(size: 16, weight: .medium))
-            }
-            .padding(.top, 5)
-            
-            // 確認機制
-            if viewModel.showingThresholdConfirmation {
-                Button(action: {
-                    // 確認閾值調整
-                    let newValue = viewModel.pendingThresholdOffset ?? (viewModel.userHRThresholdOffset + 0.05)
-                    viewModel.setUserHeartRateThresholdOffset(newValue)
-                    viewModel.showingThresholdConfirmation = false
-                    viewModel.pendingThresholdOffset = nil
-                }) {
-                    Text("確認調整閾值")
-                        .font(.system(size: 16, weight: .medium))
+        ScrollView {
+            VStack(spacing: 20) {
+                // 當前閾值顯示
+                VStack(spacing: 10) {
+                    Text("當前心率閾值")
+                        .font(.headline)
                         .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.green)
-                        .cornerRadius(8)
+                    
+                    Text(currentThresholdText)
+                        .font(.system(size: 32, weight: .medium, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 5)
+                    
+                    Text("當心率低於此閾值且保持穩定，系統會判定您已進入睡眠狀態")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.top, 5)
+                .padding()
                 
-                Button(action: {
-                    // 取消確認
-                    viewModel.showingThresholdConfirmation = false
-                    viewModel.pendingThresholdOffset = nil
-                }) {
-                    Text("取消")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.gray.opacity(0.5))
-                        .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.top, 5)
-            } else {
-                // 雙按鈕佈局
-                HStack(spacing: 10) {
+                // 調整按鈕
+                VStack(spacing: 12) {
                     // 判定嚴謹按鈕 - 降低閾值
                     Button(action: {
-                        // 設置待確認的閾值調整為降低5%
-                        viewModel.pendingThresholdOffset = viewModel.userHRThresholdOffset - 0.05
-                        viewModel.showingThresholdConfirmation = true
-                        
-                        // 5秒後自動取消確認狀態
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                            if viewModel.showingThresholdConfirmation {
-                                viewModel.showingThresholdConfirmation = false
-                                viewModel.pendingThresholdOffset = nil
-                            }
-                        }
+                        // 設置閾值調整為降低5%
+                        let newOffset = viewModel.userHRThresholdOffset - 0.05
+                        viewModel.setUserHeartRateThresholdOffset(newOffset)
                     }) {
-                        Text("判定嚴謹")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.red.opacity(0.8))
-                            .cornerRadius(8)
+                        HStack {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 18))
+                            
+                            Text("提高標準 (判定更嚴謹)")
+                                .foregroundColor(.white)
+                                .font(.system(size: 16, weight: .medium))
+                            
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 16)
+                        .background(Color(white: 0.2))
+                        .cornerRadius(12)
                     }
                     .buttonStyle(PlainButtonStyle())
                     
                     // 判定寬鬆按鈕 - 增加閾值
                     Button(action: {
-                        // 設置待確認的閾值調整為增加5%
-                        viewModel.pendingThresholdOffset = viewModel.userHRThresholdOffset + 0.05
-                        viewModel.showingThresholdConfirmation = true
-                        
-                        // 5秒後自動取消確認狀態
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                            if viewModel.showingThresholdConfirmation {
-                                viewModel.showingThresholdConfirmation = false
-                                viewModel.pendingThresholdOffset = nil
-                            }
-                        }
+                        // 設置閾值調整為增加5%
+                        let newOffset = viewModel.userHRThresholdOffset + 0.05
+                        viewModel.setUserHeartRateThresholdOffset(newOffset)
                     }) {
-                        Text("判定寬鬆")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.blue)
-                            .cornerRadius(8)
+                        HStack {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .foregroundColor(.blue)
+                                .font(.system(size: 18))
+                            
+                            Text("降低標準 (判定更寬鬆)")
+                                .foregroundColor(.white)
+                                .font(.system(size: 16, weight: .medium))
+                            
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 16)
+                        .background(Color(white: 0.2))
+                        .cornerRadius(12)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.top, 5)
+                .padding(.horizontal)
+                
+                // 說明
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("心率閾值說明")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.bottom, 4)
+                    
+                    Text("• 判定嚴謹：降低閾值使系統需要更低的心率才會判定入睡，減少誤判但可能延遲檢測")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 2)
+                    
+                    Text("• 判定寬鬆：提高閾值使系統更容易判定入睡，可能更快檢測但增加誤判機率")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .background(Color(white: 0.15))
+                .cornerRadius(12)
+                .padding(.horizontal)
             }
+            .padding(.vertical, 20)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
-        .background(Color.gray.opacity(0.2))
-        .cornerRadius(10)
-        .padding(.horizontal)
+        .background(Color.black)
+        .navigationTitle("心率閾值")
     }
 }
 
-/// 睡眠檢測敏感度視圖
-struct SensitivitySettingView: View {
+// 睡眠檢測敏感度詳細設置頁面
+struct SensitivityDetailSettingView: View {
+    @Environment(\.presentationMode) private var presentationMode
     @ObservedObject var viewModel: PowerNapViewModel
     @Binding var sleepSensitivity: Double
     
-    // 計算調整值：從-5%到+5%（修改為直覺一致的計算方式）
+    // 計算調整值：從-5%到+5%
     private var adjustmentValue: Int {
-        // 新公式：讓sleepSensitivity從0.0到1.0對應-5%到+5%
         let adjustment = (viewModel.sleepSensitivity * 10) - 5
         return Int(adjustment)
     }
@@ -1216,116 +1318,173 @@ struct SensitivitySettingView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("睡眠檢測敏感度")
-                .font(.headline)
-                .foregroundColor(.white)
-            
-            Text("調整檢測睡眠的靈敏度")
-                .font(.caption)
-                .foregroundColor(.gray)
-            
-            // 使用按鈕代替Slider
-            HStack {
-                Button(action: {
-                    let newValue = max(viewModel.sleepSensitivity - 0.1, 0.0)
-                    viewModel.setSleepSensitivity(newValue)
-                    sleepSensitivity = newValue
-                }) {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(.blue)
+        ScrollView {
+            VStack(spacing: 20) {
+                // 當前敏感度顯示
+                VStack(spacing: 10) {
+                    Text("當前敏感度調整")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    
+                    Text(adjustmentDisplay)
+                        .font(.system(size: 36, weight: .medium, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 5)
                 }
-                .buttonStyle(PlainButtonStyle())
+                .padding()
                 
-                Spacer()
-                
-                // 修改顯示格式：從百分比改為調整值
-                Text(adjustmentDisplay)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                Button(action: {
-                    let newValue = min(viewModel.sleepSensitivity + 0.1, 1.0)
-                    viewModel.setSleepSensitivity(newValue)
-                    sleepSensitivity = newValue
-                }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(.blue)
+                // 調整滑桿
+                VStack(spacing: 15) {
+                    HStack {
+                        Text("嚴謹")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        
+                        Spacer()
+                        
+                        Text("中性")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        
+                        Spacer()
+                        
+                        Text("寬鬆")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    .padding(.horizontal)
+                    
+                    // 使用Slider代替按鈕
+                    Slider(value: Binding(
+                        get: { viewModel.sleepSensitivity },
+                        set: { 
+                            viewModel.setSleepSensitivity($0)
+                            sleepSensitivity = $0 
+                        }
+                    ), in: 0...1, step: 0.1)
+                    .accentColor(.blue)
+                    .padding(.horizontal)
                 }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.vertical, 5)
-            
-            HStack {
-                Text("嚴謹")
-                    .font(.caption2)
-                    .foregroundColor(.blue)
                 
-                Spacer()
-                
-                Text("寬鬆")
-                    .font(.caption2)
-                    .foregroundColor(.red)
+                // 說明
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("敏感度調整說明")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.bottom, 4)
+                    
+                    Text("• 嚴謹：系統更嚴格判定睡眠狀態，降低誤判率但可能延遲檢測")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 2)
+                    
+                    Text("• 寬鬆：系統更寬鬆判定睡眠狀態，可能更快檢測但增加誤判率")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .background(Color(white: 0.15))
+                .cornerRadius(12)
+                .padding(.horizontal)
             }
+            .padding(.vertical, 20)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
-        .background(Color.gray.opacity(0.2))
-        .cornerRadius(10)
-        .padding(.horizontal)
+        .background(Color.black)
+        .navigationTitle("檢測敏感度")
     }
 }
 
-/// 年齡組設置視圖
-struct AgeGroupSettingView: View {
+// 年齡組詳細設置頁面
+struct AgeGroupDetailSettingView: View {
+    @Environment(\.presentationMode) private var presentationMode
     @ObservedObject var viewModel: PowerNapViewModel
     @Binding var selectedAgeGroup: AgeGroup?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("年齡組設置")
-                .font(.headline)
-                .foregroundColor(.white)
-            
-            Text("選擇您的年齡組以優化檢測參數")
-                .font(.caption)
-                .foregroundColor(.gray)
-            
-            // 按鈕組佈局
-            HStack(spacing: 8) {
-                ageGroupButton(title: "青少年", ageGroup: .teen)
-                ageGroupButton(title: "成人", ageGroup: .adult)
-                ageGroupButton(title: "銀髮族", ageGroup: .senior)
+        ScrollView {
+            VStack(spacing: 20) {
+                // 當前年齡組
+                if let currentAgeGroup = viewModel.userSelectedAgeGroup {
+                    Text("當前選擇: \(ageGroupTitle(currentAgeGroup))")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.top, 10)
+                }
+                
+                // 年齡組選項
+                VStack(spacing: 10) {
+                    ageGroupButtonLarge(title: "青少年 (< 18歲)", description: "偏好更快入睡檢測，閾值設為87.5%", ageGroup: .teen)
+                    
+                    ageGroupButtonLarge(title: "成人 (18-60歲)", description: "標準檢測設定，閾值設為90%", ageGroup: .adult)
+                    
+                    ageGroupButtonLarge(title: "銀髮族 (> 60歲)", description: "更嚴謹的檢測，閾值設為93.5%", ageGroup: .senior)
+                }
+                .padding(.horizontal)
+                
+                // 說明
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("年齡組設置說明")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.bottom, 4)
+                    
+                    Text("選擇您的年齡組可以最佳化睡眠檢測閾值和確認時間。\n• 青少年：更敏感的檢測，確認時間為2分鐘\n• 成人：標準檢測，確認時間為3分鐘\n• 銀髮族：更嚴謹的檢測，確認時間為4分鐘")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .background(Color(white: 0.15))
+                .cornerRadius(12)
+                .padding(.horizontal)
             }
-            .padding(.top, 5)
+            .padding(.vertical, 20)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
-        .background(Color.gray.opacity(0.2))
-        .cornerRadius(10)
-        .padding(.horizontal)
+        .background(Color.black)
+        .navigationTitle("年齡組設置")
     }
     
-    private func ageGroupButton(title: String, ageGroup: AgeGroup) -> some View {
+    private func ageGroupTitle(_ ageGroup: AgeGroup) -> String {
+        switch ageGroup {
+        case .teen: return "青少年"
+        case .adult: return "成人"
+        case .senior: return "銀髮族"
+        }
+    }
+    
+    private func ageGroupButtonLarge(title: String, description: String, ageGroup: AgeGroup) -> some View {
         Button(action: {
             selectedAgeGroup = ageGroup
             viewModel.setUserAgeGroup(ageGroup)
         }) {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(
-                    selectedAgeGroup == ageGroup 
-                    ? Color.blue 
-                    : Color.gray.opacity(0.5)
-                )
-                .cornerRadius(8)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(title)
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    if viewModel.userSelectedAgeGroup == ageGroup {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.blue)
+                            .font(.system(size: 18))
+                    }
+                }
+                
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(viewModel.userSelectedAgeGroup == ageGroup ? Color(white: 0.25) : Color(white: 0.15))
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -1337,10 +1496,6 @@ struct HeartRateInfoView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("當前心率信息")
-                .font(.headline)
-                .foregroundColor(.white)
-            
             HStack {
                 Text("靜息心率:")
                     .foregroundColor(.gray)
@@ -1400,39 +1555,12 @@ struct HeartRateInfoView: View {
                 }
             }
         }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
-        .background(Color.gray.opacity(0.2))
-        .cornerRadius(10)
+        .padding()
+        .background(Color(white: 0.15))
+        .cornerRadius(12)
         .padding(.horizontal)
         .allowsHitTesting(false)
         .focusable(false)
-    }
-}
-
-/// 重設按鈕
-struct ResetSettingsButton: View {
-    @ObservedObject var viewModel: PowerNapViewModel
-    @Binding var thresholdOffset: Double
-    @Binding var sleepSensitivity: Double
-    
-    var body: some View {
-        Button(action: {
-            // 重置設置
-            thresholdOffset = 0.0
-            sleepSensitivity = 0.5
-            viewModel.setUserHeartRateThresholdOffset(0.0)
-            viewModel.setSleepSensitivity(0.5)
-        }) {
-            Text("重設為默認設置")
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.blue)
-                .cornerRadius(10)
-        }
-        .padding(.horizontal)
-        .padding(.top, 10)
     }
 }
 
