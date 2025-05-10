@@ -2097,7 +2097,8 @@ class PowerNapViewModel: ObservableObject {
     
     /// 重置心率基線
     func resetHeartRateBaseline() {
-        guard let userId = getUserId(), var profile = userProfileManager.getUserProfile(forUserId: userId) else {
+        let userId = getUserId()
+        guard var profile = userProfileManager.getUserProfile(forUserId: userId) else {
             return
         }
         
