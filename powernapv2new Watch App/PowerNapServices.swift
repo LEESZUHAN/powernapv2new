@@ -1052,6 +1052,17 @@ class PowerNapViewModel: ObservableObject {
     @Published var showingAlarmStopUI: Bool = false // 控制是否顯示鬧鈴停止界面
     @Published var alarmStopped: Bool = false // 鬧鈴是否已停止
     
+    // MARK: - 新增：心率異常追蹤器
+    private let heartRateAnomalyTracker = HeartRateAnomalyTracker()
+    
+    /// 當前心率異常狀態
+    @Published private(set) var heartRateAnomalyStatus: HeartRateAnomalyTracker.AnomalyStatus = .none
+    
+    /// 異常摘要信息（用於調試和高級用戶）
+    var anomalySummary: String {
+        return heartRateAnomalyTracker.getAnomalySummary()
+    }
+    
     init() {
         // 確保napDuration和napMinutes保持同步
         $napDuration
@@ -1253,8 +1264,34 @@ class PowerNapViewModel: ObservableObject {
         // 應用敏感度調整
         let sensitivityAdjustment = sleepSensitivity * 0.1 // 0-10% 變化
         
+        // 應用異常調整（如果有）
+        var anomalyAdjustment: Double = 0.0
+        
+        // 獲取當前異常狀態
+        let anomalyStatus = heartRateAnomalyTracker.getCurrentAnomalyStatus()
+        heartRateAnomalyStatus = anomalyStatus
+        
+        switch anomalyStatus {
+        case .temporary:
+            // 暫時異常：稍微寬鬆閾值(+2%)
+            anomalyAdjustment = 0.02
+            logger.info("檢測到暫時性心率異常，適當寬鬆閾值(+2%)")
+        case .persistent:
+            // 持久異常：更寬鬆閾值(+4%)
+            anomalyAdjustment = 0.04
+            logger.info("檢測到持久性心率異常，顯著寬鬆閾值(+4%)")
+        case .requiresReset:
+            // 需要重校準：大幅調整(+7%)並觸發重校準流程
+            anomalyAdjustment = 0.07
+            // 僅提示，實際重校準在特定時機進行
+            logger.info("心率異常程度嚴重，需要重置基線，暫時大幅放寬閾值(+7%)")
+        default:
+            // 正常狀態：不額外調整
+            break
+        }
+        
         // 直接計算最終閾值
-        let finalThreshold = restingHeartRate * targetPercentage * (1 + sensitivityAdjustment)
+        let finalThreshold = restingHeartRate * targetPercentage * (1 + sensitivityAdjustment) * (1 + anomalyAdjustment)
         
         // 更新UI顯示的閾值
         heartRateThreshold = finalThreshold
@@ -1266,7 +1303,7 @@ class PowerNapViewModel: ObservableObject {
         let actualPercentage = (finalThreshold / restingHeartRate) * 100
         let basePercentage = targetPercentage * 100
         
-        logger.info("更新心率閾值: \(finalThreshold) BPM (目標百分比: \(String(format: "%.1f", basePercentage))%, 敏感度調整: \(sensitivityAdjustment), 實際百分比: \(String(format: "%.1f", actualPercentage))%)")
+        logger.info("更新心率閾值: \(finalThreshold) BPM (目標百分比: \(String(format: "%.1f", basePercentage))%, 敏感度調整: \(sensitivityAdjustment), 異常調整: \(anomalyAdjustment), 實際百分比: \(String(format: "%.1f", actualPercentage))%)")
     }
     
     // 新增：設置用戶心率閾值偏移
@@ -1991,4 +2028,124 @@ class PowerNapViewModel: ObservableObject {
             logger.info("基於當前設定值 \(profile.minDurationSeconds) 秒繼續智慧學習")
         }
     }
+    
+    // MARK: - 心率異常處理方法
+    
+    /// 評估並記錄心率異常
+    /// - Parameters:
+    ///   - heartRate: 當前心率
+    ///   - expectedRange: 預期範圍
+    private func evaluateHeartRateAnomaly(heartRate: Double, expectedRange: ClosedRange<Double>) {
+        // 檢查心率是否在預期範圍內
+        if expectedRange.contains(heartRate) {
+            // 心率正常，不記錄異常
+            return
+        }
+        
+        // 計算異常程度 (0-10)
+        var anomalySeverity: Double = 0
+        
+        // 預期範圍外的偏差百分比
+        let lowerDeviation = expectedRange.lowerBound > heartRate ? 
+            (expectedRange.lowerBound - heartRate) / expectedRange.lowerBound : 0
+        let upperDeviation = heartRate > expectedRange.upperBound ? 
+            (heartRate - expectedRange.upperBound) / expectedRange.upperBound : 0
+        
+        // 取較大的偏差
+        let deviation = max(lowerDeviation, upperDeviation)
+        
+        // 將偏差轉換為異常嚴重度分數 (非線性映射)
+        if deviation <= 0.05 {              // 5%以內，輕微異常
+            anomalySeverity = deviation * 50  // 0-2.5
+        } else if deviation <= 0.15 {       // 5-15%，中度異常
+            anomalySeverity = 2.5 + (deviation - 0.05) * 60  // 2.5-8.5
+        } else {                            // >15%，嚴重異常
+            anomalySeverity = 8.5 + (min(deviation - 0.15, 0.05) * 30)  // 8.5-10
+        }
+        
+        // 記錄異常並獲取狀態
+        let anomalyStatus = heartRateAnomalyTracker.recordAnomaly(severity: anomalySeverity)
+        heartRateAnomalyStatus = anomalyStatus
+        
+        // 處理異常狀態
+        if anomalyStatus == .requiresReset {
+            // 檢查是否需要重校準基線
+            considerResetHeartRateBaseline()
+        }
+        
+        // 記錄到日誌
+        logger.info("心率異常評估 - 心率: \(heartRate), 預期範圍: \(expectedRange.lowerBound)-\(expectedRange.upperBound), 嚴重度: \(String(format: "%.1f", anomalySeverity)), 狀態: \(anomalyStatus.rawValue)")
+    }
+    
+    /// 考慮重置心率基線
+    private func considerResetHeartRateBaseline() {
+        // 檢查是否需要重校準基線
+        guard heartRateAnomalyStatus == .requiresReset else { return }
+        
+        // 檢查上次重置時間，避免頻繁重置
+        if let lastReset = UserDefaults.standard.object(forKey: "LastHeartRateBaselineReset") as? Date {
+            let daysSinceLastReset = Date().timeIntervalSince(lastReset) / (24 * 3600)
+            if daysSinceLastReset < 3 {
+                logger.info("距離上次心率基線重置未超過3天，暫不重置")
+                return
+            }
+        }
+        
+        // 執行重置流程
+        resetHeartRateBaseline()
+    }
+    
+    /// 重置心率基線
+    func resetHeartRateBaseline() {
+        guard let userId = getUserId(), var profile = userProfileManager.getUserProfile(forUserId: userId) else {
+            return
+        }
+        
+        // 1. 重置異常追蹤器
+        heartRateAnomalyTracker.resetBaseline()
+        
+        // 2. 更新用戶配置
+        // 將心率閾值設回適合當前年齡組的默認值
+        let defaultThreshold = profile.ageGroup.heartRateThresholdPercentage
+        profile.hrThresholdPercentage = defaultThreshold
+        
+        // 重置用戶手動調整
+        profile.manualAdjustmentOffset = 0.0
+        
+        // 3. 更新本地狀態
+        userHRThresholdOffset = 0.0
+        
+        // 4. 保存更新後的配置
+        userProfileManager.saveUserProfile(profile)
+        currentUserProfile = profile
+        
+        // 5. 重新計算心率閾值
+        updateHeartRateThreshold()
+        
+        // 6. 記錄重置時間
+        UserDefaults.standard.set(Date(), forKey: "LastHeartRateBaselineReset")
+        
+        logger.info("已重置心率基線，閾值恢復至年齡組默認值: \(defaultThreshold)")
+    }
+    
+    // ... existing code ...
+    
+    // MARK: - 睡眠檢測相關
+    
+    /// 處理實時心率
+    /// - Parameter heartRate: 當前心率
+    func processHeartRate(_ heartRate: Double) {
+        // ... existing code ...
+        
+        // 評估心率異常
+        // 計算預期的心率範圍 (靜息心率的80%-120%)
+        let expectedLower = restingHeartRate * 0.80
+        let expectedUpper = restingHeartRate * 1.20
+        
+        evaluateHeartRateAnomaly(heartRate: heartRate, expectedRange: expectedLower...expectedUpper)
+        
+        // ... existing code ...
+    }
+    
+    // ... existing code ...
 } 
