@@ -12,6 +12,11 @@ class HeartRateAnomalyTracker {
         static let persistentThreshold: Double = 12.0 // 持久異常閾值
         static let decayFactor: Double = 0.8         // 每日衰減因子
         static let baselineResetThreshold: Double = 14.0 // 基線重校準所需的分數
+        
+        // 新增：心率偏離閾值
+        static let upwardDeviationThreshold: Double = 0.05  // 心率向上偏離5%開始記錄異常
+        static let downwardDeviationThreshold: Double = 0.08  // 心率向下偏離8%開始記錄異常
+        static let downwardAdjustmentFactor: Double = 0.5   // 向下偏離異常分數減半
     }
     
     // MARK: - 屬性
@@ -26,6 +31,10 @@ class HeartRateAnomalyTracker {
     private(set) var temporaryAnomalies: Int = 0     // 暫時異常計數
     private(set) var persistentAnomalies: Int = 0    // 持久異常計數
     private(set) var baselineResets: Int = 0         // 基線重置次數
+    
+    // 新增：追蹤向上和向下的異常
+    private(set) var upwardAnomalies: Int = 0        // 向上異常計數
+    private(set) var downwardAnomalies: Int = 0      // 向下異常計數
     
     // 公開異常狀態，供外部系統使用
     public enum AnomalyStatus: String {
@@ -83,6 +92,86 @@ class HeartRateAnomalyTracker {
         return status
     }
     
+    /// 評估心率偏離並計算異常分數 (不對稱異常檢測)
+    /// - Parameters:
+    ///   - heartRate: 當前心率
+    ///   - expectedHR: 預期心率
+    /// - Returns: 異常狀態分類
+    @discardableResult
+    func evaluateHeartRateDeviation(heartRate: Double, expectedHR: Double, date: Date = Date()) -> AnomalyStatus {
+        // 計算偏離百分比
+        let deviation = (heartRate - expectedHR) / expectedHR
+        
+        // 判斷偏離方向
+        if deviation > 0 {
+            // 向上偏離 (心率高於預期) - 維持嚴格檢測
+            return evaluateUpwardDeviation(deviation: deviation, date: date)
+        } else {
+            // 向下偏離 (心率低於預期) - 使用寬鬆標準
+            return evaluateDownwardDeviation(deviation: deviation, date: date)
+        }
+    }
+    
+    /// 評估心率向上偏離 (更嚴格檢測)
+    private func evaluateUpwardDeviation(deviation: Double, date: Date) -> AnomalyStatus {
+        // 超過閾值才記錄異常
+        if deviation < Thresholds.upwardDeviationThreshold {
+            return .none // 在容忍範圍內
+        }
+        
+        // 計算異常嚴重度 (0-10)
+        var anomalySeverity: Double = 0
+        
+        // 非線性映射偏差到異常嚴重度
+        if deviation <= 0.1 {              // 5-10%，輕微異常
+            anomalySeverity = (deviation - Thresholds.upwardDeviationThreshold) * 100  // 0-5
+        } else if deviation <= 0.2 {       // 10-20%，中度異常
+            anomalySeverity = 5.0 + (deviation - 0.1) * 50  // 5-10
+        } else {                           // >20%，嚴重異常
+            anomalySeverity = 10.0  // 最大異常值
+        }
+        
+        // 記錄向上異常
+        upwardAnomalies += 1
+        
+        // 記錄異常並返回異常狀態
+        logger.info("心率向上偏離: +\(String(format: "%.1f", deviation * 100))%, 評分: \(String(format: "%.1f", anomalySeverity))")
+        return recordAnomaly(severity: anomalySeverity, date: date)
+    }
+    
+    /// 評估心率向下偏離 (使用寬鬆標準)
+    private func evaluateDownwardDeviation(deviation: Double, date: Date) -> AnomalyStatus {
+        // 將負偏差轉為正值 (便於比較)
+        let absDeviation = abs(deviation)
+        
+        // 使用寬鬆閾值，超過閾值才記錄異常
+        if absDeviation < Thresholds.downwardDeviationThreshold {
+            return .none // 在容忍範圍內
+        }
+        
+        // 計算異常嚴重度 (0-10)，採用與向上偏離相同的邏輯，但會減半
+        var anomalySeverity: Double = 0
+        
+        // 非線性映射偏差到異常嚴重度
+        if absDeviation <= 0.15 {              // 8-15%，輕微異常
+            anomalySeverity = (absDeviation - Thresholds.downwardDeviationThreshold) * 70  // 0-4.9
+        } else if absDeviation <= 0.25 {       // 15-25%，中度異常
+            anomalySeverity = 4.9 + (absDeviation - 0.15) * 40  // 4.9-8.9
+        } else {                               // >25%，嚴重異常
+            anomalySeverity = 8.9 + (min(absDeviation - 0.25, 0.05) * 22)  // 8.9-10
+        }
+        
+        // 向下偏離異常分數減半
+        anomalySeverity *= Thresholds.downwardAdjustmentFactor
+        
+        // 記錄向下異常
+        downwardAnomalies += 1
+        
+        // 記錄異常並返回異常狀態
+        logger.info("心率向下偏離: -\(String(format: "%.1f", absDeviation * 100))%, 評分: \(String(format: "%.1f", anomalySeverity)) (已減半)")
+        return recordAnomaly(severity: anomalySeverity, date: date)
+    }
+    
     /// 獲取當前異常狀態
     func getCurrentAnomalyStatus() -> AnomalyStatus {
         if cumulativeScore >= Thresholds.baselineResetThreshold {
@@ -111,7 +200,7 @@ class HeartRateAnomalyTracker {
     /// 獲取異常摘要信息
     func getAnomalySummary() -> String {
         let status = getCurrentAnomalyStatus()
-        return "異常狀態: \(status.rawValue), 累計分數: \(String(format: "%.1f", cumulativeScore)), 暫時異常: \(temporaryAnomalies), 持久異常: \(persistentAnomalies), 重置次數: \(baselineResets)"
+        return "異常狀態: \(status.rawValue), 累計分數: \(String(format: "%.1f", cumulativeScore)), 暫時異常: \(temporaryAnomalies), 持久異常: \(persistentAnomalies), 向上異常: \(upwardAnomalies), 向下異常: \(downwardAnomalies), 重置次數: \(baselineResets)"
     }
     
     // MARK: - 私有方法
@@ -159,6 +248,8 @@ class HeartRateAnomalyTracker {
         defaults.set(cumulativeScore, forKey: "HeartRateAnomalyCumulativeScore")
         defaults.set(temporaryAnomalies, forKey: "HeartRateAnomalyTemporaryCount")
         defaults.set(persistentAnomalies, forKey: "HeartRateAnomalyPersistentCount")
+        defaults.set(upwardAnomalies, forKey: "HeartRateAnomalyUpwardCount")
+        defaults.set(downwardAnomalies, forKey: "HeartRateAnomalyDownwardCount")
         defaults.set(baselineResets, forKey: "HeartRateAnomalyBaselineResets")
         defaults.set(lastResetDate?.timeIntervalSince1970, forKey: "HeartRateAnomalyLastResetDate")
     }
@@ -179,6 +270,8 @@ class HeartRateAnomalyTracker {
         cumulativeScore = defaults.double(forKey: "HeartRateAnomalyCumulativeScore")
         temporaryAnomalies = defaults.integer(forKey: "HeartRateAnomalyTemporaryCount")
         persistentAnomalies = defaults.integer(forKey: "HeartRateAnomalyPersistentCount")
+        upwardAnomalies = defaults.integer(forKey: "HeartRateAnomalyUpwardCount")
+        downwardAnomalies = defaults.integer(forKey: "HeartRateAnomalyDownwardCount")
         baselineResets = defaults.integer(forKey: "HeartRateAnomalyBaselineResets")
         
         if let resetTimeInterval = defaults.object(forKey: "HeartRateAnomalyLastResetDate") as? TimeInterval {

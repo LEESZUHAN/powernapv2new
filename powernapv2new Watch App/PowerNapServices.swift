@@ -2036,35 +2036,23 @@ class PowerNapViewModel: ObservableObject {
     ///   - heartRate: 當前心率
     ///   - expectedRange: 預期範圍
     private func evaluateHeartRateAnomaly(heartRate: Double, expectedRange: ClosedRange<Double>) {
-        // 檢查心率是否在預期範圍內
+        // 使用新的不對稱異常檢測邏輯
+        
+        // 如果心率在預期範圍內，不需要記錄異常
         if expectedRange.contains(heartRate) {
-            // 心率正常，不記錄異常
             return
         }
         
-        // 計算異常程度 (0-10)
-        var anomalySeverity: Double = 0
+        // 計算預期心率（使用範圍的中間值作為參考點）
+        let expectedHR = (expectedRange.lowerBound + expectedRange.upperBound) / 2.0
         
-        // 預期範圍外的偏差百分比
-        let lowerDeviation = expectedRange.lowerBound > heartRate ? 
-            (expectedRange.lowerBound - heartRate) / expectedRange.lowerBound : 0
-        let upperDeviation = heartRate > expectedRange.upperBound ? 
-            (heartRate - expectedRange.upperBound) / expectedRange.upperBound : 0
+        // 使用不對稱異常檢測功能評估心率偏離
+        let anomalyStatus = heartRateAnomalyTracker.evaluateHeartRateDeviation(
+            heartRate: heartRate,
+            expectedHR: expectedHR
+        )
         
-        // 取較大的偏差
-        let deviation = max(lowerDeviation, upperDeviation)
-        
-        // 將偏差轉換為異常嚴重度分數 (非線性映射)
-        if deviation <= 0.05 {              // 5%以內，輕微異常
-            anomalySeverity = deviation * 50  // 0-2.5
-        } else if deviation <= 0.15 {       // 5-15%，中度異常
-            anomalySeverity = 2.5 + (deviation - 0.05) * 60  // 2.5-8.5
-        } else {                            // >15%，嚴重異常
-            anomalySeverity = 8.5 + (min(deviation - 0.15, 0.05) * 30)  // 8.5-10
-        }
-        
-        // 記錄異常並獲取狀態
-        let anomalyStatus = heartRateAnomalyTracker.recordAnomaly(severity: anomalySeverity)
+        // 更新UI中顯示的異常狀態
         heartRateAnomalyStatus = anomalyStatus
         
         // 處理異常狀態
@@ -2074,7 +2062,7 @@ class PowerNapViewModel: ObservableObject {
         }
         
         // 記錄到日誌
-        logger.info("心率異常評估 - 心率: \(heartRate), 預期範圍: \(expectedRange.lowerBound)-\(expectedRange.upperBound), 嚴重度: \(String(format: "%.1f", anomalySeverity)), 狀態: \(anomalyStatus.rawValue)")
+        logger.info("心率異常評估 - 心率: \(heartRate), 預期範圍: \(expectedRange.lowerBound)-\(expectedRange.upperBound), 狀態: \(anomalyStatus.rawValue)")
     }
     
     /// 考慮重置心率基線
