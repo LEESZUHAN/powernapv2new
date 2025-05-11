@@ -750,25 +750,41 @@ class NotificationManager: NSObject {
     
     // 安排通知序列
     private func scheduleNotificationSequence() {
-        // 設計一個節奏感強的通知序列，每個節拍包含2-3個通知
+        // 設計一個節奏感強的通知序列，前一分鐘頻率更高
         
-        // 第一節拍（15秒）
-        sendNotificationWithDelay(4, identifier: "beat1-1")
+        // 初始喚醒（0-3秒）- 急促三連發
+        sendNotificationWithDelay(0.1, identifier: "initial-1")
+        sendNotificationWithDelay(1.5, identifier: "initial-2")
+        sendNotificationWithDelay(3, identifier: "initial-3")
+        
+        // 第一節拍（5-10秒）- 緊密節奏
+        sendNotificationWithDelay(5, identifier: "beat1-1")
         sendNotificationWithDelay(7, identifier: "beat1-2")
         sendNotificationWithDelay(10, identifier: "beat1-3")
-        sendNotificationWithDelay(15, identifier: "beat1-4")
         
-        // 第二節拍（30秒）
-        sendNotificationWithDelay(30, identifier: "beat2-1")
-        sendNotificationWithDelay(32, identifier: "beat2-2")
-        sendNotificationWithDelay(35, identifier: "beat2-3")
+        // 第二節拍（15-20秒）- 緊密節奏
+        sendNotificationWithDelay(15, identifier: "beat2-1")
+        sendNotificationWithDelay(17, identifier: "beat2-2")
+        sendNotificationWithDelay(20, identifier: "beat2-3")
         
-        // 第三節拍（45秒）
-        sendNotificationWithDelay(45, identifier: "beat3-1")
-        sendNotificationWithDelay(47, identifier: "beat3-2")
-        sendNotificationWithDelay(50, identifier: "beat3-3")
+        // 第三節拍（25-30秒）
+        sendNotificationWithDelay(25, identifier: "beat3-1")
+        sendNotificationWithDelay(27, identifier: "beat3-2")
+        sendNotificationWithDelay(30, identifier: "beat3-3")
         
-        // 一分鐘提醒（更強烈）
+        // 第四節拍（35-40秒）
+        sendNotificationWithDelay(35, identifier: "beat4-1")
+        sendNotificationWithDelay(37, identifier: "beat4-2")
+        sendNotificationWithDelay(40, identifier: "beat4-3")
+        
+        // 第五節拍（45-50秒）
+        sendNotificationWithDelay(45, identifier: "beat5-1")
+        sendNotificationWithDelay(47, identifier: "beat5-2")
+        sendNotificationWithDelay(50, identifier: "beat5-3")
+        
+        // 第六節拍（55-60秒）- 一分鐘標記（強化）
+        sendNotificationWithDelay(55, identifier: "beat6-1")
+        sendNotificationWithDelay(58, identifier: "beat6-2")
         sendNotificationWithDelay(60, identifier: "minute1-1")
         sendNotificationWithDelay(61, identifier: "minute1-2")
         sendNotificationWithDelay(63, identifier: "minute1-3")
@@ -817,6 +833,19 @@ class NotificationManager: NSObject {
         }
         return Date().timeIntervalSince(startTime)
     }
+    
+    // 添加deinit方法確保資源被清理
+    deinit {
+        alarmTimer?.invalidate()
+        alarmTimer = nil
+        
+        // 如果鬧鈴還在活動狀態，強制停止
+        if isAlarmActive {
+            stopContinuousAlarm()
+        }
+        
+        logger.info("NotificationManager被釋放")
+    }
 }
 
 // MARK: - UNUserNotificationCenterDelegate
@@ -858,6 +887,16 @@ class SleepDataLogger {
     private var sessionId: String?
     private var logFilePath: URL?
     
+    // 新增屬性
+    private var pendingLogEntries: [String] = []        // 待寫入的日誌條目
+    private var lastLogWriteTime: Date = Date()         // 上次寫入時間
+    private let logFlushInterval: TimeInterval = 10.0   // 日誌寫入間隔（10秒）
+    private let maxEntriesBeforeFlush: Int = 20         // 在寫入前允許的最大條目數
+    private let logRetentionDays: Int = 14              // 日誌保留天數（14天）
+    private var loggingTimer: Timer?                    // 定時寫入計時器
+    private var lastLogEntryTime: Date?                 // 上次記錄時間
+    private let minLogInterval: TimeInterval = 10.0     // 最小記錄間隔（10秒）
+    
     static let shared = SleepDataLogger()
     
     private init() {}
@@ -890,6 +929,12 @@ class SleepDataLogger {
                 
                 print("開始睡眠數據記錄: \(fileName)")
                 
+                // 啟動定時刷新計時器
+                startLoggingTimer()
+                
+                // 清理過期日誌
+                cleanupOldLogFiles()
+                
             } catch {
                 print("創建日誌文件失敗: \(error.localizedDescription)")
             }
@@ -909,47 +954,124 @@ class SleepDataLogger {
         remainingTime: TimeInterval,
         notes: String = ""
     ) {
-        guard let logFilePath = logFilePath else { return }
+        guard logFilePath != nil else { return }
+        
+        let now = Date()
+        
+        // 檢查是否應該跳過本次記錄（時間間隔控制）
+        if let lastTime = lastLogEntryTime, now.timeIntervalSince(lastTime) < minLogInterval {
+            return // 距離上次記錄還不到10秒，跳過
+        }
+        
+        // 更新最後記錄時間
+        lastLogEntryTime = now
         
         // 格式化數據行
-        let timestamp = Date()
-        let dateString = dateFormatter.string(from: timestamp)
-        
+        let dateString = dateFormatter.string(from: now)
         let dataLine = "\(dateString),\(heartRate),\(restingHR),\(hrThreshold),\(hrTrend),\(acceleration),\(isResting),\(isSleeping),\(sleepPhase),\(remainingTime),\"\(notes)\"\n"
         
-        // 追加到文件
-        if let fileHandle = try? FileHandle(forWritingTo: logFilePath) {
-            fileHandle.seekToEndOfFile()
-            if let data = dataLine.data(using: .utf8) {
-                fileHandle.write(data)
-            }
-            fileHandle.closeFile()
-        } else {
-            // 如果無法打開文件，嘗試創建新文件
-            try? dataLine.write(to: logFilePath, atomically: true, encoding: .utf8)
+        // 添加到待寫入隊列
+        pendingLogEntries.append(dataLine)
+        
+        // 如果達到閾值或時間間隔足夠長，執行寫入
+        if pendingLogEntries.count >= maxEntriesBeforeFlush || 
+           now.timeIntervalSince(lastLogWriteTime) >= logFlushInterval {
+            flushLogEntries()
         }
     }
     
     // 結束記錄會話
     func endSession(summary: String) {
-        guard let logFilePath = logFilePath else { return }
+        // 確保所有待寫入數據都被寫入
+        flushLogEntries()
+        
+        guard logFilePath != nil else { return }
         
         // 添加會話總結
         let summaryLine = "\n--- 會話結束 ---\n\(summary)\n"
         
-        if let fileHandle = try? FileHandle(forWritingTo: logFilePath) {
+        if let fileHandle = try? FileHandle(forWritingTo: self.logFilePath!) {
             fileHandle.seekToEndOfFile()
             if let data = summaryLine.data(using: .utf8) {
                 fileHandle.write(data)
             }
             fileHandle.closeFile()
             
-            print("睡眠數據記錄已完成，保存至: \(logFilePath.lastPathComponent)")
+            print("睡眠數據記錄已完成，保存至: \(self.logFilePath!.lastPathComponent)")
         }
         
         // 重置會話變量
         sessionId = nil
         self.logFilePath = nil
+        
+        // 停止日誌計時器
+        loggingTimer?.invalidate()
+        loggingTimer = nil
+    }
+    
+    // 新增方法: 啟動日誌定時器
+    private func startLoggingTimer() {
+        loggingTimer?.invalidate()
+        loggingTimer = Timer.scheduledTimer(withTimeInterval: logFlushInterval, repeats: true) { [weak self] _ in
+            self?.flushLogEntries()
+        }
+    }
+    
+    // 新增方法: 批量寫入日誌
+    private func flushLogEntries() {
+        guard !pendingLogEntries.isEmpty, logFilePath != nil else { return }
+        
+        let dataToWrite = pendingLogEntries.joined()
+        pendingLogEntries.removeAll()
+        lastLogWriteTime = Date()
+        
+        // 使用後台線程寫入
+        DispatchQueue.global(qos: .utility).async {
+            if let fileHandle = try? FileHandle(forWritingTo: self.logFilePath!) {
+                fileHandle.seekToEndOfFile()
+                if let data = dataToWrite.data(using: .utf8) {
+                    fileHandle.write(data)
+                }
+                try? fileHandle.close()
+            }
+        }
+    }
+    
+    // 新增方法: 清理過期日誌文件
+    private func cleanupOldLogFiles() {
+        // 獲取日誌目錄
+        guard let docsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let logDirectory = docsDirectory.appendingPathComponent("LogFiles")
+        
+        // 確保目錄存在
+        guard fileManager.fileExists(atPath: logDirectory.path) else { return }
+        
+        // 計算14天前的日期
+        let calendar = Calendar.current
+        guard let cutoffDate = calendar.date(byAdding: .day, value: -logRetentionDays, to: Date()) else { return }
+        
+        // 在後台執行清理
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                // 獲取所有日誌文件
+                let fileURLs = try self.fileManager.contentsOfDirectory(at: logDirectory, includingPropertiesForKeys: [.creationDateKey], options: [])
+                
+                // 檢查每個文件
+                for fileURL in fileURLs {
+                    if let attributes = try? self.fileManager.attributesOfItem(atPath: fileURL.path),
+                       let creationDate = attributes[.creationDate] as? Date {
+                        
+                        // 如果文件創建於14天前，刪除
+                        if creationDate < cutoffDate {
+                            try? self.fileManager.removeItem(at: fileURL)
+                            print("已刪除過期日誌文件: \(fileURL.lastPathComponent)")
+                        }
+                    }
+                }
+            } catch {
+                print("清理日誌文件時出錯: \(error.localizedDescription)")
+            }
+        }
     }
 }
 
@@ -1063,6 +1185,9 @@ class PowerNapViewModel: ObservableObject {
         return heartRateAnomalyTracker.getAnomalySummary()
     }
     
+    // 新增: 碎片化睡眠模式
+    @Published var fragmentedSleepMode: Bool = false
+    
     init() {
         // 確保napDuration和napMinutes保持同步
         $napDuration
@@ -1095,6 +1220,19 @@ class PowerNapViewModel: ObservableObject {
         statsUpdateTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
         cancellables.forEach { $0.cancel() }
+        invalidateTimer() // 確保napTimer被清理
+        
+        // 確保所有服務都已停止
+        if isNapping {
+            workoutManager.stopWorkoutSession()
+            sleepServices.stopMonitoring()
+            sleepDetection.stopMonitoring()
+            heartRateService.stopMonitoring()
+            motionManager.stopMonitoring()
+            runtimeManager.stopSession()
+        }
+        
+        logger.info("PowerNapViewModel被釋放")
     }
     
     // 新增：設置睡眠檢測協調器訂閱
@@ -1767,8 +1905,14 @@ class PowerNapViewModel: ObservableObject {
                 lastFeedbackType = .falsePositive
                 logger.info("用戶反饋：系統誤判為睡眠（過於寬鬆）")
                 
-                // 應用收斂算法 - 增加確認時間(除非是測試情境)
                 if !isSimulatingFeedback() {
+                    // 應用不對稱用戶反饋機制 - 調整心率閾值
+                    userProfileManager.adjustHeartRateThreshold(
+                        forUserId: userId,
+                        feedbackType: .falsePositive
+                    )
+                    
+                    // 同時也調整確認時間
                     userProfileManager.adjustConfirmationTime(
                         forUserId: userId, 
                         direction: 1,  // 增加確認時間
@@ -1780,8 +1924,14 @@ class PowerNapViewModel: ObservableObject {
                 lastFeedbackType = .falseNegative
                 logger.info("用戶反饋：系統未檢測到睡眠（過於嚴謹）")
                 
-                // 應用收斂算法 - 減少確認時間(除非是測試情境)
                 if !isSimulatingFeedback() {
+                    // 應用不對稱用戶反饋機制 - 調整心率閾值
+                    userProfileManager.adjustHeartRateThreshold(
+                        forUserId: userId,
+                        feedbackType: .falseNegative
+                    )
+                    
+                    // 同時也調整確認時間
                     userProfileManager.adjustConfirmationTime(
                         forUserId: userId, 
                         direction: -1,  // 減少確認時間
@@ -1796,6 +1946,9 @@ class PowerNapViewModel: ObservableObject {
                 userProfileManager.saveUserProfile(profile)
                 logger.info("用戶反饋：檢測不準確，累計次數：\(profile.inaccurateDetectionCount)")
             }
+            
+            // 用戶反饋後刷新當前閾值
+            refreshThresholdAfterOptimization(userId: userId)
         }
         
         // 不在這裡關閉反饋提示，由UI層控制關閉時機
@@ -2137,4 +2290,63 @@ class PowerNapViewModel: ObservableObject {
     }
     
     // ... existing code ...
+    
+    // 碎片化睡眠模式的函數
+    func setFragmentedSleepMode(_ enabled: Bool) {
+        fragmentedSleepMode = enabled
+        
+        // 更新用戶配置
+        if var profile = userProfileManager.getUserProfile(forUserId: getUserId()) {
+            profile.fragmentedSleepMode = enabled
+            userProfileManager.saveUserProfile(profile)
+            
+            // 如果啟用了碎片化睡眠模式，調整確認時間
+            if enabled {
+                // 碎片化睡眠模式下縮短確認時間
+                let reducedTime = min(profile.minDurationSeconds, 120) // 不低於120秒
+                profile.minDurationSeconds = reducedTime
+                userProfileManager.saveUserProfile(profile)
+                logger.info("啟用碎片化睡眠模式，調整確認時間為\(reducedTime)秒")
+            } else {
+                // 恢復原始確認時間
+                let ageGroup = profile.ageGroup
+                let defaultTime: Int
+                switch ageGroup {
+                case .teen: defaultTime = 120
+                case .adult: defaultTime = 180
+                case .senior: defaultTime = 240
+                }
+                
+                profile.minDurationSeconds = defaultTime
+                userProfileManager.saveUserProfile(profile)
+                logger.info("關閉碎片化睡眠模式，恢復確認時間為\(defaultTime)秒")
+            }
+        }
+        
+        logger.info("碎片化睡眠模式: \(enabled ? "開啟" : "關閉")")
+    }
+    
+    func loadUserPreferences() {
+        // 獲取用戶ID
+        let userId = getUserId()
+        
+        // 獲取用戶配置
+        if let profile = userProfileManager.getUserProfile(forUserId: userId) {
+            // 更新本地狀態
+            currentUserProfile = profile
+            
+            // 載入用戶手動心率閾值調整
+            userHRThresholdOffset = profile.manualAdjustmentOffset
+            
+            // 載入碎片化睡眠模式
+            fragmentedSleepMode = profile.fragmentedSleepMode
+            
+            // 更新心率閾值
+            updateHeartRateThreshold()
+            
+            logger.info("已載入用戶設定：心率閾值調整 \(String(format: "%.1f", profile.manualAdjustmentOffset * 100))%, 碎片化睡眠模式 \(profile.fragmentedSleepMode ? "開啟" : "關閉")")
+        } else {
+            logger.info("未找到用戶設定，使用默認配置")
+        }
+    }
 } 
