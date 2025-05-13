@@ -225,12 +225,20 @@ class HeartRateAnomalyTracker {
     
     /// 清理舊數據（超過14天的異常記錄）
     private func cleanupOldData() {
-        let now = Date()
-        let cutoffDate = now.addingTimeInterval(-14 * 24 * 3600) // 14天前
+        // 計算30天前的日期
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         
-        // 移除超過14天的記錄
-        anomalyScores = anomalyScores.filter { key, _ in
-            return key > cutoffDate
+        // 移除所有30天前的記錄
+        let oldKeys = anomalyScores.keys.filter { date in
+            return date < thirtyDaysAgo
+        }
+        
+        // 如果有舊記錄，刪除並記錄
+        if !oldKeys.isEmpty {
+            for key in oldKeys {
+                anomalyScores.removeValue(forKey: key)
+            }
+            logger.info("已清理\(oldKeys.count)條超過30天的異常記錄")
         }
     }
     

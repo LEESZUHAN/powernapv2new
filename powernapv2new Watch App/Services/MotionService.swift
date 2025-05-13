@@ -243,6 +243,16 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
             let twoHoursAgo = now.addingTimeInterval(-7200)
             self.motionHistory = self.motionHistory.filter { $0.key >= twoHoursAgo }
             
+            // 添加硬性大小限制，避免歷史記錄無限增長
+            if self.motionHistory.count > 500 { // 限制最多保留500條記錄
+                // 按時間排序並只保留最近的500條
+                let sortedKeys = self.motionHistory.keys.sorted()
+                for key in sortedKeys.prefix(sortedKeys.count - 500) {
+                    self.motionHistory.removeValue(forKey: key)
+                }
+                self.logger.info("動作歷史記錄已清理至500條")
+            }
+            
             // 如果檢測到顯著運動，更新最後運動時間
             if !intensity.isStationary {
                 self.lastSignificantMotionDate = now

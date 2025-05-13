@@ -1,0 +1,168 @@
+{
+  "" : {
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2new Watch App-master.dia",
+    "emit-module-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2new Watch App-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2new Watch App-master-emit-module.dia",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2new Watch App-master.swiftdeps"
+  },
+  "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/GeneratedAssetSymbols.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/GeneratedAssetSymbols~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/ContentView.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/ContentView.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/ContentView.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/ContentView.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/ContentView.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/ContentView.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/ContentView~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/SharedTypes.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SharedTypes.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SharedTypes.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SharedTypes.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SharedTypes.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SharedTypes.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SharedTypes.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SharedTypes.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SharedTypes~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Models/UserSleepProfile.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/UserSleepProfile.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/UserSleepProfile.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/UserSleepProfile.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/UserSleepProfile.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/UserSleepProfile.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/UserSleepProfile.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/UserSleepProfile.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/UserSleepProfile~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/PowerNapServices.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/PowerNapServices.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/PowerNapServices.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/PowerNapServices.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/PowerNapServices.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/PowerNapServices.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/PowerNapServices.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/PowerNapServices.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/PowerNapServices~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/AdaptiveThresholdSystem.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/AdaptiveThresholdSystem.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/AdaptiveThresholdSystem.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/AdaptiveThresholdSystem.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/AdaptiveThresholdSystem.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/AdaptiveThresholdSystem.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/AdaptiveThresholdSystem.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/AdaptiveThresholdSystem.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/AdaptiveThresholdSystem~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/HeartRateAnomalyTracker.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateAnomalyTracker.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateAnomalyTracker.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateAnomalyTracker.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateAnomalyTracker.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateAnomalyTracker.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateAnomalyTracker.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateAnomalyTracker.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateAnomalyTracker~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/HeartRateService.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateService.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateService.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateService.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateService.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateService.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateService.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateService.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateService~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/HeartRateThresholdOptimizer.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateThresholdOptimizer.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateThresholdOptimizer.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateThresholdOptimizer.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateThresholdOptimizer.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateThresholdOptimizer.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateThresholdOptimizer.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateThresholdOptimizer.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/HeartRateThresholdOptimizer~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/MotionService.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/MotionService.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/MotionService.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/MotionService.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/MotionService.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/MotionService.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/MotionService.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/MotionService.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/MotionService~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Services/SlidingWindow.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SlidingWindow.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SlidingWindow.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SlidingWindow.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SlidingWindow.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SlidingWindow.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SlidingWindow.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SlidingWindow.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SlidingWindow~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/SleepDetectionCoordinator.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepDetectionCoordinator.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepDetectionCoordinator.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepDetectionCoordinator.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepDetectionCoordinator.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepDetectionCoordinator.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepDetectionCoordinator.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepDetectionCoordinator.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepDetectionCoordinator~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/SleepServices.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Views/SleepConfirmationTimeButton.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeButton.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeButton.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeButton.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeButton.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeButton.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeButton.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeButton.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeButton~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/Views/SleepConfirmationTimeSettingView.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeSettingView.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeSettingView.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeSettingView.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeSettingView.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeSettingView.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeSettingView.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeSettingView.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepConfirmationTimeSettingView~partial.swiftmodule"
+  },
+  "/Users/michaellee/Documents/powernapv2new/powernapv2new Watch App/powernapv2newApp.swift" : {
+    "const-values" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2newApp.swiftconstvalues",
+    "dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2newApp.d",
+    "diagnostics" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2newApp.dia",
+    "index-unit-output-path" : "/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2newApp.o",
+    "llvm-bc" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2newApp.bc",
+    "object" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2newApp.o",
+    "swift-dependencies" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2newApp.swiftdeps",
+    "swiftmodule" : "/Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/powernapv2newApp~partial.swiftmodule"
+  }
+}

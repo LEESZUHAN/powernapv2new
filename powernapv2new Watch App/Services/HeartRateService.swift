@@ -79,6 +79,29 @@ class HeartRateService: HeartRateServiceProtocol {
         }
     }
     
+    // 添加deinit方法確保所有資源被清理
+    deinit {
+        // 停止所有計時器
+        sleepDetectionTimer?.invalidate()
+        sleepDetectionTimer = nil
+        
+        trendAnalysisTimer?.invalidate()
+        trendAnalysisTimer = nil
+        
+        // 停止所有查詢
+        if let query = heartRateQuery {
+            healthStore.stop(query)
+            heartRateQuery = nil
+        }
+        
+        // 清理完整睡眠會話
+        if isMonitoring {
+            stopMonitoring()
+        }
+        
+        logger.info("HeartRateService被釋放")
+    }
+    
     // 初始化或更新用戶睡眠檔案
     private func initializeUserProfile(ageGroup: AgeGroup) {
         // 檢查是否有現有檔案
@@ -375,9 +398,22 @@ class HeartRateService: HeartRateServiceProtocol {
                 
                 self.heartRateHistory.append(data)
                 
-                // 限制歷史記錄大小以節省內存
-                if self.heartRateHistory.count > 1000 {
-                    self.heartRateHistory.removeFirst(100)
+                // 修改：當超過500條時，移除最舊的30%數據
+                if self.heartRateHistory.count > 500 {
+                    // 計算需要移除的條目數量（30%）
+                    let removeCount = Int(Double(self.heartRateHistory.count) * 0.3)
+                    
+                    // 移除最舊的30%記錄
+                    self.heartRateHistory.removeFirst(removeCount)
+                    self.logger.info("心率歷史記錄已清理：移除了\(removeCount)條最舊記錄，剩餘\(self.heartRateHistory.count)條")
+                    
+                    // 檢查是否有足夠的數據用於分析
+                    let fiveMinutesAgo = Date().addingTimeInterval(-300)
+                    let recentData = self.heartRateHistory.filter { $0.timestamp >= fiveMinutesAgo }
+                    
+                    if recentData.count < 10 {
+                        self.logger.warning("心率數據量可能不足，僅有\(recentData.count)條近期記錄，可能影響分析準確性")
+                    }
                 }
                 
                 // 如果有多個樣本且值不同，輸出中位數計算結果

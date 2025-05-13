@@ -40,6 +40,13 @@ public struct UserSleepProfile: Codable {
     public var sessionsSinceLastDurationAdjustment: Int = 0 // 自上次時間調整後的會話數
     public var durationAdjustmentStopped: Bool = false // 時間調整是否已經停止
     
+    // 新增: 反饋類型相關參數
+    public var consecutiveFeedbackAdjustments: Int = 0 // 連續反饋調整次數
+    public var lastFeedbackType: SleepSession.SleepFeedback? = nil // 最後一次反饋類型
+    
+    // 新增: 碎片化睡眠模式
+    public var fragmentedSleepMode: Bool = false // 是否啟用碎片化睡眠模式
+    
     // 獲取有效的靜止比例閾值
     public var effectiveRestingRatioThreshold: Double {
         // 應用用戶調整，但確保結果在0.5到0.95之間
@@ -87,7 +94,10 @@ public struct UserSleepProfile: Codable {
             consecutiveDurationAdjustments: 0,
             lastDurationAdjustmentDirection: 0,
             sessionsSinceLastDurationAdjustment: 0,
-            durationAdjustmentStopped: false
+            durationAdjustmentStopped: false,
+            consecutiveFeedbackAdjustments: 0,
+            lastFeedbackType: nil,
+            fragmentedSleepMode: false
         )
     }
     
@@ -214,8 +224,8 @@ public struct OptimizedThresholds {
     static let maxConfirmationTime: TimeInterval = 360 // 最長6分鐘
     
     // 心率閾值百分比的上下限
-    static let minThresholdPercentage: Double = 0.80  // 最低降至RHR的80%
-    static let maxThresholdPercentage: Double = 0.95  // 最高不超過RHR的95%
+    static let minThresholdPercentage: Double = 0.70  // 最低降至RHR的70%
+    static let maxThresholdPercentage: Double = 1.10  // 最高不超過RHR的110%
     
     // 靜止比例的上下限 - 新增
     static let minRestingRatio: Double = 0.5  // 最低要求50%靜止
@@ -599,6 +609,91 @@ public class UserSleepProfileManager {
         case 1: return 3  // 第二次調整需要3次會話
         default: return 4 // 第三次及以後需要4次會話
         }
+    }
+    
+    /// 計算基於反饋類型的閾值調整幅度
+    /// 對於漏報情況（未檢測到實際睡眠）調整更積極
+    /// 對於誤報情況（錯誤檢測到睡眠）調整較溫和
+    private func calculateFeedbackAdjustmentAmount(
+        feedbackType: SleepSession.SleepFeedback,
+        consecutiveCount: Int
+    ) -> Double {
+        switch feedbackType {
+        case .falseNegative: // 漏報情況 - 更積極調整
+            switch consecutiveCount {
+            case 0: return 0.015  // 首次 +1.5%
+            case 1: return 0.013  // 第二次 +1.3%
+            case 2: return 0.010  // 第三次 +1.0%
+            case 3: return 0.007  // 第四次 +0.7%
+            case 4: return 0.005  // 第五次 +0.5%
+            case 5: return 0.003  // 第六次 +0.3%
+            case 6: return 0.002  // 第七次 +0.2%
+            default: return 0.0   // 第八次以後停止調整
+            }
+        case .falsePositive: // 誤報情況 - 較溫和調整
+            switch consecutiveCount {
+            case 0: return 0.010  // 首次 +1.0%
+            case 1: return 0.007  // 第二次 +0.7%
+            case 2: return 0.003  // 第三次 +0.3%
+            case 3: return 0.002  // 第四次 +0.2%
+            default: return 0.0   // 第五次以後停止調整
+            }
+        default:
+            return 0.0 // 其他情況不進行調整
+        }
+    }
+    
+    /// 根據用戶反饋調整心率閾值（不對稱閾值調整機制）
+    public func adjustHeartRateThreshold(
+        forUserId userId: String,
+        feedbackType: SleepSession.SleepFeedback
+    ) {
+        // 獲取配置文件
+        guard var profile = getUserProfile(forUserId: userId) else { return }
+        
+        // 只針對誤報和漏報進行處理
+        guard feedbackType == .falsePositive || feedbackType == .falseNegative else { return }
+        
+        // 檢查反饋類型，並設置相應調整方向
+        var adjustmentDirection: Int = 0
+        
+        switch feedbackType {
+        case .falsePositive: // 誤報 - 系統過於寬鬆，應增加閾值
+            adjustmentDirection = 1
+        case .falseNegative: // 漏報 - 系統過於嚴格，應降低閾值
+            adjustmentDirection = -1
+        default:
+            break
+        }
+        
+        // 檢查方向是否改變
+        if let lastFeedback = profile.lastFeedbackType, lastFeedback != feedbackType {
+            // 反饋類型改變，重置連續計數
+            profile.consecutiveFeedbackAdjustments = 0
+        }
+        
+        // 計算調整幅度
+        let adjustmentAmount = calculateFeedbackAdjustmentAmount(
+            feedbackType: feedbackType,
+            consecutiveCount: profile.consecutiveFeedbackAdjustments
+        )
+        
+        // 應用調整
+        let currentThreshold = profile.hrThresholdPercentage
+        let newThreshold = currentThreshold + (Double(adjustmentDirection) * adjustmentAmount)
+        
+        // 確保在合理範圍內 (70%-110%)
+        let finalThreshold = min(max(newThreshold, 0.70), 1.10)
+        profile.hrThresholdPercentage = finalThreshold
+        
+        // 更新追蹤變數
+        profile.lastFeedbackType = feedbackType
+        profile.consecutiveFeedbackAdjustments += 1
+        
+        // 保存更新後的配置
+        saveUserProfile(profile)
+        
+        print("用戶反饋閾值調整：心率閾值調整為\(finalThreshold * 100)% (反饋類型:\(feedbackType.rawValue), 連續次數:\(profile.consecutiveFeedbackAdjustments))")
     }
     
     /// 應用收斂算法調整睡眠確認時間

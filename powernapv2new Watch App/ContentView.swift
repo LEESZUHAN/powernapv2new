@@ -486,15 +486,34 @@ struct ContentView: View {
     // 倒計時狀態視圖
     private var countdownView: some View {
         VStack(spacing: 30) {
-            // 大倒計時
-            Text(timeString(from: viewModel.remainingTime))
-                .font(.system(size: 48, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-            
-            // 睡眠階段指示器
-            Text(sleepPhaseText)
-                .font(.system(size: 18))
-                .foregroundColor(.gray)
+            // 根據不同睡眠階段顯示不同內容
+            if viewModel.napPhase == .sleeping {
+                // 已開始倒數階段 - 顯示倒數計時
+                Text(timeString(from: viewModel.remainingTime))
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                
+                // 睡眠階段指示器
+                Text(sleepPhaseText)
+                    .font(.system(size: 18))
+                    .foregroundColor(.gray)
+            } else {
+                // 等待入睡階段 - 顯示設定的時間和狀態
+                VStack(spacing: 5) {
+                    Text(timeString(from: viewModel.napDuration))
+                        .font(.system(size: 48, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.6))
+                    
+                    Text("等待深度睡眠")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                }
+                
+                // 睡眠階段指示器 - 更顯眼
+                Text(sleepPhaseText)
+                    .font(.system(size: 20))
+                    .foregroundColor(sleepPhaseColor)
+            }
             
             Spacer()
             
@@ -758,6 +777,22 @@ struct ContentView: View {
         }
     }
     
+    // 根據睡眠階段獲取顏色
+    private var sleepPhaseColor: Color {
+        switch viewModel.sleepPhase {
+        case .awake:
+            return .gray
+        case .falling:
+            return .blue
+        case .light:
+            return .green
+        case .deep:
+            return .purple
+        case .rem:
+            return .orange
+        }
+    }
+    
     // 新增：設置頁面
     private var settingsView: some View {
         NavigationView {
@@ -799,6 +834,16 @@ struct ContentView: View {
                                 icon: "gauge",
                                 title: "檢測敏感度",
                                 iconColor: .orange
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 碎片化睡眠 - 新增設定項
+                        NavigationLink(destination: FragmentedSleepSettingView(viewModel: viewModel)) {
+                            settingRow(
+                                icon: "waveform.path.ecg",
+                                title: "碎片化睡眠",
+                                iconColor: .purple
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -1561,6 +1606,111 @@ struct HeartRateInfoView: View {
         .padding(.horizontal)
         .allowsHitTesting(false)
         .focusable(false)
+    }
+}
+
+// 碎片化睡眠設定頁面
+struct FragmentedSleepSettingView: View {
+    @Environment(\.presentationMode) private var presentationMode
+    @ObservedObject var viewModel: PowerNapViewModel
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // 開關選項
+                VStack(spacing: 15) {
+                    HStack {
+                        Text("啟用碎片化睡眠模式")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        Spacer()
+                        
+                        Toggle("", isOn: Binding(
+                            get: { viewModel.fragmentedSleepMode },
+                            set: { viewModel.setFragmentedSleepMode($0) }
+                        ))
+                        .toggleStyle(SwitchToggleStyle(tint: .purple))
+                    }
+                    .padding()
+                    .background(Color(white: 0.15))
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                
+                // 說明
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("碎片化睡眠模式說明")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.bottom, 4)
+                    
+                    Text("如果您經常經歷睡眠碎片化（頻繁短暫醒來），啟用此模式可以提高睡眠檢測準確度。")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 2)
+                    
+                    Text("啟用後的變化：")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                        .padding(.top, 4)
+                    
+                    Text("• 縮短睡眠確認時間以捕捉短暫睡眠")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 2)
+                    
+                    Text("• 優化對微覺醒的處理")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 2)
+                    
+                    Text("• 調整心率監測模式，適應快速變化")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .background(Color(white: 0.15))
+                .cornerRadius(12)
+                .padding(.horizontal)
+                
+                // 適用情境
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("適用情境")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.bottom, 4)
+                    
+                    Text("• 淺眠者：容易短暫醒來的睡眠習慣")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 2)
+                    
+                    Text("• 環境敏感者：對環境聲音或光線敏感")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 2)
+                    
+                    Text("• 午休困難者：難以持續維持午休狀態")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding()
+                .background(Color(white: 0.15))
+                .cornerRadius(12)
+                .padding(.horizontal)
+            }
+            .padding(.vertical, 20)
+        }
+        .background(Color.black)
+        .navigationTitle("碎片化睡眠")
     }
 }
 
