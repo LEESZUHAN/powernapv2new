@@ -68,8 +68,8 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
     private var lastUpdateTime: Date = Date()
     private var rawAccelerationData: [Double] = []
     
-    // 用於計時的計時器
-    private let motionTimerID = "motionStateUpdate"
+    // 計時器任務ID
+    private let motionUpdateTimerID = "motionService.updateTimer"
     
     // 設定參數
     private let rawDataBufferSize = 300 // 保存5分鐘的原始數據
@@ -102,6 +102,9 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
     
     deinit {
         stopMonitoring()
+        
+        // 從TimerCoordinator移除任務
+        TimerCoordinator.shared.removeTask(id: motionUpdateTimerID)
     }
     
     // MARK: - 公開方法
@@ -142,14 +145,13 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
         motionManager.startAccelerometerUpdates(to: motionQueue) { _, _ in }
         #endif
         
-        // 啟動定時器進行狀態更新
-        TimerCoordinator.shared.addTask(
-            id: motionTimerID,
-            interval: 1.0,
-            priority: .high
-        ) { [weak self] in
+        // 啟動定時器進行狀態更新 - 改用TimerCoordinator
+        TimerCoordinator.shared.addTask(id: motionUpdateTimerID, interval: 1.0) { [weak self] in
             self?.updateStationaryState()
         }
+        
+        // 確保協調器已啟動
+        TimerCoordinator.shared.start()
         
         logger.info("動作監測已啟動")
     }
@@ -164,8 +166,8 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
         motionManager.stopAccelerometerUpdates()
         #endif
         
-        // 停止更新計時器
-        TimerCoordinator.shared.removeTask(id: motionTimerID)
+        // 停止更新計時器 - 從TimerCoordinator移除任務
+        TimerCoordinator.shared.removeTask(id: motionUpdateTimerID)
         
         logger.info("動作監測已停止")
     }

@@ -60,78 +60,81 @@ struct ContentView: View {
     }
     
     var body: some View {
-        ZStack {
-            TabView(selection: $selectedTab) {
-                // 主頁面
-                ZStack {
-                    // 背景色
-                    Color.black.edgesIgnoringSafeArea(.all)
+        NavigationView {
+            ZStack {
+                TabView(selection: $selectedTab) {
+                    // 主頁面
+                    ZStack {
+                        // 背景色
+                        Color.black.edgesIgnoringSafeArea(.all)
+                        
+                        // 根據UI狀態顯示不同內容
+                        switch uiState {
+                        case .preparing:
+                            preparingView
+                        case .monitoring:
+                            monitoringView
+                        case .countdown:
+                            countdownView
+                        }
+                    }
+                    .tag(0)
                     
-                    // 根據UI狀態顯示不同內容
-                    switch uiState {
-                    case .preparing:
-                        preparingView
-                    case .monitoring:
-                        monitoringView
-                    case .countdown:
-                        countdownView
+                    // 測試功能頁面
+                    ZStack {
+                        Color.black.edgesIgnoringSafeArea(.all)
+                        testFunctionsView
+                    }
+                    .tag(1)
+                    
+                    // 數據記錄頁面
+                    ZStack {
+                        Color.black.edgesIgnoringSafeArea(.all)
+                        dataLogsView
+                    }
+                    .tag(2)
+                    
+                    // 新增：設置頁面
+                    ZStack {
+                        Color.black.edgesIgnoringSafeArea(.all)
+                        settingsView
+                    }
+                    .tag(3)
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
+                // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear
+                            .preference(key: TabViewHeightPreference.self, value: geometry.size.height)
+                    }
+                )
+                // 使用onPreferenceChange代替onAppear以避免每次頁面切換都重新加載
+                .onPreferenceChange(TabViewHeightPreference.self) { _ in 
+                    // 只在首次加載時執行
+                    if logFiles.isEmpty {
+                        loadLogFiles()
+                    }
+                    
+                    // 從ViewModel加載設置值
+                    if thresholdOffset == 0.0 && sleepSensitivity == 0.5 {
+                        thresholdOffset = viewModel.userHRThresholdOffset
+                        sleepSensitivity = viewModel.sleepSensitivity
+                        selectedAgeGroup = viewModel.userSelectedAgeGroup
                     }
                 }
-                .tag(0)
                 
-                // 測試功能頁面
-                ZStack {
-                    Color.black.edgesIgnoringSafeArea(.all)
-                    testFunctionsView
-                }
-                .tag(1)
-                
-                // 數據記錄頁面
-                ZStack {
-                    Color.black.edgesIgnoringSafeArea(.all)
-                    dataLogsView
-                }
-                .tag(2)
-                
-                // 新增：設置頁面
-                ZStack {
-                    Color.black.edgesIgnoringSafeArea(.all)
-                    settingsView
-                }
-                .tag(3)
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-            // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
-            .background(
-                GeometryReader { geometry in
-                    Color.clear
-                        .preference(key: TabViewHeightPreference.self, value: geometry.size.height)
-                }
-            )
-            // 使用onPreferenceChange代替onAppear以避免每次頁面切換都重新加載
-            .onPreferenceChange(TabViewHeightPreference.self) { _ in 
-                // 只在首次加載時執行
-                if logFiles.isEmpty {
-                    loadLogFiles()
+                // 反饋提示覆蓋層
+                if viewModel.showingFeedbackPrompt {
+                    feedbackPromptView
                 }
                 
-                // 從ViewModel加載設置值
-                if thresholdOffset == 0.0 && sleepSensitivity == 0.5 {
-                    thresholdOffset = viewModel.userHRThresholdOffset
-                    sleepSensitivity = viewModel.sleepSensitivity
-                    selectedAgeGroup = viewModel.userSelectedAgeGroup
+                // 鬧鈴停止UI覆蓋層
+                if viewModel.showingAlarmStopUI {
+                    alarmStopView
                 }
             }
-            
-            // 反饋提示覆蓋層
-            if viewModel.showingFeedbackPrompt {
-                feedbackPromptView
-            }
-            
-            // 鬧鈴停止UI覆蓋層
-            if viewModel.showingAlarmStopUI {
-                alarmStopView
-            }
+            .navigationBarHidden(true)
         }
     }
     
@@ -403,6 +406,20 @@ struct ContentView: View {
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
+                    
+                    // 添加計時器測試視圖按鈕
+                    NavigationLink(destination: TimerTestView()) {
+                        Text("計時器系統測試")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.blue)
+                            .cornerRadius(25)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 10)
                 }
                 .padding(.bottom, 20)
             }
@@ -795,7 +812,108 @@ struct ContentView: View {
     
     // 新增：設置頁面
     private var settingsView: some View {
-        SettingsView(viewModel: viewModel)
+        NavigationView {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    // 標題改為左上角小標題風格
+                    Text("設定")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.blue)
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                        .padding(.bottom, 8)
+                    
+                    // 統一的列表項風格
+                    VStack(spacing: 8) {
+                        // 睡眠確認時間設定
+                        NavigationLink(destination: SleepConfirmationTimeSettingView(viewModel: viewModel)) {
+                            settingRow(
+                                icon: "clock",
+                                title: "睡眠確認時間",
+                                iconColor: .blue
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 心率閾值調整 - 導航到新的次頁
+                        NavigationLink(destination: HeartRateThresholdSettingView(viewModel: viewModel)) {
+                            settingRow(
+                                icon: "heart.text.square",
+                                title: "心率閾值",
+                                iconColor: .red
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 睡眠檢測敏感度 - 導航到新的次頁
+                        NavigationLink(destination: SensitivityDetailSettingView(viewModel: viewModel, sleepSensitivity: $sleepSensitivity)) {
+                            settingRow(
+                                icon: "gauge",
+                                title: "檢測敏感度",
+                                iconColor: .orange
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 碎片化睡眠 - 新增設定項
+                        NavigationLink(destination: FragmentedSleepSettingView(viewModel: viewModel)) {
+                            settingRow(
+                                icon: "waveform.path.ecg",
+                                title: "碎片化睡眠",
+                                iconColor: .purple
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 年齡組設置 - 導航到新的次頁
+                        NavigationLink(destination: AgeGroupDetailSettingView(viewModel: viewModel, selectedAgeGroup: $selectedAgeGroup)) {
+                            settingRow(
+                                icon: "person.3",
+                                title: "年齡組設置",
+                                iconColor: .green
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .padding(.horizontal)
+                    
+                    // 心率信息視圖
+                    VStack(spacing: 0) {
+                        Text("心率信息")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.gray)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal)
+                            .padding(.top, 24)
+                            .padding(.bottom, 5)
+                        
+                        HeartRateInfoView(viewModel: viewModel)
+                    }
+                    
+                    // 重設按鈕
+                    Button(action: {
+                        // 重置設置
+                        thresholdOffset = 0.0
+                        sleepSensitivity = 0.5
+                        viewModel.setUserHeartRateThresholdOffset(0.0)
+                        viewModel.setSleepSensitivity(0.5)
+                    }) {
+                        Text("重設所有設置參數")
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+                }
+                .padding(.bottom, 20)
+            }
+            .navigationBarHidden(true)
+            .background(Color.black)
+        }
     }
     
     // 設置行項目通用視圖 - 簡化設計
