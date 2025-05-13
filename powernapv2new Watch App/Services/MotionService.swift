@@ -69,7 +69,7 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
     private var rawAccelerationData: [Double] = []
     
     // 用於計時的計時器
-    private var updateTimer: Timer?
+    private let motionTimerID = "motionStateUpdate"
     
     // 設定參數
     private let rawDataBufferSize = 300 // 保存5分鐘的原始數據
@@ -143,10 +143,12 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
         #endif
         
         // 啟動定時器進行狀態更新
-        DispatchQueue.main.async {
-            self.updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-                self?.updateStationaryState()
-            }
+        TimerCoordinator.shared.addTask(
+            id: motionTimerID,
+            interval: 1.0,
+            priority: .high
+        ) { [weak self] in
+            self?.updateStationaryState()
         }
         
         logger.info("動作監測已啟動")
@@ -163,8 +165,7 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
         #endif
         
         // 停止更新計時器
-        updateTimer?.invalidate()
-        updateTimer = nil
+        TimerCoordinator.shared.removeTask(id: motionTimerID)
         
         logger.info("動作監測已停止")
     }

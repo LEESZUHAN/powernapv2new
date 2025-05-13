@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import os
+import SwiftUI
 
 /// 睡眠檢測協調器
 /// 負責整合動作服務和心率服務，綜合判定睡眠狀態
@@ -23,7 +24,7 @@ public class SleepDetectionCoordinator {
     private let motionService: MotionServiceProtocol
     private let heartRateService: HeartRateServiceProtocol
     private var cancellables = Set<AnyCancellable>()
-    private var stateTransitionTimer: Timer?
+    private let sleepStateTimerID = "sleepStateEvaluation"
     private var currentStateDuration: TimeInterval = 0
     private let logger = Logger(subsystem: "com.yourdomain.powernapv2new", category: "SleepDetectionCoordinator")
     
@@ -43,6 +44,10 @@ public class SleepDetectionCoordinator {
     private var sleepDetectionWindow: [WindowData] = []
     private let maxWindowSize = 360 // 最大窗口大小(秒)
     
+    // 狀態轉換穩定性變量
+    private var motionDisruptionCount: Int = 0  // 動作干擾計數
+    private var heartRateIncreaseCount: Int = 0  // 心率上升計數
+    
     // 靜止比例閾值常數
     private func getRestingRatioThreshold(for ageGroup: AgeGroup) -> Double {
         switch ageGroup {
@@ -51,10 +56,6 @@ public class SleepDetectionCoordinator {
         case .senior: return 0.70 // 銀髮族需要70%的靜止時間
         }
     }
-    
-    // 狀態轉換穩定性變量
-    private var motionDisruptionCount: Int = 0  // 動作干擾計數
-    private var heartRateIncreaseCount: Int = 0  // 心率上升計數
     
     // MARK: - 初始化
     public init(motionService: MotionServiceProtocol, heartRateService: HeartRateServiceProtocol) {
@@ -66,7 +67,7 @@ public class SleepDetectionCoordinator {
     }
     
     deinit {
-        stateTransitionTimer?.invalidate()
+        TimerCoordinator.shared.removeTask(id: sleepStateTimerID)
         cancellables.forEach { $0.cancel() }
     }
     
@@ -86,7 +87,11 @@ public class SleepDetectionCoordinator {
         heartRateService.startMonitoring()
         
         // 設置並啟動狀態評估計時器（每秒執行一次）
-        stateTransitionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        TimerCoordinator.shared.addTask(
+            id: sleepStateTimerID,
+            interval: 1.0,
+            priority: .high
+        ) { [weak self] in
             self?.evaluateSleepState()
         }
         
@@ -103,8 +108,7 @@ public class SleepDetectionCoordinator {
         heartRateService.stopMonitoring()
         
         // 停止計時器
-        stateTransitionTimer?.invalidate()
-        stateTransitionTimer = nil
+        TimerCoordinator.shared.removeTask(id: sleepStateTimerID)
         
         isMonitoring = false
         logger.info("睡眠檢測已停止監測")

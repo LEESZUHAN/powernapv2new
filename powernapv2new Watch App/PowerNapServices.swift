@@ -893,52 +893,55 @@ class SleepDataLogger {
     private let logFlushInterval: TimeInterval = 10.0   // 日誌寫入間隔（10秒）
     private let maxEntriesBeforeFlush: Int = 20         // 在寫入前允許的最大條目數
     private let logRetentionDays: Int = 14              // 日誌保留天數（14天）
-    private var loggingTimer: Timer?                    // 定時寫入計時器
-    private var lastLogEntryTime: Date?                 // 上次記錄時間
-    private let minLogInterval: TimeInterval = 10.0     // 最小記錄間隔（10秒）
+    private let loggingTimerID = "logFlushTimer"        // 日誌寫入計時器ID
+    
+    // 上次日誌記錄時間（用於限制頻率）
+    private var lastLogEntryTime: Date?
+    private let minLogInterval: TimeInterval = 10.0 // 最小日誌記錄間隔（10秒）
     
     static let shared = SleepDataLogger()
     
     private init() {}
     
-    // 開始新的記錄會話
-    func startNewSession() {
-        // 生成唯一會話ID
-        sessionId = UUID().uuidString
+    // 開始記錄會話
+    func startSession() {
+        // 創建會話ID和檔案路徑
+        sessionId = dateFormatter.string(from: Date())
         
-        // 創建日期字符串作為文件名的一部分
-        let dateString = dateFormatter.string(from: Date())
-        let fileName = "powernap_session_\(dateString).csv"
-        
-        // 獲取文檔目錄
-        if let docsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
-            // 檢查或創建LogFiles目錄
-            let logDirectory = docsDirectory.appendingPathComponent("LogFiles")
+        if let sessionId = sessionId {
+            // 檢查並創建日誌目錄
+            let logsDirectory = try? FileManager.default.url(
+                for: .documentDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            ).appendingPathComponent("SleepLogs", isDirectory: true)
             
-            do {
-                if !fileManager.fileExists(atPath: logDirectory.path) {
-                    try fileManager.createDirectory(at: logDirectory, withIntermediateDirectories: true)
+            if let logsDirectory = logsDirectory {
+                // 確保日誌目錄存在
+                try? FileManager.default.createDirectory(at: logsDirectory, withIntermediateDirectories: true)
+                
+                // 設置日誌檔案路徑
+                logFilePath = logsDirectory.appendingPathComponent("\(sessionId).log")
+                
+                // 創建初始日誌內容
+                let initialContent = "--- PowerNap 睡眠會話記錄 ---\n"
+                    + "開始時間: \(Date())\n"
+                    + "ID: \(sessionId)\n\n"
+                    + "時間,心率,靜息心率,閾值,心率趨勢,加速度,靜止,睡眠中,睡眠階段,剩餘時間,備註\n"
+                
+                // 寫入初始內容
+                if let filePath = logFilePath, let data = initialContent.data(using: .utf8) {
+                    try? data.write(to: filePath)
                 }
-                
-                // 設置日誌文件路徑
-                logFilePath = logDirectory.appendingPathComponent(fileName)
-                
-                // 寫入標題行
-                let headerLine = "Timestamp,HeartRate,RestingHR,HRThreshold,HRTrend,AccelerationLevel,IsResting,IsSleeping,SleepPhase,RemainingTime,Notes\n"
-                try headerLine.write(to: logFilePath!, atomically: true, encoding: .utf8)
-                
-                print("開始睡眠數據記錄: \(fileName)")
-                
-                // 啟動定時刷新計時器
-                startLoggingTimer()
-                
-                // 清理過期日誌
-                cleanupOldLogFiles()
-                
-            } catch {
-                print("創建日誌文件失敗: \(error.localizedDescription)")
             }
         }
+        
+        // 開始定時器
+        startLoggingTimer()
+        
+        // 清理舊日誌
+        cleanupOldLogs()
     }
     
     // 記錄心率和睡眠數據
@@ -1005,15 +1008,21 @@ class SleepDataLogger {
         self.logFilePath = nil
         
         // 停止日誌計時器
-        loggingTimer?.invalidate()
-        loggingTimer = nil
+        TimerCoordinator.shared.removeTask(id: loggingTimerID)
     }
     
     // 新增方法: 啟動日誌定時器
     private func startLoggingTimer() {
-        loggingTimer?.invalidate()
-        loggingTimer = Timer.scheduledTimer(withTimeInterval: logFlushInterval, repeats: true) { [weak self] _ in
-            self?.flushLogEntries()
+        // 先停止現有的計時器
+        TimerCoordinator.shared.removeTask(id: loggingTimerID)
+        
+        // 創建新的計時器任務
+        TimerCoordinator.shared.addTask(
+            id: loggingTimerID,
+            interval: logFlushInterval,
+            priority: .low
+        ) { [weak self] in
+            self?.checkAndFlushLogs()
         }
     }
     
@@ -1038,10 +1047,10 @@ class SleepDataLogger {
     }
     
     // 新增方法: 清理過期日誌文件
-    private func cleanupOldLogFiles() {
+    private func cleanupOldLogs() {
         // 獲取日誌目錄
         guard let docsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-        let logDirectory = docsDirectory.appendingPathComponent("LogFiles")
+        let logDirectory = docsDirectory.appendingPathComponent("SleepLogs")
         
         // 確保目錄存在
         guard fileManager.fileExists(atPath: logDirectory.path) else { return }
@@ -1071,6 +1080,18 @@ class SleepDataLogger {
             } catch {
                 print("清理日誌文件時出錯: \(error.localizedDescription)")
             }
+        }
+    }
+    
+    // 檢查是否需要寫入日誌
+    private func checkAndFlushLogs() {
+        let now = Date()
+        
+        // 如果待寫入條目數超過閾值或距離上次寫入時間超過間隔，則寫入
+        if !pendingLogEntries.isEmpty &&
+            (pendingLogEntries.count >= maxEntriesBeforeFlush ||
+             now.timeIntervalSince(lastLogWriteTime) >= logFlushInterval) {
+            flushLogEntries()
         }
     }
 }
@@ -1557,7 +1578,7 @@ class PowerNapViewModel: ObservableObject {
         logger.info("開始小睡會話，設定時間: \(self.napDuration) 秒")
         
         // 開始記錄睡眠數據
-        sleepLogger.startNewSession()
+        sleepLogger.startSession()
         
         // 更新狀態
         isNapping = true

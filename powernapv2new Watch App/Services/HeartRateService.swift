@@ -30,22 +30,26 @@ class HeartRateWindow {
 
 /// 確保HeartRateService使用正確的共享類型
 /// 注意：所有共享類型定義在 SharedTypes.swift 中
-class HeartRateService: HeartRateServiceProtocol {
+class HeartRateService: HeartRateServiceProtocol, ObservableObject {
     // MARK: - 公開屬性
-    @Published private(set) var currentHeartRate: Double = 0
-    @Published private(set) var restingHeartRate: Double = 60
-    @Published private(set) var heartRateThreshold: Double = 54
-    @Published private(set) var isProbablySleeping: Bool = false
-    @Published private(set) var heartRateTrend: Double = 0.0 // 心率趨勢指標：正值=上升，負值=下降，0=穩定
+    @Published private(set) public var currentHeartRate: Double = 0
+    @Published private(set) public var restingHeartRate: Double = 65
+    @Published private(set) public var heartRateThreshold: Double = 0
+    @Published private(set) public var isProbablySleeping: Bool = false  // 心率是否顯示睡眠狀態
+    @Published private(set) public var heartRateTrend: Double = 0.0  // 心率趨勢指標 [-1,1]
     
-    var heartRatePublisher: Published<Double>.Publisher { $currentHeartRate }
-    var restingHeartRatePublisher: Published<Double>.Publisher { $restingHeartRate }
-    var isProbablySleepingPublisher: Published<Bool>.Publisher { $isProbablySleeping }
-    var heartRateTrendPublisher: Published<Double>.Publisher { $heartRateTrend } // 新增趨勢發布者
+    // 公開發布者
+    public var currentHeartRatePublisher: Published<Double>.Publisher { $currentHeartRate }
+    public var isProbablySleepingPublisher: Published<Bool>.Publisher { $isProbablySleeping }
+    public var heartRateTrendPublisher: Published<Double>.Publisher { $heartRateTrend }
+    
+    // 實現協議要求的發布者
+    public var heartRatePublisher: Published<Double>.Publisher { $currentHeartRate }
+    public var restingHeartRatePublisher: Published<Double>.Publisher { $restingHeartRate }
     
     // MARK: - 私有屬性
     private let healthStore = HKHealthStore()
-    private var heartRateQuery: HKAnchoredObjectQuery?
+    private var heartRateQuery: HKQuery?
     private var restingHeartRateQuery: HKQuery?
     private var heartRateObserver: AnyCancellable?
     private var sleepDetectionTimer: Timer?
@@ -62,21 +66,33 @@ class HeartRateService: HeartRateServiceProtocol {
     private var userId: String = UUID().uuidString // 為每個用戶創建一個唯一ID
     private var userProfile: UserSleepProfile?
     
+    // 計時器 - 修改為TimerCoordinator任務ID
+    private let sleepDetectionTimerID = "heartRateSleepDetection"
+    private let trendAnalysisTimerID = "heartRateTrendAnalysis"
+    
     // MARK: - 初始化
-    init() {
-        setupHealthKit()
-        fetchRestingHeartRate()
-        detectUserAge { [weak self] age in
-            guard let self = self else { return }
-            let group = AgeGroup.forAge(age)
-            self.ageGroup = group
-            
-            // 設置或更新用戶檔案
-            self.initializeUserProfile(ageGroup: group)
-            
-            self.calculateHeartRateThreshold(for: group)
-            print("獲取到用戶年齡: \(age)")
+    init(ageGroup: AgeGroup = .adult) {
+        self.ageGroup = ageGroup
+        
+        // 獲取或生成用戶ID
+        if let savedId = UserDefaults.standard.string(forKey: "com.yourdomain.powernapv2new.userId") {
+            self.userId = savedId
+        } else {
+            self.userId = UUID().uuidString
+            UserDefaults.standard.set(self.userId, forKey: "com.yourdomain.powernapv2new.userId")
         }
+        
+        // 設置HealthKit
+        setupHealthKit()
+        
+        // 獲取靜息心率
+        fetchRestingHeartRate()
+        
+        // 計算初始心率閾值（基於年齡組）
+        calculateHeartRateThreshold(for: ageGroup)
+        
+        // 初始化或更新用戶睡眠檔案
+        initializeUserProfile(ageGroup: ageGroup)
     }
     
     // 添加deinit方法確保所有資源被清理
@@ -98,6 +114,10 @@ class HeartRateService: HeartRateServiceProtocol {
         if isMonitoring {
             stopMonitoring()
         }
+        
+        // 停止所有計時器任務
+        TimerCoordinator.shared.removeTask(id: sleepDetectionTimerID)
+        TimerCoordinator.shared.removeTask(id: trendAnalysisTimerID)
         
         logger.info("HeartRateService被釋放")
     }
@@ -137,13 +157,21 @@ class HeartRateService: HeartRateServiceProtocol {
         // 創建新的睡眠會話
         currentSleepSession = SleepSession.create(userId: userId)
         
-        // 設置定時檢測
-        sleepDetectionTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+        // 使用TimerCoordinator設置定時任務
+        TimerCoordinator.shared.addTask(
+            id: sleepDetectionTimerID,
+            interval: 10.0,
+            priority: .high
+        ) { [weak self] in
             self?.analyzeHeartRateForSleep()
         }
         
-        // 啟動趨勢分析計時器 - 每30秒分析一次
-        trendAnalysisTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+        // 啟動趨勢分析任務
+        TimerCoordinator.shared.addTask(
+            id: trendAnalysisTimerID,
+            interval: 30.0,
+            priority: .medium
+        ) { [weak self] in
             self?.calculateHeartRateTrend()
         }
     }
@@ -158,7 +186,7 @@ class HeartRateService: HeartRateServiceProtocol {
             heartRateQuery = nil
         }
         
-        // 停止定時器
+        // 停止計時器
         sleepDetectionTimer?.invalidate()
         sleepDetectionTimer = nil
         
