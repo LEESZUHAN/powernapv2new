@@ -144,8 +144,8 @@ class WorkoutSessionManager: NSObject, HKWorkoutSessionDelegate {
         
         // 結束會話
         workoutSession.end()
-        
-        // 棄用workout數據，因為這只是一個休息會話
+                
+                // 棄用workout數據，因為這只是一個休息會話
         workoutBuilder?.discardWorkout()
         #endif
         
@@ -761,7 +761,7 @@ class NotificationManager: NSObject {
         sendNotificationWithDelay(5, identifier: "beat1-1")
         sendNotificationWithDelay(7, identifier: "beat1-2")
         sendNotificationWithDelay(10, identifier: "beat1-3")
-        
+                
         // 第二節拍（15-20秒）- 緊密節奏
         sendNotificationWithDelay(15, identifier: "beat2-1")
         sendNotificationWithDelay(17, identifier: "beat2-2")
@@ -893,97 +893,50 @@ class SleepDataLogger {
     private let logFlushInterval: TimeInterval = 10.0   // 日誌寫入間隔（10秒）
     private let maxEntriesBeforeFlush: Int = 20         // 在寫入前允許的最大條目數
     private let logRetentionDays: Int = 14              // 日誌保留天數（14天）
-    private let loggingTimerID = "logFlushTimer"        // 日誌寫入計時器ID
+    private let loggingTimerID = "sleepDataLogger.logFlush"  // 定時寫入計時器ID
     
-    // 上次日誌記錄時間（用於限制頻率）
+    // 其他屬性
     private var lastLogEntryTime: Date?
-    private let minLogInterval: TimeInterval = 10.0 // 最小日誌記錄間隔（10秒）
+    private let minLogInterval: TimeInterval = 10.0     // 最小日誌記錄間隔（秒）
+    private let logger = Logger(subsystem: "com.yourdomain.powernapv2new", category: "SleepDataLogger")
     
     static let shared = SleepDataLogger()
     
     private init() {}
     
-    // 開始記錄會話
-    func startSession() {
-        // 創建會話ID和檔案路徑
-        sessionId = dateFormatter.string(from: Date())
+    // 開始會話
+    func startNewSession() {
+        // 創建目錄
+        createLogsDirectoryIfNeeded()
         
-        if let sessionId = sessionId {
-            // 檢查並創建日誌目錄
-            let logsDirectory = try? FileManager.default.url(
-                for: .documentDirectory,
-                in: .userDomainMask,
-                appropriateFor: nil,
-                create: true
-            ).appendingPathComponent("SleepLogs", isDirectory: true)
-            
-            if let logsDirectory = logsDirectory {
-                // 確保日誌目錄存在
-                try? FileManager.default.createDirectory(at: logsDirectory, withIntermediateDirectories: true)
-                
-                // 設置日誌檔案路徑
-                logFilePath = logsDirectory.appendingPathComponent("\(sessionId).log")
-                
-                // 創建初始日誌內容
-                let initialContent = "--- PowerNap 睡眠會話記錄 ---\n"
-                    + "開始時間: \(Date())\n"
-                    + "ID: \(sessionId)\n\n"
-                    + "時間,心率,靜息心率,閾值,心率趨勢,加速度,靜止,睡眠中,睡眠階段,剩餘時間,備註\n"
-                
-                // 寫入初始內容
-                if let filePath = logFilePath, let data = initialContent.data(using: .utf8) {
-                    try? data.write(to: filePath)
-                }
+        // 生成新會話ID
+        sessionId = UUID().uuidString
+        let timestamp = dateFormatter.string(from: Date())
+        
+        // 創建日誌文件
+        let filename = "sleep_log_\(timestamp).txt"
+        let logsDirectory = getLogsDirectory()
+        logFilePath = logsDirectory.appendingPathComponent(filename)
+        
+        // 寫入日誌頭部
+        let header = "--- PowerNap睡眠日誌 ---\n開始時間: \(timestamp)\n會話ID: \(sessionId ?? "未知")\n\n"
+        if let data = header.data(using: .utf8) {
+            do {
+                try data.write(to: logFilePath!)
+                logger.info("創建新日誌文件: \(filename)")
+            } catch {
+                logger.error("無法創建日誌文件: \(error.localizedDescription)")
             }
         }
         
-        // 開始定時器
-        startLoggingTimer()
-        
-        // 清理舊日誌
+        // 清理老舊日誌
         cleanupOldLogs()
+        
+        // 啟動定時寫入計時器
+        startLoggingTimer()
     }
     
-    // 記錄心率和睡眠數據
-    func logSleepData(
-        heartRate: Double,
-        restingHR: Double,
-        hrThreshold: Double,
-        hrTrend: Double,
-        acceleration: Double,
-        isResting: Bool,
-        isSleeping: Bool,
-        sleepPhase: String,
-        remainingTime: TimeInterval,
-        notes: String = ""
-    ) {
-        guard logFilePath != nil else { return }
-        
-        let now = Date()
-        
-        // 檢查是否應該跳過本次記錄（時間間隔控制）
-        if let lastTime = lastLogEntryTime, now.timeIntervalSince(lastTime) < minLogInterval {
-            return // 距離上次記錄還不到10秒，跳過
-        }
-        
-        // 更新最後記錄時間
-        lastLogEntryTime = now
-        
-        // 格式化數據行
-        let dateString = dateFormatter.string(from: now)
-        let dataLine = "\(dateString),\(heartRate),\(restingHR),\(hrThreshold),\(hrTrend),\(acceleration),\(isResting),\(isSleeping),\(sleepPhase),\(remainingTime),\"\(notes)\"\n"
-        
-        // 添加到待寫入隊列
-        pendingLogEntries.append(dataLine)
-        
-        // 如果達到閾值或時間間隔足夠長，執行寫入
-        if pendingLogEntries.count >= maxEntriesBeforeFlush || 
-           now.timeIntervalSince(lastLogWriteTime) >= logFlushInterval {
-            flushLogEntries()
-        }
-    }
-    
-    // 結束記錄會話
+    // 結束會話
     func endSession(summary: String) {
         // 確保所有待寫入數據都被寫入
         flushLogEntries()
@@ -1007,22 +960,26 @@ class SleepDataLogger {
         sessionId = nil
         self.logFilePath = nil
         
-        // 停止日誌計時器
+        // 停止定時器
         TimerCoordinator.shared.removeTask(id: loggingTimerID)
+        
+        logger.info("日誌會話已結束")
     }
     
     // 新增方法: 啟動日誌定時器
     private func startLoggingTimer() {
-        // 先停止現有的計時器
-        TimerCoordinator.shared.removeTask(id: loggingTimerID)
-        
-        // 創建新的計時器任務
+        // 使用TimerCoordinator添加日誌刷新任務
         TimerCoordinator.shared.addTask(
             id: loggingTimerID,
             interval: logFlushInterval,
             priority: .low
         ) { [weak self] in
-            self?.checkAndFlushLogs()
+            self?.checkAndFlushLogEntries()
+        }
+        
+        // 確保主計時器在運行
+        if !TimerCoordinator.shared.isRunning {
+            TimerCoordinator.shared.start()
         }
     }
     
@@ -1050,7 +1007,7 @@ class SleepDataLogger {
     private func cleanupOldLogs() {
         // 獲取日誌目錄
         guard let docsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-        let logDirectory = docsDirectory.appendingPathComponent("SleepLogs")
+        let logDirectory = docsDirectory.appendingPathComponent("LogFiles")
         
         // 確保目錄存在
         guard fileManager.fileExists(atPath: logDirectory.path) else { return }
@@ -1080,18 +1037,6 @@ class SleepDataLogger {
             } catch {
                 print("清理日誌文件時出錯: \(error.localizedDescription)")
             }
-        }
-    }
-    
-    // 檢查是否需要寫入日誌
-    private func checkAndFlushLogs() {
-        let now = Date()
-        
-        // 如果待寫入條目數超過閾值或距離上次寫入時間超過間隔，則寫入
-        if !pendingLogEntries.isEmpty &&
-            (pendingLogEntries.count >= maxEntriesBeforeFlush ||
-             now.timeIntervalSince(lastLogWriteTime) >= logFlushInterval) {
-            flushLogEntries()
         }
     }
 }
@@ -1323,12 +1268,35 @@ class PowerNapViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    // 啟動統計數據更新計時器
+    // 開始定期更新狀態統計
     private func startStatsUpdateTimer() {
-        statsUpdateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        // 使用TimerCoordinator添加統計更新任務
+        TimerCoordinator.shared.addTask(
+            id: statsUpdateTimerID,
+            interval: 1.0,
+            priority: .normal
+        ) { [weak self] in
             guard let self = self else { return }
-            self.updateStats()
+            
+            // 更新心率相關統計
+            self.updateHeartRateStats()
+            
+            // 更新動作相關統計
+            self.updateMotionStats()
+            
+            // 更新UI數據
+            self.objectWillChange.send()
         }
+        
+        // 確保主計時器在運行
+        if !TimerCoordinator.shared.isRunning {
+            TimerCoordinator.shared.start()
+        }
+    }
+    
+    // 取消計時器
+    private func invalidateTimer() {
+        TimerCoordinator.shared.removeTask(id: napTimerID)
     }
     
     // 更新統計數據
@@ -1575,43 +1543,55 @@ class PowerNapViewModel: ObservableObject {
     func startNap() {
         guard !isNapping else { return }
         
-        logger.info("開始小睡會話，設定時間: \(self.napDuration) 秒")
+        logger.info("開始小睡會話")
         
-        // 開始記錄睡眠數據
-        sleepLogger.startSession()
-        
-        // 更新狀態
-        isNapping = true
-        sleepPhase = .awake
-        napPhase = .awaitingSleep
-        startTime = Date()  // 這裡startTime暫時記錄為會話開始時間
+        // 初始化變量
+        startTime = Date()
         sleepStartTime = nil
         remainingTime = napDuration
         
-        // 在啟動服務前更新心率閾值
+        // 初始化狀態
+        isNapping = true
+        napPhase = .awaitingSleep
+        sleepPhase = .awake
+        showingFeedbackPrompt = false
+        showingAlarmStopUI = false
+        alarmStopped = false
+        
+        // 創建新的睡眠日誌記錄
+        sleepLogger.startNewSession()
+        
+        // 設置自適應閾值
         updateHeartRateThreshold()
         
-        // 啟動計時器
-        setupNapTimer()
+        // 更新用戶配置文件（會自動檢查是否需要優化）
+        let userId = getUserId()
+        updateUserProfileAfterSession()
         
-        // 按順序啟動服務，確保依賴關係正確
-        // 1. 首先啟動運行時服務
+        // 檢查是否需要自動閾值優化
+        checkForAutomaticThresholdOptimization(userId: userId)
+        
+        // 啟動會話數據記錄
+        logStartSessionData()
+        
+        // 啟動服務
         runtimeManager.startSession()
+        workoutManager.startWorkoutSession()
         
-        // 2. 然後啟動運動和姿勢監測
+        // 啟動監測服務
         motionManager.startMonitoring()
-        
-        // 3. 接著啟動心率服務
         heartRateService.startMonitoring()
-        
-        // 4. 啟動睡眠檢測服務
+        sleepServices.startMonitoring()
         sleepDetection.startMonitoring()
         
-        // 5. 整合的睡眠服務
-        sleepServices.startMonitoring()
+        // 訂閱睡眠狀態變化
+        subscribeSleepStateChanges()
         
-        // 6. 最後啟動HealthKit會話
-        workoutManager.startWorkoutSession()
+        // 開始倒數計時
+        setupNapTimer()
+        
+        // 開始定期更新統計
+        startStatsUpdateTimer()
     }
     
     // 停止小睡
@@ -1644,8 +1624,7 @@ class PowerNapViewModel: ObservableObject {
         
         // 停止計時器
         invalidateTimer()
-        statsUpdateTimer?.invalidate()
-        statsUpdateTimer = nil
+        TimerCoordinator.shared.removeTask(id: statsUpdateTimerID)
         
         // 更新狀態
         isNapping = false
@@ -1679,7 +1658,12 @@ class PowerNapViewModel: ObservableObject {
     private func setupNapTimer() {
         invalidateTimer()
         
-        napTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        // 使用TimerCoordinator添加倒計時任務
+        TimerCoordinator.shared.addTask(
+            id: napTimerID,
+            interval: 1.0,
+            priority: .high
+        ) { [weak self] in
             guard let self = self, self.isNapping else { return }
             
             // 根據休息階段執行不同的更新
@@ -1689,23 +1673,15 @@ class PowerNapViewModel: ObservableObject {
                 // 不需要額外調用checkSleepState，因為我們訂閱了協調器的狀態更新
                 
                 // 檢查是否超時，使用新的超時機制
-                checkSleepWaitTimeout()
-                
-                /* 舊的超時檢查邏輯，替換為新方法
-                // 檢查是否已經等待太久（30分鐘）
-                if let startTime = self.startTime, Date().timeIntervalSince(startTime) > 30 * 60 {
-                    self.logger.info("等待入睡超時，停止小睡")
-                    self.stopNap()
-                }
-                */
+                self.checkSleepWaitTimeout()
                 
             case .sleeping:
                 // 睡眠階段，更新倒計時
                 if let sleepStartTime = self.sleepStartTime {
                     // 計算已經睡眠的時間
                     let elapsedSleepTime = Date().timeIntervalSince(sleepStartTime)
-    
-    // 更新剩餘時間
+                    
+                    // 更新剩餘時間
                     self.remainingTime = max(0, self.napDuration - elapsedSleepTime)
                     
                     // 記錄睡眠數據
@@ -1779,12 +1755,6 @@ class PowerNapViewModel: ObservableObject {
         
         // 使用新的喚醒流程
         startWakeUpSequence()
-    }
-    
-    // 取消計時器
-    private func invalidateTimer() {
-        napTimer?.invalidate()
-        napTimer = nil
     }
     
     // 智能喚醒邏輯 - 根據睡眠階段決定最佳喚醒時間

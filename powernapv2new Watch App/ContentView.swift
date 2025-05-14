@@ -60,134 +60,131 @@ struct ContentView: View {
     }
     
     var body: some View {
-        NavigationView {
+        ZStack {
+        TabView(selection: $selectedTab) {
+            // 主頁面
             ZStack {
-                TabView(selection: $selectedTab) {
-                    // 主頁面
-                    ZStack {
-                        // 背景色
-                        Color.black.edgesIgnoringSafeArea(.all)
-                        
-                        // 根據UI狀態顯示不同內容
-                        switch uiState {
-                        case .preparing:
-                            preparingView
-                        case .monitoring:
-                            monitoringView
-                        case .countdown:
-                            countdownView
-                        }
-                    }
-                    .tag(0)
-                    
-                    // 測試功能頁面
-                    ZStack {
-                        Color.black.edgesIgnoringSafeArea(.all)
-                        testFunctionsView
-                    }
-                    .tag(1)
-                    
-                    // 數據記錄頁面
-                    ZStack {
-                        Color.black.edgesIgnoringSafeArea(.all)
-                        dataLogsView
-                    }
-                    .tag(2)
-                    
-                    // 新增：設置頁面
-                    ZStack {
-                        Color.black.edgesIgnoringSafeArea(.all)
-                        settingsView
-                    }
-                    .tag(3)
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-                // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
-                .background(
-                    GeometryReader { geometry in
-                        Color.clear
-                            .preference(key: TabViewHeightPreference.self, value: geometry.size.height)
-                    }
-                )
-                // 使用onPreferenceChange代替onAppear以避免每次頁面切換都重新加載
-                .onPreferenceChange(TabViewHeightPreference.self) { _ in 
-                    // 只在首次加載時執行
-                    if logFiles.isEmpty {
-                        loadLogFiles()
-                    }
-                    
-                    // 從ViewModel加載設置值
-                    if thresholdOffset == 0.0 && sleepSensitivity == 0.5 {
-                        thresholdOffset = viewModel.userHRThresholdOffset
-                        sleepSensitivity = viewModel.sleepSensitivity
-                        selectedAgeGroup = viewModel.userSelectedAgeGroup
-                    }
-                }
+                // 背景色
+                Color.black.edgesIgnoringSafeArea(.all)
                 
-                // 反饋提示覆蓋層
-                if viewModel.showingFeedbackPrompt {
-                    feedbackPromptView
-                }
-                
-                // 鬧鈴停止UI覆蓋層
-                if viewModel.showingAlarmStopUI {
-                    alarmStopView
+                // 根據UI狀態顯示不同內容
+                switch uiState {
+                case .preparing:
+                    preparingView
+                case .monitoring:
+                    monitoringView
+                case .countdown:
+                    countdownView
                 }
             }
-            .navigationBarHidden(true)
+            .tag(0)
+            
+            // 測試功能頁面
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
+                testFunctionsView
+            }
+            .tag(1)
+                
+                // 數據記錄頁面
+                ZStack {
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    dataLogsView
+                }
+                .tag(2)
+                
+                // 新增：設置頁面
+                ZStack {
+                    Color.black.edgesIgnoringSafeArea(.all)
+                    settingsView
+                }
+                .tag(3)
+        }
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
+            // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
+            .background(
+                GeometryReader { geometry in
+                    Color.clear
+                        .preference(key: TabViewHeightPreference.self, value: geometry.size.height)
+                }
+            )
+            // 使用onPreferenceChange代替onAppear以避免每次頁面切換都重新加載
+            .onPreferenceChange(TabViewHeightPreference.self) { _ in 
+                // 只在首次加載時執行
+                if logFiles.isEmpty {
+                    loadLogFiles()
+                }
+                
+                // 從ViewModel加載設置值
+                if thresholdOffset == 0.0 && sleepSensitivity == 0.5 {
+                    thresholdOffset = viewModel.userHRThresholdOffset
+                    sleepSensitivity = viewModel.sleepSensitivity
+                    selectedAgeGroup = viewModel.userSelectedAgeGroup
+                }
+            }
+            
+            // 反饋提示覆蓋層
+            if viewModel.showingFeedbackPrompt {
+                feedbackPromptView
+            }
+            
+            // 鬧鈴停止UI覆蓋層
+            if viewModel.showingAlarmStopUI {
+                alarmStopView
+            }
         }
     }
     
     // 準備狀態視圖 - 使用官方推薦的WatchOS Picker實現
     private var preparingView: some View {
         VStack(spacing: 15) {
-            Text("休息時間")
-                .font(.headline)
-                .foregroundColor(.gray)
-            
+                Text("休息時間")
+                    .font(.headline)
+                    .foregroundColor(.gray)
+                
             // 恢復為明確的wheel樣式Picker
             Picker(selection: $viewModel.napMinutes, label: Text("分鐘數")) {
-                ForEach(1...30, id: \.self) { minutes in
+                    ForEach(1...30, id: \.self) { minutes in
                     Text("\(minutes)").tag(minutes)
+                    }
                 }
-            }
             .pickerStyle(WheelPickerStyle())
             .frame(height: 100)
-            
-            Text("分鐘")
-                .font(.subheadline)
-                .foregroundColor(.gray)
-            
-            Spacer()
-            
-            // 開始按鈕
-            Button(action: {
+                
+                Text("分鐘")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                
+                Spacer()
+                
+                // 開始按鈕
+                Button(action: {
                 // 轉換為秒
                 viewModel.napDuration = Double(viewModel.napMinutes) * 60
-                viewModel.startNap()
-            }) {
-                Text("開始休息")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(.white)
+                    viewModel.startNap()
+                }) {
+                    Text("開始休息")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(Color.blue)
-                    .cornerRadius(22)
-            }
-            .buttonStyle(PlainButtonStyle())
+                        .background(Color.blue)
+                        .cornerRadius(22)
+                }
+                .buttonStyle(PlainButtonStyle())
             .padding(.horizontal)
-        }
-        .padding()
+            }
+            .padding()
     }
     
     // 測試功能頁面視圖 - 增加顯示心率、靜止心率和運動狀況
     private var testFunctionsView: some View {
         VStack {
-            Text("開發測試功能")
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.white)
+                    Text("開發測試功能")
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundColor(.white)
                 .padding(.top, 5)
-            
+                    
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 20) {
                     // 心率資訊區塊
@@ -315,7 +312,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal, 20)
-                    .padding(.top, 10)
+        .padding(.top, 10)
                     
                     // 添加情境測試區域標題
                     Text("情境測試區")
@@ -407,19 +404,10 @@ struct ContentView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                     
-                    // 添加計時器測試視圖按鈕
+                    // 在測試按鈕部分添加TimerTestView按鈕
                     NavigationLink(destination: TimerTestView()) {
-                        Text("計時器系統測試")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(Color.blue)
-                            .cornerRadius(25)
+                        Label("測試計時器協調器", systemImage: "timer")
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.horizontal, 20)
-                    .padding(.top, 10)
                 }
                 .padding(.bottom, 20)
             }
@@ -449,9 +437,9 @@ struct ContentView: View {
             // 取消按鈕區域 - 加入確認機制
             if showingCancelConfirmation {
                 // 顯示確認按鈕
-                Button(action: {
+            Button(action: {
                     // 確認取消
-                    viewModel.stopNap()
+                viewModel.stopNap()
                     showingCancelConfirmation = false
                 }) {
                     Text("確認取消")
@@ -485,16 +473,16 @@ struct ContentView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                         showingCancelConfirmation = false
                     }
-                }) {
-                    Text("取消")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 120, height: 44)
-                        .background(Color.red)
-                        .cornerRadius(22)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.bottom, 30)
+            }) {
+                Text("取消")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.white)
+                    .frame(width: 120, height: 44)
+                    .background(Color.red)
+                    .cornerRadius(22)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .padding(.bottom, 30)
             }
         }
         .padding()
@@ -506,14 +494,14 @@ struct ContentView: View {
             // 根據不同睡眠階段顯示不同內容
             if viewModel.napPhase == .sleeping {
                 // 已開始倒數階段 - 顯示倒數計時
-                Text(timeString(from: viewModel.remainingTime))
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                
-                // 睡眠階段指示器
-                Text(sleepPhaseText)
-                    .font(.system(size: 18))
-                    .foregroundColor(.gray)
+            Text(timeString(from: viewModel.remainingTime))
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+            
+            // 睡眠階段指示器
+            Text(sleepPhaseText)
+                .font(.system(size: 18))
+                .foregroundColor(.gray)
             } else {
                 // 等待入睡階段 - 顯示設定的時間和狀態
                 VStack(spacing: 5) {

@@ -23,6 +23,7 @@ public class SleepDetectionCoordinator {
     private let motionService: MotionServiceProtocol
     private let heartRateService: HeartRateServiceProtocol
     private var cancellables = Set<AnyCancellable>()
+    private let stateTransitionTimerID = "sleepDetection.stateTransition"
     private var currentStateDuration: TimeInterval = 0
     private let logger = Logger(subsystem: "com.yourdomain.powernapv2new", category: "SleepDetectionCoordinator")
     
@@ -55,9 +56,6 @@ public class SleepDetectionCoordinator {
     private var motionDisruptionCount: Int = 0  // 動作干擾計數
     private var heartRateIncreaseCount: Int = 0  // 心率上升計數
     
-    // 計時器任務ID
-    private let stateEvaluationTimerID = "sleepDetectionCoordinator.stateEvaluation"
-    
     // MARK: - 初始化
     public init(motionService: MotionServiceProtocol, heartRateService: HeartRateServiceProtocol) {
         self.motionService = motionService
@@ -68,8 +66,7 @@ public class SleepDetectionCoordinator {
     }
     
     deinit {
-        // 從TimerCoordinator移除任務
-        TimerCoordinator.shared.removeTask(id: stateEvaluationTimerID)
+        TimerCoordinator.shared.removeTask(id: stateTransitionTimerID)
         cancellables.forEach { $0.cancel() }
     }
     
@@ -88,13 +85,19 @@ public class SleepDetectionCoordinator {
         motionService.startMonitoring()
         heartRateService.startMonitoring()
         
-        // 設置並啟動狀態評估計時器 - 使用TimerCoordinator
-        TimerCoordinator.shared.addTask(id: stateEvaluationTimerID, interval: 1.0) { [weak self] in
+        // 使用TimerCoordinator設置並啟動狀態評估任務（每秒執行一次）
+        TimerCoordinator.shared.addTask(
+            id: stateTransitionTimerID,
+            interval: 1.0,
+            priority: .high
+        ) { [weak self] in
             self?.evaluateSleepState()
         }
         
-        // 確保協調器已啟動
-        TimerCoordinator.shared.start()
+        // 確保主計時器在運行
+        if !TimerCoordinator.shared.isRunning {
+            TimerCoordinator.shared.start()
+        }
         
         isMonitoring = true
         logger.info("睡眠檢測已開始監測")
@@ -108,8 +111,8 @@ public class SleepDetectionCoordinator {
         motionService.stopMonitoring()
         heartRateService.stopMonitoring()
         
-        // 停止計時器 - 從TimerCoordinator移除任務
-        TimerCoordinator.shared.removeTask(id: stateEvaluationTimerID)
+        // 移除計時器任務
+        TimerCoordinator.shared.removeTask(id: stateTransitionTimerID)
         
         isMonitoring = false
         logger.info("睡眠檢測已停止監測")
