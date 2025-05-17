@@ -1685,22 +1685,18 @@ class PowerNapViewModel: ObservableObject {
                 // 檢查是否超時，使用新的超時機制
                 checkSleepWaitTimeout()
             
-                /* 舊的超時檢查邏輯，替換為新方法
-                // 檢查是否已經等待太久（30分鐘）
-                if let startTime = self.startTime, Date().timeIntervalSince(startTime) > 30 * 60 {
-                    self.logger.info("等待入睡超時，停止小睡")
-                    self.stopNap()
-            }
-                */
-                
             case .sleeping:
                 // 睡眠階段，更新倒計時
                 if let sleepStartTime = self.sleepStartTime {
                     // 計算已經睡眠的時間
                     let elapsedSleepTime = Date().timeIntervalSince(sleepStartTime)
-    
-    // 更新剩餘時間
-                    self.remainingTime = max(0, self.napDuration - elapsedSleepTime)
+                    
+                    // 獲取當前用戶的確認時間設定（秒）
+                    let confirmationTime = Double(self.currentUserProfile?.minDurationSeconds ?? 180)
+                    
+                    // 計算實際的倒計時時間（總休息時間 - 確認時間，確保用戶獲得完整的設定休息時間）
+                    // 新邏輯：從設定的napDuration中減去確認時間，這樣確認時間就算入了總休息時間
+                    self.remainingTime = max(0, self.napDuration - elapsedSleepTime - confirmationTime)
                     
                     // 記錄睡眠數據
                     self.logSleepData()

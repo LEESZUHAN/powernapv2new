@@ -9,18 +9,12 @@ import SwiftUI
 import HealthKit
 import UserNotifications
 
-// 導入計時器協調器
-@_implementationOnly import Foundation
-
 @main
 struct powernapv2new_Watch_AppApp: App {
     // 確保已經請求了HealthKit權限和通知權限
     init() {
         requestHealthKitPermissions()
         requestNotificationPermissions()
-        
-        // 啟動計時器協調器
-        TimerCoordinator.shared.start()
     }
     
     var body: some Scene {

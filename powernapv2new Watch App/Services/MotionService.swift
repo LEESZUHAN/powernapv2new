@@ -69,7 +69,7 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
     private var rawAccelerationData: [Double] = []
     
     // 用於計時的計時器
-    private let updateTimerID = "motion.updateState"
+    private var updateTimer: Timer?
     
     // 設定參數
     private let rawDataBufferSize = 300 // 保存5分鐘的原始數據
@@ -102,7 +102,6 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
     
     deinit {
         stopMonitoring()
-        TimerCoordinator.shared.removeTask(id: updateTimerID)
     }
     
     // MARK: - 公開方法
@@ -143,18 +142,11 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
         motionManager.startAccelerometerUpdates(to: motionQueue) { _, _ in }
         #endif
         
-        // 使用TimerCoordinator啟動定時器進行狀態更新
-        TimerCoordinator.shared.addTask(
-            id: updateTimerID,
-            interval: 1.0,
-            priority: .high
-        ) { [weak self] in
-            self?.updateStationaryState()
-        }
-        
-        // 確保主計時器在運行
-        if !TimerCoordinator.shared.isRunning {
-            TimerCoordinator.shared.start()
+        // 啟動定時器進行狀態更新
+        DispatchQueue.main.async {
+            self.updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+                self?.updateStationaryState()
+            }
         }
         
         logger.info("動作監測已啟動")
@@ -170,8 +162,9 @@ public class MotionService: MotionServiceProtocol, ObservableObject {
         motionManager.stopAccelerometerUpdates()
         #endif
         
-        // 使用TimerCoordinator停止更新計時器
-        TimerCoordinator.shared.removeTask(id: updateTimerID)
+        // 停止更新計時器
+        updateTimer?.invalidate()
+        updateTimer = nil
         
         logger.info("動作監測已停止")
     }
