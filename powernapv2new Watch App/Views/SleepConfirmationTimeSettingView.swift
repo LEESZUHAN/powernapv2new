@@ -36,11 +36,11 @@ struct SleepConfirmationTimeSettingView: View {
     // MARK: - 視圖
     var body: some View {
         ScrollView {
-            VStack(alignment: .center, spacing: 15) {
-                // 時間顯示 - 移到頂部
-                VStack(spacing: 4) {
+            VStack(alignment: .center, spacing: 8) {
+                // 時間顯示 - 保持完整性
+                VStack(spacing: 2) {
                     Text(formattedTime)
-                        .font(.system(size: 48, weight: .medium, design: .rounded))
+                        .font(.system(size: 42, weight: .medium, design: .rounded))
                         .monospacedDigit()
                         .foregroundColor(.white)
                     
@@ -48,91 +48,52 @@ struct SleepConfirmationTimeSettingView: View {
                         .font(.caption2)
                         .foregroundColor(.gray)
                 }
-                .padding(.top, 10)
-                .padding(.bottom, 5)
+                .padding(.top, 3)
+                .padding(.bottom, 2)
                 
-                // 加減按鈕
+                // 加減按鈕 - 使用較大的觸控區域
                 HStack(spacing: 30) {
+                    // 減號按鈕
                     Button(action: decreaseTime) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "minus.circle.fill")
-                                .font(.system(size: 36))
-                                .foregroundColor(.blue)
-                            Text("減少")
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                        }
-                        .frame(width: 70, height: 70)
-                        .contentShape(Rectangle())
-                        .background(Color(white: 0.2, opacity: 0.3))
-                        .cornerRadius(10)
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.blue)
+                            .frame(width: 44, height: 44)
+                            .background(Color(white: 0.2, opacity: 0.3))
+                            .cornerRadius(22)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .contentShape(Rectangle().size(CGSize(width: 70, height: 60)))
                     
+                    // 加號按鈕
                     Button(action: increaseTime) {
-                        VStack(spacing: 4) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 36))
-                                .foregroundColor(.blue)
-                            Text("增加")
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                        }
-                        .frame(width: 70, height: 70)
-                        .contentShape(Rectangle())
-                        .background(Color(white: 0.2, opacity: 0.3))
-                        .cornerRadius(10)
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.blue)
+                            .frame(width: 44, height: 44)
+                            .background(Color(white: 0.2, opacity: 0.3))
+                            .cornerRadius(22)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .contentShape(Rectangle().size(CGSize(width: 70, height: 60)))
                 }
+                .padding(.bottom, 8)
                 
-                // 每次調整提示
-                Text("每次±10秒")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
-                    .padding(.top, 5)
-                
-                // 範圍提示
-                Text("範圍: 1-6分鐘")
-                    .font(.caption2)
-                    .foregroundColor(.gray)
-                    .padding(.bottom, 10)
-                
-                // 保存按鈕 - 移到這裡
+                // 保存按鈕
                 Button(action: saveChanges) {
                     Text("保存設定")
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .padding(.vertical, 12)
                         .background(Color.blue)
                         .cornerRadius(12)
                         .contentShape(Rectangle())
-                        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .padding(.vertical, 5)
+                .padding(.bottom, 4)
                 
-                Divider()
-                    .background(Color.gray.opacity(0.3))
-                    .padding(.horizontal)
-                
-                // 說明
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("關於確認時間")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                    
-                    Text("確認時間是系統判定您已進入睡眠所需的持續低心率時間。心率波動較大的用戶可能需要較長的確認時間(3-4分鐘)，而容易快速入睡的用戶可以設置較短的確認時間(1-2分鐘)。")
-                        .font(.caption2)
-                        .foregroundColor(.gray)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true) // 確保文字不被截斷
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 5)
-                
-                // 自動學習控制按鈕
-                VStack(spacing: 12) {
+                // 自動學習控制按鈕 - 移到保存按鈕下方形成三個主要按鈕
+                VStack(spacing: 6) {
                     // 重置時間按鈕
                     Button(action: {
                         showingResetAlert = true
@@ -149,7 +110,7 @@ struct SleepConfirmationTimeSettingView: View {
                             Spacer()
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 10)
                         .padding(.horizontal, 16)
                         .background(Color(white: 0.2, opacity: 0.7))
                         .cornerRadius(12)
@@ -176,7 +137,7 @@ struct SleepConfirmationTimeSettingView: View {
                             Spacer()
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 10)
                         .padding(.horizontal, 16)
                         .background(Color(white: 0.2, opacity: 0.7))
                         .cornerRadius(12)
@@ -187,13 +148,43 @@ struct SleepConfirmationTimeSettingView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.vertical, 10)
                 
-                Spacer(minLength: 20)
+                // 調整提示和範圍提示 - 移到下方
+                VStack(spacing: 2) {
+                    Text("每次±10秒")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    
+                    Text("範圍: 1-6分鐘")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
+                .padding(.top, 8)
+                
+                Divider()
+                    .background(Color.gray.opacity(0.3))
+                    .padding(.horizontal)
+                    .padding(.vertical, 6)
+                
+                // 說明 - 保持在最下方
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("關於確認時間")
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    
+                    Text("確認時間是系統判定您已進入睡眠所需的持續低心率時間。心率波動較大的用戶可能需要較長的確認時間(3-4分鐘)，而容易快速入睡的用戶可以設置較短的確認時間(1-2分鐘)。")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                Spacer(minLength: 10)
             }
             .padding(.horizontal)
         }
-        .background(Color.black) // 確保背景顏色與設定頁面一致
+        .background(Color.black)
         .navigationTitle("睡眠確認時間")
         .alert(isPresented: $showingAlert) {
             Alert(
