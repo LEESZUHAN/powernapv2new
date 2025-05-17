@@ -17,6 +17,7 @@ struct SleepConfirmationTimeSettingView: View {
     @State private var alertMessage = ""
     @State private var showingResetAlert = false
     @State private var showingContinueAlert = false
+    @State private var isLearningEnabled: Bool = true  // 新增：追蹤智慧學習狀態
     
     // 格式化時間顯示
     private var formattedTime: String {
@@ -31,6 +32,10 @@ struct SleepConfirmationTimeSettingView: View {
         // 從用戶配置獲取當前確認時間
         let currentTime = viewModel.currentUserProfile?.minDurationSeconds ?? 180
         self._confirmationTimeSeconds = State(initialValue: currentTime)
+        
+        // 初始化智慧學習狀態
+        let isLearningDisabled = viewModel.currentUserProfile?.durationAdjustmentStopped ?? false
+        self._isLearningEnabled = State(initialValue: !isLearningDisabled)
     }
     
     // MARK: - 視圖
@@ -121,20 +126,24 @@ struct SleepConfirmationTimeSettingView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     
-                    // 繼續智慧學習按鈕
+                    // 繼續智慧學習按鈕 - 改為開關式設計
                     Button(action: {
-                        showingContinueAlert = true
+                        toggleSmartLearning()
                     }) {
                         HStack {
-                            Image(systemName: "brain.head.profile")
-                                .foregroundColor(.green)
+                            Image(systemName: isLearningEnabled ? "brain.head.profile.fill" : "brain.head.profile")
+                                .foregroundColor(isLearningEnabled ? .green : .gray)
                                 .font(.system(size: 18))
                             
-                            Text("繼續智慧學習")
-                                .foregroundColor(.white)
+                            Text(isLearningEnabled ? "智慧學習已開啟" : "智慧學習已關閉")
+                                .foregroundColor(isLearningEnabled ? .white : .gray)
                                 .font(.system(size: 16, weight: .medium))
                             
                             Spacer()
+                            
+                            Image(systemName: isLearningEnabled ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(isLearningEnabled ? .green : .gray)
+                                .font(.system(size: 18))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -238,8 +247,8 @@ struct SleepConfirmationTimeSettingView: View {
         if let currentProfile = viewModel.currentUserProfile {
             // 只有在值有變化時才更新
             if currentProfile.minDurationSeconds != confirmationTimeSeconds {
-                // 使用ViewModel提供的方法更新確認時間
-                viewModel.updateSleepConfirmationTime(confirmationTimeSeconds)
+                // 使用ViewModel提供的方法更新確認時間，但不關閉智慧學習
+                viewModel.updateSleepConfirmationTime(confirmationTimeSeconds, disableLearning: !isLearningEnabled)
                 
                 // 觸發震動反饋
                 #if os(watchOS)
@@ -249,7 +258,11 @@ struct SleepConfirmationTimeSettingView: View {
                 alertMessage = "確認時間已設為 \(formattedTime)"
                 showingAlert = true
             } else {
-                // 值未變化，直接返回
+                // 值未變化，但可能需要更新學習狀態
+                if isLearningEnabled != !currentProfile.durationAdjustmentStopped {
+                    toggleSmartLearning(showAlert: false)
+                }
+                // 直接返回
                 self.presentationMode.wrappedValue.dismiss()
             }
         }
@@ -279,17 +292,52 @@ struct SleepConfirmationTimeSettingView: View {
         #endif
     }
     
-    private func continueSmartLearning() {
-        // 調用ViewModel的繼續學習方法
-        viewModel.continueSleepLearning()
+    // 新增：切換智慧學習狀態
+    private func toggleSmartLearning(showAlert: Bool = true) {
+        // 切換狀態
+        isLearningEnabled.toggle()
         
-        // 設置提示信息
-        alertMessage = "已開啟智慧學習，將基於現有設定 \(formattedTime) 繼續優化"
-        showingAlert = true
+        // 根據新狀態調用相應方法
+        if isLearningEnabled {
+            // 開啟智慧學習
+            viewModel.continueSleepLearning()
+            
+            if showAlert {
+                // 設置提示信息
+                alertMessage = "已開啟智慧學習，將基於現有設定 \(formattedTime) 繼續優化"
+                showingAlert = true
+            }
+        } else {
+            // 關閉智慧學習
+            viewModel.disableSleepLearning()
+            
+            if showAlert {
+                // 設置提示信息
+                alertMessage = "已關閉智慧學習，系統將不再自動調整確認時間"
+                showingAlert = true
+            }
+        }
         
         // 觸發震動反饋
         #if os(watchOS)
         WKInterfaceDevice.current().play(.success)
         #endif
+    }
+    
+    // 修改：保留原有方法作為相容性支持
+    private func continueSmartLearning() {
+        if !isLearningEnabled {
+            isLearningEnabled = true
+            viewModel.continueSleepLearning()
+            
+            // 設置提示信息
+            alertMessage = "已開啟智慧學習，將基於現有設定 \(formattedTime) 繼續優化"
+            showingAlert = true
+            
+            // 觸發震動反饋
+            #if os(watchOS)
+            WKInterfaceDevice.current().play(.success)
+            #endif
+        }
     }
 } 
