@@ -48,6 +48,9 @@ struct ContentView: View {
     @State private var feedbackStage: FeedbackStage = .initial
     @State private var feedbackWasAccurate: Bool = true
     
+    // 新增：跟踪重置選項
+    @State private var showingResetOptions: Bool = false
+    
     // 根據ViewModel狀態計算UI狀態
     private var uiState: UIState {
         if !viewModel.isNapping {
@@ -138,17 +141,18 @@ struct ContentView: View {
     // 準備狀態視圖 - 使用官方推薦的WatchOS Picker實現
     private var preparingView: some View {
         VStack(spacing: 15) {
-            // 恢復為明確的wheel樣式Picker
+            // 修改為根據確認時間動態調整的時間範圍
             Picker(selection: $viewModel.napMinutes, label: Text("分鐘數")) {
-                    ForEach(1...30, id: \.self) { minutes in
+                ForEach(viewModel.validNapDurationRange, id: \.self) { minutes in
                     Text("\(minutes)").tag(minutes)
                     }
                 }
             .pickerStyle(WheelPickerStyle())
             .frame(height: 100)
-                
-            // 移除Spacer，讓按鈕上移
-            // Spacer(minLength: 20)
+            .onAppear {
+                // 確保在視圖載入時檢查並修正選擇的值
+                viewModel.ensureValidNapDuration()
+            }
                 
                 // 開始按鈕
                 Button(action: {
@@ -875,6 +879,39 @@ struct ContentView: View {
         .cornerRadius(8)
     }
     
+    // 調整數據視圖
+    private var adjustmentDataView: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("心率閾值調整")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                
+                let adjustment = getThresholdAdjustment()
+                Text(adjustment)
+                    .font(.system(size: 12))
+                    .foregroundColor(adjustment.contains("+") ? .green : (adjustment.contains("-") ? .orange : .gray))
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("確認時間")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white)
+                
+                let (time, change) = getConfirmationTime()
+                Text("\(time)秒 \(change)")
+                    .font(.system(size: 12))
+                    .foregroundColor(change.contains("+") ? .orange : (change.contains("-") ? .green : .gray))
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(Color(white: 0.15))
+        .cornerRadius(8)
+    }
+    
     // 獲取精度數據
     private func getPrecisionData() -> String {
         // 從日誌中解析精度數據
@@ -911,7 +948,7 @@ struct ContentView: View {
             }
         }
         
-        return "90"  // 默認值
+        return "-"  // 修改為無數據符號
     }
     
     // 獲取召回率數據
@@ -937,7 +974,7 @@ struct ContentView: View {
             return "85"  // 如果有漏報，則稍低的召回率
         }
         
-        return "88"  // 默認值
+        return "-"  // 修改為無數據符號
     }
     
     private func getAverageSleepHR() -> String {
@@ -966,12 +1003,16 @@ struct ContentView: View {
             }
         }
         
-        return "51"  // 默認值
+        return "-"  // 修改為無數據符號
     }
     
     private func getSleepHRPercentage() -> String {
         // 從日誌中提取或計算睡眠心率佔RHR的百分比
         let avgHR = Double(getAverageSleepHR()) ?? 0
+        if avgHR == 0 || getAverageSleepHR() == "-" {
+            return "-" // 如果沒有心率數據，直接返回-
+        }
+        
         let rhrRegex = try? NSRegularExpression(pattern: "靜息心率: (\\d+)", options: [])
         
         if let match = rhrRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
@@ -988,7 +1029,7 @@ struct ContentView: View {
             return "\(logContent[percentRange])%"
         }
         
-        return "85%"  // 默認值
+        return "-"  // 修改為無數據符號
     }
     
     private func getHRDeviation() -> (String, Bool) {
@@ -1002,7 +1043,7 @@ struct ContentView: View {
             return ("\(deviationStr)%", isDown)
         }
         
-        return ("-5.6%", true)  // 默認值
+        return ("-", true)  // 修改為無數據符號
     }
     
     private func getAnomalyScore() -> Int {
@@ -1020,7 +1061,31 @@ struct ContentView: View {
             return 3
         }
         
-        return 0  // 默認值
+        return 0  // 保留0作為無異常的標準值
+    }
+    
+    private func getAnomalyThreshold() -> String {
+        // 從日誌中提取異常閾值
+        let thresholdRegex = try? NSRegularExpression(pattern: "異常閾值: (\\d+)%", options: [])
+        
+        if let match = thresholdRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+           let thresholdRange = Range(match.range(at: 1), in: logContent) {
+            return "\(logContent[thresholdRange])%"
+        }
+        
+        return "8%"  // 保留默認閾值
+    }
+    
+    private func getCumulativeScore() -> String {
+        // 從日誌中提取累計分數
+        let scoreRegex = try? NSRegularExpression(pattern: "累計分數: (\\d+)", options: [])
+        
+        if let match = scoreRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+           let scoreRange = Range(match.range(at: 1), in: logContent) {
+            return String(logContent[scoreRange])
+        }
+        
+        return "-"  // 修改為無數據符號
     }
     
     private func getThresholdValues() -> (String, String) {
@@ -1048,7 +1113,25 @@ struct ContentView: View {
             return ("\(percent)%", bpm)
         }
         
-        return ("90%", "54")  // 默認值
+        return ("-", "-")  // 修改為無數據符號
+    }
+    
+    private func getSystemDetection() -> (String, Bool) {
+        // 解析系統檢測結果
+        if logContent.contains("檢測到睡眠") {
+            return ("睡眠", true)
+        } else if logContent.contains("未檢測到睡眠") {
+            return ("清醒", false)
+        }
+        
+        // 根據sleepState判斷
+        if logContent.contains("深度睡眠") || logContent.contains("輕度睡眠") {
+            return ("睡眠", true)
+        } else if logContent.contains("清醒") || logContent.contains("休息") {
+            return ("清醒", false)
+        }
+        
+        return ("-", false)  // 修改為無數據符號
     }
     
     private func getDetectionErrorType() -> String {
@@ -1059,71 +1142,18 @@ struct ContentView: View {
             return "誤報"
         }
         
-        return "無"  // 默認值
+        return "無"  // 保留無誤報/漏報的標準值
     }
     
-    private func getSessionStatus() -> String {
-        // 解析會話狀態
-        if logContent.contains("誤判") {
-            return "系統誤判"
-        } else if logContent.contains("漏報") {
-            return "系統漏報"
-        } else if logContent.contains("正常") {
-            return "正常檢測"
-        }
-        
-        // 根據用戶反饋
+    private func getUserFeedback() -> String {
+        // 從日誌中提取用戶反饋
         if logContent.contains("用戶反饋: 準確") {
-            return "正常狀態"
+            return "準確"
         } else if logContent.contains("用戶反饋: 不準確") {
-            if logContent.contains("深度睡眠") || logContent.contains("輕度睡眠") {
-                return "系統誤判"
-            } else {
-                return "系統漏報"
-            }
+            return "不準確"
         }
         
-        return "正常狀態"  // 默認值
-    }
-    
-    // 調整數據視圖
-    private var adjustmentDataView: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("心率閾值調整")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-                
-                let adjustment = getThresholdAdjustment()
-                Text(adjustment)
-                    .font(.system(size: 12))
-                    .foregroundColor(adjustment.contains("+") ? .green : (adjustment.contains("-") ? .orange : .gray))
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("確認時間")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white)
-                
-                let (time, change) = getConfirmationTime()
-                Text("\(time)秒 \(change)")
-                    .font(.system(size: 12))
-                    .foregroundColor(change.contains("+") ? .orange : (change.contains("-") ? .green : .gray))
-            }
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 10)
-        .background(Color(white: 0.15))
-        .cornerRadius(8)
-    }
-    
-    // 數據分析方法
-    
-    private func getDayNumber() -> String {
-        // 從日誌名稱提取或計算天數
-        return "1"
+        return "-"  // 修改為無數據符號
     }
     
     private func getThresholdAdjustment() -> String {
@@ -1150,7 +1180,7 @@ struct ContentView: View {
             }
         }
         
-        return "無變化" // 默認值
+        return "-" // 修改為無數據符號
     }
     
     private func getConfirmationTime() -> (Int, String) {
@@ -1180,7 +1210,7 @@ struct ContentView: View {
             return (time, "不變")
         }
         
-        return (180, "不變") // 默認值
+        return (0, "-") // 修改為無數據符號
     }
     
     // 格式化原始日誌條目 - 只顯示最後幾條
@@ -1331,22 +1361,53 @@ struct ContentView: View {
                         HeartRateInfoView(viewModel: viewModel)
                     }
                     
-                    // 重設按鈕
-                    Button(action: {
-                        // 重置設置
-                        thresholdOffset = 0.0
-                        sleepSensitivity = 0.5
-                        viewModel.setUserHeartRateThresholdOffset(0.0)
-                        viewModel.setSleepSensitivity(0.5)
-                    }) {
-                        Text("重設所有設置參數")
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color.blue)
-                            .cornerRadius(12)
+                    // 重設按鈕區域 - 改為兩個按鈕
+                    VStack(spacing: 10) {
+                        // 重設心率閾值和敏感度
+                        Button(action: {
+                            // 心率閾值和敏感度重置邏輯
+                            thresholdOffset = 0.0
+                            sleepSensitivity = 0.5
+                            viewModel.setUserHeartRateThresholdOffset(0.0)
+                            viewModel.setSleepSensitivity(0.5)
+                        }) {
+                            Text("重設心率&靈敏度")
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.blue)
+                                .cornerRadius(12)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        
+                        // 重置所有參數
+                        Button(action: {
+                            // 心率閾值和敏感度重置邏輯
+                            thresholdOffset = 0.0
+                            sleepSensitivity = 0.5
+                            viewModel.setUserHeartRateThresholdOffset(0.0)
+                            viewModel.setSleepSensitivity(0.5)
+                            
+                            // 額外重置確認時間
+                            viewModel.resetSleepConfirmationTime()
+                            
+                            // 重置異常評分和累計分數
+                            viewModel.resetAllAnomalyScores()
+                            
+                            // 重置碎片化睡眠模式（如果啟用）
+                            if viewModel.fragmentedSleepMode {
+                                viewModel.setFragmentedSleepMode(false)
+                            }
+                        }) {
+                            Text("重置所有參數")
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.red)
+                                .cornerRadius(12)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal)
                     .padding(.top, 20)
                 }
@@ -1654,72 +1715,6 @@ struct ContentView: View {
         } catch {
             logContent = "無法讀取文件: \(error.localizedDescription)"
         }
-    }
-    
-    // 修復用戶反饋方法
-    private func getUserFeedback() -> String {
-        // 獲取用戶反饋
-        if logContent.contains("用戶反饋: 準確") {
-            return "準確"
-        } else if logContent.contains("用戶反饋: 不準確") {
-            return "不準確"
-        } else {
-            return "無反饋"
-        }
-    }
-    
-    // 修復獲取異常閾值方法
-    private func getAnomalyThreshold() -> String {
-        // 獲取異常閾值
-        let thresholdRegex = try? NSRegularExpression(pattern: "異常閾值: ([0-9]+%[^\\n]+)", options: [])
-        
-        if let match = thresholdRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
-           let thresholdRange = Range(match.range(at: 1), in: logContent) {
-            return String(logContent[thresholdRange])
-        }
-        
-        return "8%向下" // 默認值
-    }
-    
-    // 修復累計分數方法
-    private func getCumulativeScore() -> Int {
-        // 獲取累計異常分數
-        let scoreRegex = try? NSRegularExpression(pattern: "累計分數: (\\d+)", options: [])
-        
-        if let match = scoreRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
-           let scoreRange = Range(match.range(at: 1), in: logContent),
-           let score = Int(logContent[scoreRange]) {
-            return score
-        }
-        
-        return 0 // 默認值
-    }
-    
-    // 修復系統判定方法
-    private func getSystemDetection() -> (String, Bool) {
-        // 獲取系統判定結果
-        let stateRegex = try? NSRegularExpression(pattern: "系統判定: ([^\\n]+)", options: [])
-        
-        if let match = stateRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
-           let stateRange = Range(match.range(at: 1), in: logContent) {
-            let state = String(logContent[stateRange])
-            let aboveThreshold = state.contains("符合閾值") || !state.contains("不符合")
-            
-            if state.contains("睡眠") {
-                return ("睡眠", aboveThreshold)
-            } else {
-                return ("清醒", aboveThreshold)
-            }
-        }
-        
-        // 根據其他信息判斷
-        if logContent.contains("檢測到深度睡眠") || logContent.contains("檢測到輕度睡眠") {
-            return ("睡眠", true)
-        } else if logContent.contains("未檢測到睡眠") {
-            return ("清醒", false)
-        }
-        
-        return ("睡眠", true) // 默認值
     }
 }
 
