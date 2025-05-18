@@ -1214,6 +1214,11 @@ class PowerNapViewModel: ObservableObject {
         
         // 新增：載入用戶配置文件
         loadUserProfile()
+        
+        // 確保睡眠時間選擇不小於確認時間
+        DispatchQueue.main.async {
+            self.ensureValidNapDuration()
+        }
     }
     
     deinit {
@@ -1604,6 +1609,13 @@ class PowerNapViewModel: ObservableObject {
         let currentNapPhase = napPhase
         let hadStartedSleep = sleepStartTime != nil
         
+        // 記錄最終的睡眠數據，無論是否檢測到睡眠
+        recordFinalSleepData(
+            detectedSleep: hadStartedSleep,
+            sleepPhase: currentSleepPhase,
+            napPhase: currentNapPhase
+        )
+        
         // 按相反順序停止服務
         // 1. 首先停止HealthKit會話
         workoutManager.stopWorkoutSession()
@@ -1639,34 +1651,91 @@ class PowerNapViewModel: ObservableObject {
         
         // 修改後的反饋提示顯示邏輯：只要啟動過小睡就顯示反饋
         // 延遲一秒顯示反饋提示，讓用戶有時間看到結果
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            // 檢查是否已經顯示反饋提示，避免重複顯示
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             if !self.showingFeedbackPrompt {
                 self.showingFeedbackPrompt = true
-                
-                // 10秒後自動隱藏反饋提示
-                DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
-                    if self.showingFeedbackPrompt {
-                        self.showingFeedbackPrompt = false
-                    }
-                }
-                
-                // 根據之前保存的狀態預設反饋類型，幫助用戶更容易給出反饋
-                if hadStartedSleep || currentNapPhase == .sleeping || currentSleepPhase == .light || currentSleepPhase == .deep {
-                    // 如果系統已偵測到睡眠，預設為準確
-                    self.lastFeedbackType = .accurate
-                } else {
-                    // 如果沒有偵測到睡眠，不預設反饋類型
-                    self.lastFeedbackType = .unknown
-                }
+                // 移除預設反饋類型，讓用戶根據實際情況自由選擇
+                self.lastFeedbackType = .unknown
             }
         }
         
-        // 最後才更新狀態
+        // 更新狀態
         isNapping = false
         napPhase = .awaitingSleep
-        sleepPhase = .awake
-        // 保留 sleepStartTime 直到反饋完成，確保反饋邏輯能正確判定
+        
+        logger.info("小睡會話已停止")
+    }
+    
+    // 新增：記錄最終的睡眠數據，無論是否檢測到睡眠
+    private func recordFinalSleepData(detectedSleep: Bool, sleepPhase: SleepPhase, napPhase: NapPhase) {
+        // 從心率服務獲取趨勢數據
+        let hrHistoryWindow = heartRateService.getHeartRateHistory(
+            from: Date().addingTimeInterval(-300), // 過去5分鐘
+            to: Date()
+        )
+        
+        // 計算心率趨勢
+        var hrTrendIndicator = 0.0
+        if hrHistoryWindow.count >= 3 {
+            // 分析最近的心率變化
+            var downwardTrend = 0
+            var upwardTrend = 0
+            
+            for i in 1..<hrHistoryWindow.count {
+                let current = hrHistoryWindow[i].value
+                let previous = hrHistoryWindow[i-1].value
+                
+                if current < previous - 1 { // 下降超過1 BPM
+                    downwardTrend += 1
+                    upwardTrend = 0
+                } else if current > previous + 1 { // 上升超過1 BPM
+                    upwardTrend += 1
+                    downwardTrend = 0
+                }
+            }
+            
+            // 計算趨勢指標
+            hrTrendIndicator = Double(upwardTrend - downwardTrend) / Double(hrHistoryWindow.count)
+        }
+        
+        // 決定記錄的筆記內容，基於檢測到的情況
+        var notes = ""
+        
+        if detectedSleep {
+            // 情境1：系統正確檢測到睡眠 (真陽性)
+            if napPhase == .sleeping || napPhase == .waking {
+                notes = "情境1：系統成功檢測到睡眠 (真陽性)"
+            }
+        } else {
+            // 根據睡眠階段來確定是哪種情境
+            if sleepPhase == .awake || sleepPhase == .falling {
+                // 情境4：用戶未入睡，系統正確未檢測 (真陰性)
+                notes = "情境4：系統正確未檢測到睡眠 (真陰性)"
+            } else {
+                // 情境2：用戶入睡，系統未檢測到 (假陰性)
+                notes = "情境2：系統未成功檢測到睡眠 (假陰性)"
+            }
+        }
+        
+        // 計算會話持續時間
+        let sessionDuration = startTime != nil ? Date().timeIntervalSince(startTime!) : 0
+        
+        // 記錄睡眠分析總結數據
+        logger.info("記錄最終睡眠分析數據: 檢測到睡眠: \(detectedSleep), 分類: \(notes)")
+        
+        // 記錄到日誌文件
+        sleepLogger.logSleepData(
+            heartRate: currentHeartRate,
+            restingHR: restingHeartRate,
+            hrThreshold: heartRateThreshold,
+            hrTrend: hrTrendIndicator,
+            acceleration: currentAcceleration,
+            isResting: isResting,
+            isSleeping: isProbablySleeping,
+            sleepPhase: sleepPhaseText,
+            remainingTime: 0, // 會話結束，剩餘時間為0
+            notes: "會話結束分析 - \(notes) - 總持續時間: \(Int(sessionDuration))秒"
+        )
     }
     
     // 設置小睡計時器
@@ -2389,5 +2458,80 @@ class PowerNapViewModel: ObservableObject {
         } else {
             logger.info("未找到用戶設定，使用默認配置")
         }
+    }
+}
+
+// MARK: - PowerNapViewModel Extension for Nap Duration Validation
+extension PowerNapViewModel {
+    
+    /// 獲取當前用戶的確認時間
+    var currentConfirmationTimeSeconds: Int {
+        return currentUserProfile?.minDurationSeconds ?? 180
+    }
+    
+    /// 獲取最小可選睡眠時間（分鐘）
+    var minimumNapDuration: Int {
+        return MinimumNapDurationCalculator.calculateMinimumNapDuration(
+            confirmationTimeSeconds: currentConfirmationTimeSeconds
+        )
+    }
+    
+    /// 獲取有效的睡眠時間選項範圍
+    var validNapDurationRange: ClosedRange<Int> {
+        return MinimumNapDurationCalculator.getValidNapDurationRange(
+            confirmationTimeSeconds: currentConfirmationTimeSeconds
+        )
+    }
+    
+    /// 確保當前選擇的睡眠時間有效
+    func ensureValidNapDuration() {
+        let minDuration = minimumNapDuration
+        
+        // 如果當前選擇的時間小於最小允許時間，則自動調整
+        if napMinutes < minDuration {
+            napMinutes = minDuration
+            napDuration = Double(minDuration) * 60
+            
+            // 記錄日誌
+            logger.info("自動調整睡眠時間: 從 \(self.napMinutes) 分鐘調整為 \(minDuration) 分鐘，確保大於確認時間")
+        }
+    }
+}
+
+// MARK: - PowerNapViewModel Extension for Resetting All Parameters
+extension PowerNapViewModel {
+    
+    /// 重置所有異常評分指標和累計數據
+    /// 包括異常評分、累計分數、基線重置記錄等所有相關數據
+    func resetAllAnomalyScores() {
+        // 首先調用心率基線重置（已有的功能）
+        resetHeartRateBaseline()
+        
+        // 直接清除UserDefaults中儲存的所有異常追蹤數據
+        let defaults = UserDefaults.standard
+        
+        // 清除異常評分相關的所有數據
+        let keysToRemove = [
+            "HeartRateAnomalyScores",
+            "HeartRateAnomalyCumulativeScore",
+            "HeartRateAnomalyTemporaryCount",
+            "HeartRateAnomalyPersistentCount",
+            "HeartRateAnomalyUpwardCount",
+            "HeartRateAnomalyDownwardCount",
+            "HeartRateAnomalyBaselineResets",
+            "HeartRateAnomalyLastResetDate"
+        ]
+        
+        for key in keysToRemove {
+            defaults.removeObject(forKey: key)
+        }
+        
+        // 直接使用自身的heartRateAnomalyTracker而不是通過heartRateService
+        heartRateAnomalyTracker.resetBaseline()
+        
+        // 確保異常狀態也被重置
+        heartRateAnomalyStatus = .none
+        
+        logger.info("已重置所有異常評分指標和累計數據")
     }
 } 

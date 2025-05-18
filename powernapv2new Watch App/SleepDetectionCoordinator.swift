@@ -27,6 +27,9 @@ public class SleepDetectionCoordinator {
     private var currentStateDuration: TimeInterval = 0
     private let logger = Logger(subsystem: "com.yourdomain.powernapv2new", category: "SleepDetectionCoordinator")
     
+    // 新增：最後數據記錄時間
+    private var lastDataRecordTime: Date?
+    
     // 狀態轉換條件
     private var isStationary: Bool = false
     private var isHeartRateLow: Bool = false
@@ -42,15 +45,6 @@ public class SleepDetectionCoordinator {
     // 滑動窗口和相關屬性
     private var sleepDetectionWindow: [WindowData] = []
     private let maxWindowSize = 360 // 最大窗口大小(秒)
-    
-    // 靜止比例閾值常數
-    private func getRestingRatioThreshold(for ageGroup: AgeGroup) -> Double {
-        switch ageGroup {
-        case .teen: return 0.80  // 青少年需要80%的靜止時間
-        case .adult: return 0.75 // 成人需要75%的靜止時間
-        case .senior: return 0.70 // 銀髮族需要70%的靜止時間
-        }
-    }
     
     // 狀態轉換穩定性變量
     private var motionDisruptionCount: Int = 0  // 動作干擾計數
@@ -227,6 +221,9 @@ public class SleepDetectionCoordinator {
         // 更新數據窗口 - 加入當前狀態數據
         updateDataWindow(heartRateBelowThreshold: isCurrentHeartRateLow, isResting: isCurrentlyStationary)
         
+        // 記錄周期性數據，無論是否檢測到睡眠
+        recordPeriodicSleepData()
+        
         // 使用傳統方法評估基本睡眠狀態轉換
         evaluateBasicSleepStateTransitions(
             isCurrentlyStationary: isCurrentlyStationary,
@@ -236,6 +233,27 @@ public class SleepDetectionCoordinator {
         
         // 使用增強的滑動窗口方法評估深度睡眠確認
         evaluateDeepSleepWithRatioCheck()
+    }
+    
+    /// 記錄周期性睡眠數據，無論是否檢測到睡眠
+    private func recordPeriodicSleepData() {
+        // 每30秒記錄一次數據
+        let now = Date()
+        guard lastDataRecordTime == nil || now.timeIntervalSince(lastDataRecordTime!) >= 30.0 else {
+            return
+        }
+        
+        // 更新最後記錄時間
+        lastDataRecordTime = now
+        
+        // 記錄當前窗口統計數據 - 心率低於閾值比例
+        let hrBelowThresholdRatio = calculateHeartRateBelowThresholdRatio(for: 60) // 過去60秒
+        
+        // 記錄靜止比例
+        let restingRatio = calculateRestingRatio(for: 60) // 過去60秒
+        
+        // 日誌記錄
+        logger.info("周期性數據記錄 - 心率低於閾值比例: \(String(format: "%.2f", hrBelowThresholdRatio)), 靜止比例: \(String(format: "%.2f", restingRatio)), 當前狀態: \(sleepState.description)")
     }
     
     /// 使用傳統方法評估基本睡眠狀態轉換
