@@ -50,6 +50,15 @@ public class SleepDetectionCoordinator {
     private var motionDisruptionCount: Int = 0  // 動作干擾計數
     private var heartRateIncreaseCount: Int = 0  // 心率上升計數
     
+    // 靜止比例閾值常數
+    private func getRestingRatioThreshold(for ageGroup: AgeGroup) -> Double {
+        switch ageGroup {
+        case .teen: return 0.80  // 青少年需要80%的靜止時間
+        case .adult: return 0.75 // 成人需要75%的靜止時間
+        case .senior: return 0.70 // 銀髮族需要70%的靜止時間
+        }
+    }
+    
     // MARK: - 初始化
     public init(motionService: MotionServiceProtocol, heartRateService: HeartRateServiceProtocol) {
         self.motionService = motionService
@@ -253,7 +262,7 @@ public class SleepDetectionCoordinator {
         let restingRatio = calculateRestingRatio(for: 60) // 過去60秒
         
         // 日誌記錄
-        logger.info("周期性數據記錄 - 心率低於閾值比例: \(String(format: "%.2f", hrBelowThresholdRatio)), 靜止比例: \(String(format: "%.2f", restingRatio)), 當前狀態: \(sleepState.description)")
+        logger.info("周期性數據記錄 - 心率低於閾值比例: \(String(format: "%.2f", hrBelowThresholdRatio)), 靜止比例: \(String(format: "%.2f", restingRatio)), 當前狀態: \(self.sleepState.description)")
     }
     
     /// 使用傳統方法評估基本睡眠狀態轉換
