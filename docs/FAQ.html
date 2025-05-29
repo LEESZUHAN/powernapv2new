@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PowerNap 常見問題</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #2980b9;
+        }
+        ul, ol {
+            padding-left: 25px;
+        }
+        a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        code {
+            background-color: #f8f8f8;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        blockquote {
+            border-left: 4px solid #ccc;
+            padding-left: 15px;
+            color: #666;
+        }
+        hr {
+            border: 0;
+            border-top: 1px solid #eee;
+            margin: 20px 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a1a1a;
+                color: #f0f0f0;
+            }
+            .container {
+                background-color: #2d2d2d;
+            }
+            h1 {
+                color: #f0f0f0;
+                border-bottom-color: #444;
+            }
+            h2 {
+                color: #3498db;
+            }
+            h3 {
+                color: #5dade2;
+            }
+            a {
+                color: #5dade2;
+            }
+            code {
+                background-color: #3d3d3d;
+            }
+            blockquote {
+                border-left-color: #555;
+                color: #aaa;
+            }
+            hr {
+                border-top-color: #444;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+<h1>PowerNap 常見問題</h1>
+<br>
+<h2>睡眠時間計算</h2>
+<br>
+<h3>問：PowerNap 如何計算我的睡眠時間？</h3>
+<br>
+<p>當您設定20分鐘的休息時間，應用會先觀察您的心率和運動情況，直到確認您已進入睡眠狀態。這個確認過程通常需要2-4分鐘（根據您的年齡組和個人設定）。</p>
+<br>
+<p><strong>重要說明</strong>：檢測到您已進入睡眠後，PowerNap會將確認時間計入總休息時間。例如，如果您設定20分鐘休息，確認時間為3分鐘，那麼確認睡眠後，系統會倒數17分鐘後喚醒您，總休息時間仍為20分鐘。</p>
+<br>
+<p>這種計算方式符合睡眠科學研究，因為在確認期間您已經處於淺睡狀態，也在獲得休息的好處。</p>
+<br>
+<h3>問：為什麼我的休息時間有時候看起來比設定的短？</h3>
+<br>
+<p>您看到的倒計時是剩餘的休息時間，不包括已經過去的確認時間。例如，如果設定20分鐘，系統用了3分鐘確認您入睡，剩餘計時器會顯示17分鐘，但總體休息時間仍然符合您設定的20分鐘。</p>
+<br>
+<h3>問：我可以調整確認時間嗎？</h3>
+<br>
+<p>是的，在設置中可以調整睡眠確認時間。較短的確認時間可能會加快入睡檢測，但可能增加誤判機率；較長的確認時間提供更準確的判斷，但可能延長檢測過程。</p>
+<br>
+<h2>基本功能</h2>
+<br>
+<h3>問：PowerNap如何檢測我是否入睡？</h3>
+<br>
+<p>PowerNap使用Apple Watch內建的心率感測器和加速度計來監測您的生理狀態變化。當您入睡時，心率通常會下降，並且身體活動會減少。應用程式通過分析這些數據模式來確定您是否已進入睡眠狀態。</p>
+<br>
+<h3>問：我需要如何佩戴Apple Watch才能獲得最準確的檢測？</h3>
+<br>
+<p>為獲得最佳效果，請確保：</p>
+<ul>
+<li>Apple Watch緊貼手腕，但不要過緊導致不適</li>
+<li>表帶保持適當鬆緊度，讓手錶不會在手腕上滑動</li>
+<li>清潔手錶背面的感測器，確保良好接觸</li>
+</ul>
+<br>
+<h3>問：應用會在什麼情況下喚醒我？</h3>
+<br>
+<p>PowerNap會在以下情況喚醒您：</p>
+<ol>
+<li>達到您設定的目標休息時間</li>
+<li>檢測到您已自然醒來（如果啟用了自然喚醒功能）</li>
+<li>進入深度睡眠狀態超過設定閾值（如果啟用了防止深度睡眠功能）</li>
+</ol>
+<br>
+<h2>數據和隱私</h2>
+<br>
+<h3>問：PowerNap收集哪些數據？</h3>
+<br>
+<p>PowerNap收集的數據包括：</p>
+<ul>
+<li>心率數據</li>
+<li>運動數據</li>
+<li>睡眠時長和質量數據</li>
+<li>應用設定和偏好</li>
+</ul>
+<br>
+<p>所有數據都存儲在您的設備上，我們不會將您的健康數據上傳到雲端或與第三方共享。</p>
+<br>
+<h3>問：我的睡眠數據會儲存多久？</h3>
+<br>
+<p>默認情況下，PowerNap保留最近14天的睡眠記錄。您可以在設置中調整這個時間，或手動刪除您不想保留的記錄。</p>
+<br>
+<h2>故障排除</h2>
+<br>
+<h3>問：為什麼應用無法檢測到我入睡？</h3>
+<br>
+<p>可能的原因包括：</p>
+<ul>
+<li>Apple Watch佩戴不夠緊密，導致心率讀數不准確</li>
+<li>環境太吵或太亮，影響您的入睡</li>
+<li>您處於相對興奮或緊張狀態，心率下降不明顯</li>
+<li>檢測敏感度設置可能需要調整</li>
+</ul>
+<br>
+<p>嘗試調整睡眠敏感度設置，或選擇更安靜的環境再試一次。</p>
+<br>
+<h3>問：為什麼我的Apple Watch電池消耗很快？</h3>
+<br>
+<p>PowerNap在監測過程中需要持續使用心率感測器，這會比平常消耗更多電量。為了減少電池消耗，您可以：</p>
+<ul>
+<li>在使用前確保手錶充足電量</li>
+<li>關閉不必要的背景應用</li>
+<li>使用飛行模式（如果不需要通知）</li>
+<li>降低螢幕亮度</li>
+</ul>
+<br>
+<h3>問：應用突然關閉或無響應怎麼辦？</h3>
+<br>
+<p>請嘗試以下步驟：</p>
+<ol>
+<li>重新啟動應用</li>
+<li>重新啟動Apple Watch</li>
+<li>確保watchOS系統是最新版本</li>
+<li>重新安裝應用</li>
+</ol>
+<br>
+<p>如問題持續出現，請<a href="Contact.md">聯絡我們</a>提供詳細情況。</p>
+<br>
+<h2>付費和訂閱</h2>
+<br>
+<h3>問：PowerNap是免費應用嗎？</h3>
+<br>
+<p>PowerNap提供基本功能免費使用，但某些高級功能可能需要一次性購買或訂閱。詳情請參見App Store中的應用說明。</p>
+<br>
+<h3>問：如何取消訂閱？</h3>
+<br>
+<p>您可以在Apple ID設置中管理所有訂閱。步驟如下：</p>
+<ol>
+<li>打開iPhone上的"設置"應用</li>
+<li>點擊您的Apple ID（頂部）</li>
+<li>點擊"訂閱"</li>
+<li>找到PowerNap訂閱並點擊</li>
+<li>點擊"取消訂閱"</li>
+</ol>
+<br>
+<h2>其他問題</h2>
+<br>
+<p>如果您有其他未列出的問題，請<a href="Contact.md">聯絡我們</a>，我們會儘快為您提供協助。 </p>
+</div>
+</body>
+</html>

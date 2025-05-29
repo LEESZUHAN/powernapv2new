@@ -6,11 +6,14 @@
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/HeartRateThresholdOptimizer.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/MotionService.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/SlidingWindow.swift
+/Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Services/TimerCoordinator.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Views/SleepConfirmationTimeButton.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Views/SleepConfirmationTimeSettingView.swift
+/Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/Views/TimerTestView.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/ContentView.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/PowerNapServices.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/powernapv2newApp.swift
+/Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/PowerNapViewModel.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/SleepDetectionCoordinator.swift
 /Users/michaellee/Documents/powernapv2new/powernapv2new\ Watch\ App/SleepServices.swift
 /Users/michaellee/Documents/powernapv2new/build/powernapv2new.build/Debug-watchos/powernapv2new\ Watch\ App.build/DerivedSources/GeneratedAssetSymbols.swift

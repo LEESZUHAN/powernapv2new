@@ -1,2 +1,0 @@
-Target dependency graph (1 target)
-Target 'powernapv2new Watch App' in project 'powernapv2new' (no dependencies)

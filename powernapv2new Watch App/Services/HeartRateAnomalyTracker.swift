@@ -1,3 +1,4 @@
+#if USE_HR_TRACKER
 import Foundation
 import os
 
@@ -89,6 +90,14 @@ class HeartRateAnomalyTracker {
         saveAnomalyData()
         
         logger.info("記錄心率異常 - 嚴重度: \(severity), 狀態: \(status.rawValue), 累計分數: \(self.cumulativeScore)")
+        // 高級日誌：心率異常
+        if status != .none {
+            AdvancedLogger.shared.log(.anomaly, payload: [
+                "score": AdvancedLogger.CodableValue.double(score),
+                "cumulativeScore": AdvancedLogger.CodableValue.double(self.cumulativeScore),
+                "status": AdvancedLogger.CodableValue.string(status.rawValue)
+            ])
+        }
         return status
     }
     
@@ -297,4 +306,17 @@ extension Dictionary {
         }
         return result
     }
-} 
+}
+#else
+import Foundation
+
+struct HeartRateAnomalyTracker {
+    enum AnomalyStatus: String {
+        case none, temporary, persistent, requiresReset
+    }
+    func getCurrentAnomalyStatus() -> AnomalyStatus { .none }
+    func getAnomalySummary() -> String { "" }
+    func evaluateHeartRateDeviation(heartRate: Double, expectedHR: Double, date: Date = Date()) -> AnomalyStatus { .none }
+    func resetBaseline() { /* no-op stub */ }
+}
+#endif 

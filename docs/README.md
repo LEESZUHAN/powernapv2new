@@ -32,4 +32,32 @@ PowerNap重視用戶隱私。我們只收集改善應用功能所必要的數據
 
 ## 版權信息
 
-© 2025 PowerNap Team。保留所有權利。 
+© 2025 PowerNap Team。保留所有權利。
+
+# PowerNap 技術文檔
+
+本資料夾包含PowerNap專案的所有技術文檔。
+
+## 文檔目錄
+
+### 技術文檔 (`technical/`)
+
+- **ProjectGuideline.md** - 專案概述與核心功能
+- **DevelopmentOutline.md** - 開發進度與階段規劃
+- **AlgorithmDevelopmentPlan.md** - 演算法開發計劃
+- **TechnicalDocumentationMap.md** - 技術文檔導覽圖
+- **SleepDetectionSystem.md** - 睡眠檢測系統總體架構
+- **HeartRateSystem.md** - 心率監測與閾值調整系統
+- **ConvergenceSystem.md** - 收斂與睡眠確認系統
+- **TechnicalParamsTable.md** - 技術參數表
+
+## 閱讀指南
+
+新開發者請按照以下順序閱讀文檔：
+
+1. ProjectGuideline.md
+2. SleepDetectionSystem.md
+3. 根據任務需要選擇閱讀HeartRateSystem.md或ConvergenceSystem.md
+4. 參考TechnicalParamsTable.md了解相關技術參數
+
+完整的文檔組織結構與閱讀建議請參考 [TechnicalDocumentationMap.md](technical/TechnicalDocumentationMap.md)。 

@@ -1,0 +1,12 @@
+
+Showing Recent Issues
+Prepare packages
+Prepare build
+Multiple commands produce '/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.stringsdata'
+
+Build target powernapv2new Watch App
+duplicate output file '/Users/michaellee/Library/Developer/Xcode/DerivedData/powernapv2new-aqnqdjigpfxhhbaezrjmudzroopa/Build/Intermediates.noindex/powernapv2new.build/Debug-watchos/powernapv2new Watch App.build/Objects-normal/arm64_32/SleepServices.stringsdata' on task: SwiftDriver Compilation powernapv2new Watch App normal arm64_32 com.apple.xcode.tools.swift.compiler
+
+
+
+Activity Log Complete    5/21/25, 10:40 AM    0.8 seconds

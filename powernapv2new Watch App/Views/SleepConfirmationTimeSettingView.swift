@@ -250,6 +250,9 @@ struct SleepConfirmationTimeSettingView: View {
                 // 使用ViewModel提供的方法更新確認時間，但不關閉智慧學習
                 viewModel.updateSleepConfirmationTime(confirmationTimeSeconds, disableLearning: !isLearningEnabled)
                 
+                // 確保睡眠時間選擇器的值不小於新的確認時間
+                viewModel.ensureValidNapDuration()
+                
                 // 觸發震動反饋
                 #if os(watchOS)
                 WKInterfaceDevice.current().play(.success)

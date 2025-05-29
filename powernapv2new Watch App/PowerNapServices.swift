@@ -1073,6 +1073,12 @@ class SleepDataLogger {
             }
         }
     }
+    
+    /// 停止並清理日誌計時器
+    func stopLoggingTimer() {
+        loggingTimer?.invalidate()
+        loggingTimer = nil
+    }
 }
 
 // MARK: - PowerNapViewModel
@@ -1169,6 +1175,7 @@ class PowerNapViewModel: ObservableObject {
     @Published var showingFeedbackPrompt: Bool = false // 控制是否顯示反饋提示
     @Published var lastFeedbackDate: Date? // 最近一次提供反饋的日期
     @Published var lastFeedbackType: FeedbackType = .unknown // 最近一次反饋的類型
+    private var hasSubmittedFeedback: Bool = false // 是否已寫入任何 feedback
     
     // MARK: - 喚醒UI控制相關
     @Published var showingAlarmStopUI: Bool = false // 控制是否顯示鬧鈴停止界面
@@ -1187,6 +1194,10 @@ class PowerNapViewModel: ObservableObject {
     
     // 新增: 碎片化睡眠模式
     @Published var fragmentedSleepMode: Bool = false
+    
+    // MARK: - 追蹤本次 Session 起始參數 (新增)
+    private var sessionStartThresholdPercent: Double? = nil
+    private var sessionStartMinDuration: Int? = nil
     
     init() {
         // 確保napDuration和napMinutes保持同步
@@ -1274,6 +1285,11 @@ class PowerNapViewModel: ObservableObject {
                         self.napPhase = .sleeping
                     }
                 }
+                
+                // 高級日誌：睡眠階段變化
+                AdvancedLogger.shared.log(.phaseChange, payload: [
+                    "newPhase": .string(String(describing: sleepState))
+                ])
             }
             .store(in: &cancellables)
     }
@@ -1564,6 +1580,20 @@ class PowerNapViewModel: ObservableObject {
         // 開始記錄睡眠數據
         sleepLogger.startNewSession()
         
+        // 高級日誌：啟動新會話並寫入sessionStart
+        AdvancedLogger.shared.startNewSession()
+        let thresholdPercent = (restingHeartRate > 0) ? (heartRateThreshold / restingHeartRate * 100) : 0
+        AdvancedLogger.shared.log(.sessionStart, payload: [
+            "rhr": .int(Int(restingHeartRate)),
+            "thresholdPercent": .double(thresholdPercent),
+            "thresholdBPM": .int(Int(heartRateThreshold)),
+            "minDurationSeconds": .int(currentUserProfile?.minDurationSeconds ?? 180)
+        ])
+        
+        // 追蹤本次 Session 的起始百分比與確認時間 (新增)
+        sessionStartThresholdPercent = thresholdPercent
+        sessionStartMinDuration = currentUserProfile?.minDurationSeconds
+        
         // 更新狀態
         isNapping = true
         sleepPhase = .awake
@@ -1643,8 +1673,7 @@ class PowerNapViewModel: ObservableObject {
         statsUpdateTimer?.invalidate()
         statsUpdateTimer = nil
         
-        // 保存會話數據
-        sleepLogger.endSession(summary: "小睡會話已完成")
+        // 不在這裡結束 session，等用戶反饋後再結束
         
         // 新增：會話結束後嘗試優化閾值（由SleepServices內部決定是否執行）
         // 在SleepServices中已經實現在停止監測時嘗試優化閾值
@@ -1664,6 +1693,7 @@ class PowerNapViewModel: ObservableObject {
         napPhase = .awaitingSleep
         
         logger.info("小睡會話已停止")
+        stopAllTimers()
     }
     
     // 新增：記錄最終的睡眠數據，無論是否檢測到睡眠
@@ -1708,20 +1738,65 @@ class PowerNapViewModel: ObservableObject {
             }
         } else {
             // 根據睡眠階段來確定是哪種情境
-            if sleepPhase == .awake || sleepPhase == .falling {
-                // 情境4：用戶未入睡，系統正確未檢測 (真陰性)
+            if sleepPhase == .awake || sleepPhase == .falling || sleepPhase == .light {
+                // 情境4：用戶未入睡或只是輕度睡眠但未確認，系統正確未檢測 (真陰性)
+                // 修正：將輕度睡眠(sleepPhase == .light)但未確認為睡眠(detectedSleep == false)的情況視為情境4
                 notes = "情境4：系統正確未檢測到睡眠 (真陰性)"
             } else {
-                // 情境2：用戶入睡，系統未檢測到 (假陰性)
+                // 情境2：用戶已達到深度睡眠，系統未檢測到 (假陰性)
+                // 只有在深度或REM睡眠但系統未確認的情況下才視為漏報
                 notes = "情境2：系統未成功檢測到睡眠 (假陰性)"
             }
         }
         
-        // 計算會話持續時間
-        let sessionDuration = startTime != nil ? Date().timeIntervalSince(startTime!) : 0
+        // 計算會話持續時間 (目前未使用)
+        _ = startTime != nil ? Date().timeIntervalSince(startTime!) : 0
+        
+        // 計算本次 session 的平均睡眠心率（入睡後）
+        var avgSleepHR: Double? = nil
+        if let sleepStart = sleepStartTime {
+            let sleepHRs = hrHistoryWindow.filter { $0.timestamp >= sleepStart }.map { $0.value }
+            if !sleepHRs.isEmpty {
+                avgSleepHR = sleepHRs.reduce(0, +) / Double(sleepHRs.count)
+            }
+        }
+        
+        // 先計算 thresholdPercent，之後才能計算其他差值
+        let thresholdPercent = (restingHeartRate > 0) ? (heartRateThreshold / restingHeartRate * 100) : 0
+        
+        // 新增：計算偏離百分比（deviationPercent）
+        var deviationPercent: Double? = nil
+        if let avg = avgSleepHR, restingHeartRate > 0 {
+            deviationPercent = (avg - restingHeartRate) / restingHeartRate * 100
+        }
+        
+        // 計算 delta（與 Session 開始值差）
+        var deltaPercentShort: Double? = nil
+        var deltaDurationShort: Int? = nil
+        if let startPerc = sessionStartThresholdPercent {
+            deltaPercentShort = thresholdPercent - startPerc
+        }
+        let currentMinDur = currentUserProfile?.minDurationSeconds ?? 0
+        if let startDur = sessionStartMinDuration {
+            deltaDurationShort = currentMinDur - startDur
+        }
         
         // 記錄睡眠分析總結數據
         logger.info("記錄最終睡眠分析數據: 檢測到睡眠: \(detectedSleep), 分類: \(notes)")
+        
+        // 高級日誌：會話結束
+        AdvancedLogger.shared.log(.sessionEnd, payload: [
+            "detectedSleep": .bool(detectedSleep),
+            "notes": .string(notes),
+            "avgSleepHR": avgSleepHR != nil ? .double(avgSleepHR!) : .string("-"),
+            "rhr": .double(restingHeartRate),
+            "thresholdBPM": .double(heartRateThreshold),
+            "thresholdPercent": .double(thresholdPercent),
+            "deviationPercent": deviationPercent != nil ? .double(deviationPercent!) : .string("-"),
+            "ratio": (avgSleepHR != nil && heartRateThreshold > 0) ? .double(avgSleepHR! / heartRateThreshold) : .string("-"),
+            "deltaPercentShort": deltaPercentShort != nil ? .double(deltaPercentShort!) : .string("-"),
+            "deltaDurationShort": deltaDurationShort != nil ? .int(deltaDurationShort!) : .string("-")
+        ])
         
         // 記錄到日誌文件
         sleepLogger.logSleepData(
@@ -1733,9 +1808,16 @@ class PowerNapViewModel: ObservableObject {
             isResting: isResting,
             isSleeping: isProbablySleeping,
             sleepPhase: sleepPhaseText,
-            remainingTime: 0, // 會話結束，剩餘時間為0
-            notes: "會話結束分析 - \(notes) - 總持續時間: \(Int(sessionDuration))秒"
+            remainingTime: remainingTime,
+            notes: "整合協調器檢測"
         )
+        
+        // 高級日誌：心率取樣
+        AdvancedLogger.shared.log(.hr, payload: [
+            "bpm": .double(currentHeartRate),
+            "phase": .string(sleepPhaseText),
+            "acc": .double(currentAcceleration)
+        ])
     }
     
     // 設置小睡計時器
@@ -1838,6 +1920,7 @@ class PowerNapViewModel: ObservableObject {
         
         // 使用新的喚醒流程
         startWakeUpSequence()
+        stopAllTimers()
     }
     
     // 取消計時器
@@ -1928,7 +2011,11 @@ class PowerNapViewModel: ObservableObject {
                 case .optimized(let result):
                     // 優化成功，通知用戶
                     self.logger.info("心率閾值已自動優化：\(String(format: "%.1f", result.previousThreshold * 100))% → \(String(format: "%.1f", result.newThreshold * 100))%")
-                    
+                    // 高級日誌：參數優化
+                    AdvancedLogger.shared.log(.optimization, payload: [
+                        "oldThreshold": AdvancedLogger.CodableValue.double(result.previousThreshold),
+                        "newThreshold": AdvancedLogger.CodableValue.double(result.newThreshold)
+                    ])
                     // 當閾值發生變化時，我們接收到了變化值，但也需要更新自己的閾值記錄
                     self.refreshThresholdAfterOptimization(userId: userId)
                     
@@ -2032,6 +2119,59 @@ class PowerNapViewModel: ObservableObject {
         }
         
         // 不在這裡關閉反饋提示，由UI層控制關閉時機
+
+        // 高級日誌：用戶反饋
+        AdvancedLogger.shared.log(.feedback, payload: [
+            "accurate": AdvancedLogger.CodableValue.bool(wasAccurate),
+            "type": AdvancedLogger.CodableValue.string(String(describing: lastFeedbackType))
+        ])
+
+        // 高級日誌：會話結束（根據本次 session 狀態正確寫入 detectedSleep 與所有欄位）
+        let detectedSleep = (sleepStartTime != nil)
+        let hrHistoryWindow = heartRateService.getHeartRateHistory(
+            from: Date().addingTimeInterval(-300),
+            to: Date()
+        )
+        var avgSleepHR: Double? = nil
+        if let sleepStart = sleepStartTime {
+            let sleepHRs = hrHistoryWindow.filter { $0.timestamp >= sleepStart }.map { $0.value }
+            if !sleepHRs.isEmpty {
+                avgSleepHR = sleepHRs.reduce(0, +) / Double(sleepHRs.count)
+            }
+        }
+        let thresholdPercentFB = (restingHeartRate > 0) ? (heartRateThreshold / restingHeartRate * 100) : 0
+        
+        // 計算偏離百分比、delta 變化量 (針對回饋時點)
+        var deviationPercentFB: Double? = nil
+        if let avg = avgSleepHR, restingHeartRate > 0 {
+            deviationPercentFB = (avg - restingHeartRate) / restingHeartRate * 100
+        }
+        var deltaPercentShortFB: Double? = nil
+        var deltaDurationShortFB: Int? = nil
+        if let startPerc = sessionStartThresholdPercent {
+            deltaPercentShortFB = thresholdPercentFB - startPerc
+        }
+        let currentMinDurFB = currentUserProfile?.minDurationSeconds ?? 0
+        if let startDur = sessionStartMinDuration {
+            deltaDurationShortFB = currentMinDurFB - startDur
+        }
+        
+        AdvancedLogger.shared.log(.sessionEnd, payload: [
+            "detectedSleep": AdvancedLogger.CodableValue.bool(detectedSleep),
+            "notes": AdvancedLogger.CodableValue.string("用戶反饋後結束"),
+            "avgSleepHR": avgSleepHR != nil ? .double(avgSleepHR!) : .string("-"),
+            "rhr": .double(restingHeartRate),
+            "thresholdBPM": .double(heartRateThreshold),
+            "thresholdPercent": .double(thresholdPercentFB),
+            "deviationPercent": deviationPercentFB != nil ? .double(deviationPercentFB!) : .string("-"),
+            "deltaPercentShort": deltaPercentShortFB != nil ? .double(deltaPercentShortFB!) : .string("-"),
+            "deltaDurationShort": deltaDurationShortFB != nil ? .int(deltaDurationShortFB!) : .string("-")
+        ])
+        // 結束 session，寫入 csv
+        sleepLogger.endSession(summary: "小睡會話已完成（用戶反饋後結束）")
+        
+        hasSubmittedFeedback = true
+        stopAllTimers() // feedback 寫入後才關閉所有 timer
     }
     
     // 判斷是否正在模擬反饋(測試模式)
@@ -2056,6 +2196,7 @@ class PowerNapViewModel: ObservableObject {
         lastFeedbackType = .accurate
         
         logger.info("測試情境1：模擬系統正確檢測到睡眠")
+        stopAllTimers()
     }
     
     // 測試情境2：用戶入睡，系統未檢測到
@@ -2084,6 +2225,7 @@ class PowerNapViewModel: ObservableObject {
         lastFeedbackType = .falsePositive
         
         logger.info("測試情境3：模擬系統誤判為睡眠")
+        stopAllTimers()
     }
     
     // 測試情境4：用戶未入睡，系統正確未檢測
@@ -2139,6 +2281,7 @@ class PowerNapViewModel: ObservableObject {
         sleepPhase = .awake
         napPhase = .awaitingSleep
         logger.info("喚醒流程完成，返回準備狀態")
+        stopAllTimers()
     }
     
     // 啟動喚醒流程
@@ -2176,12 +2319,14 @@ class PowerNapViewModel: ObservableObject {
         
         // 後續流程處理
         handleAlarmStopped()
+        stopAllTimers()
     }
     
     // 模擬計時結束
     func simulateTimerEnd() {
         logger.info("模擬計時結束")
         startWakeUpSequence()
+        stopAllTimers()
     }
     
     // MARK: - 更新睡眠確認時間
@@ -2458,6 +2603,37 @@ class PowerNapViewModel: ObservableObject {
         } else {
             logger.info("未找到用戶設定，使用默認配置")
         }
+    }
+    
+    // 強制觸發閾值優化（測試用）
+    func forceOptimizeThreshold() {
+        let userId = getUserId()
+        checkForAutomaticThresholdOptimization(userId: userId)
+    }
+    
+    // 真正強制優化（不經條件判斷）
+    func forceReallyOptimizeThreshold() {
+        SleepServices.shared.forceOptimizeThreshold()
+    }
+    
+    /// 使用者完全未評價時寫入 noFeedback
+    func recordNoFeedbackIfNeeded() {
+        guard !hasSubmittedFeedback && showingFeedbackPrompt == false else { return }
+        AdvancedLogger.shared.log(.feedback, payload: [
+            "accurate": AdvancedLogger.CodableValue.string("null"),
+            "type": AdvancedLogger.CodableValue.string("noFeedback")
+        ])
+    }
+    
+    /// 統一停止所有計時器，確保不殘留任何背景 timer
+    private func stopAllTimers() {
+        napTimer?.invalidate(); napTimer = nil
+        statsUpdateTimer?.invalidate(); statsUpdateTimer = nil
+        NotificationManager.shared.stopContinuousAlarm() // alarmTimer
+        SleepDataLogger.shared.stopLoggingTimer()
+        heartRateService.stopMonitoring() // 內部會停 sleepDetectionTimer、trendAnalysisTimer
+        motionManager.stopMonitoring()    // 內部會停 updateTimer
+        sleepDetectionCoordinator.stopMonitoring() // 內部會停 stateTransitionTimer
     }
 }
 

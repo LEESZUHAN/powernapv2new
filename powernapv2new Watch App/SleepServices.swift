@@ -205,4 +205,9 @@ class SleepServices {
         defaults.set(newId, forKey: userIdKey)
         return newId
     }
+    
+    /// 強制優化心率閾值（不經條件判斷）
+    func forceOptimizeThreshold() {
+        _ = checkAndOptimizeThreshold(force: true)
+    }
 }

@@ -47,6 +47,16 @@ public struct UserSleepProfile: Codable {
     // 新增: 碎片化睡眠模式
     public var fragmentedSleepMode: Bool = false // 是否啟用碎片化睡眠模式
     
+    // 新增: 偏離比例 / 異常分數相關欄位
+    public var dailyDeviationScore: Int = 0       // 今日異常加總
+    public var cumulativeScore: Int = 0           // 跨日累積分數
+    public var lastScoreDate: Date? = nil         // 最後加分日期 (用於跨日歸零)
+    // 最近一次取得的靜息心率 (用於計算偏離比例)
+    public var lastRestingHR: Double? = nil as Double?
+    
+    // 靜態門檻: 當 cumulativeScore ≥ 此值時觸發自動收斂
+    public static let scoreThreshold: Int = 8
+    
     // 獲取有效的靜止比例閾值
     public var effectiveRestingRatioThreshold: Double {
         // 應用用戶調整，但確保結果在0.5到0.95之間
@@ -97,7 +107,11 @@ public struct UserSleepProfile: Codable {
             durationAdjustmentStopped: false,
             consecutiveFeedbackAdjustments: 0,
             lastFeedbackType: nil,
-            fragmentedSleepMode: false
+            fragmentedSleepMode: false,
+            dailyDeviationScore: 0,
+            cumulativeScore: 0,
+            lastScoreDate: nil as Date?,
+            lastRestingHR: nil as Double?
         )
     }
     
@@ -289,6 +303,64 @@ public class UserSleepProfileManager {
         } catch {
             print("編碼睡眠會話錯誤: \(error.localizedDescription)")
         }
+
+        // === 新增: 偏離比例 / 異常分數累計 ===
+        if var profile = getUserProfile(forUserId: session.userId) {
+            // 若跨日則重置今日分數
+            let today = Calendar.current.startOfDay(for: Date())
+            if let lastDate = profile.lastScoreDate,
+               !Calendar.current.isDate(lastDate, inSameDayAs: today) {
+                profile.dailyDeviationScore = 0
+            }
+            profile.lastScoreDate = today
+
+            if let avgHR = session.averageHeartRate,
+               let restingHR = profile.lastRestingHR {
+                let thresholdBPM = profile.hrThresholdPercentage * restingHR
+                let ratio = avgHR / thresholdBPM
+                let deltaScore = Self.calculateDeviationScore(for: ratio)
+
+                // debug print
+                let timeStr = DateFormatter.localizedString(from: session.startTime, dateStyle: .short, timeStyle: .none)
+                print("【分數計算debug Day: \(timeStr)】avgHR=\(String(format: "%.2f", avgHR)), restingHR=\(String(format: "%.2f", restingHR)), thresholdBPM=\(String(format: "%.2f", thresholdBPM)), ratio=\(String(format: "%.2f", ratio)), deltaScore=\(deltaScore), dailyScore(before)=\(profile.dailyDeviationScore), cumulativeScore(before)=\(profile.cumulativeScore)")
+
+                // 更新分數
+                profile.dailyDeviationScore += deltaScore
+                profile.cumulativeScore += deltaScore
+
+                print("【分數計算debug Day: \(timeStr)】dailyScore(after)=\(profile.dailyDeviationScore), cumulativeScore(after)=\(profile.cumulativeScore)")
+
+                // 閾值觸發自動收斂
+                if profile.cumulativeScore >= UserSleepProfile.scoreThreshold {
+                    // 取近兩天 session 的 ratio 平均值
+                    let sessions = getSleepSessions(forUserId: session.userId)
+                    let last2 = sessions.suffix(2)
+                    let ratios = last2.compactMap { s -> Double? in
+                        if let avgHR = s.averageHeartRate, let restingHR = profile.lastRestingHR {
+                            let thresholdBPM = profile.hrThresholdPercentage * restingHR
+                            return thresholdBPM > 0 ? avgHR / thresholdBPM : nil
+                        }
+                        return nil
+                    }
+                    let avgRatio = ratios.isEmpty ? ratio : (ratios.reduce(0, +) / Double(ratios.count))
+                    let feedbackType: SleepSession.SleepFeedback = avgRatio < 1.0 ? .falsePositive : .falseNegative
+                    // 取得 day 字串
+                    let dayStr = DateFormatter.localizedString(from: session.startTime, dateStyle: .short, timeStyle: .none)
+                    let before = profile.hrThresholdPercentage * 100
+                    // log 調整前
+                    print("【異常分數觸發 Day: \(dayStr)】累計分數=\(profile.cumulativeScore)，ratio(2日均)=\(String(format: "%.3f", avgRatio))，feedbackType=\(feedbackType.rawValue)")
+                    print("調整前閾值: \(String(format: "%.2f", before))%")
+                    adjustHeartRateThreshold(forUserId: session.userId, feedbackType: feedbackType)
+                    // 取得調整後
+                    let afterProfile = getUserProfile(forUserId: session.userId)!
+                    let after = afterProfile.hrThresholdPercentage * 100
+                    print("調整後閾值: \(String(format: "%.2f", after))%\n")
+                    profile.cumulativeScore = 0 // 重置
+                }
+            }
+            saveUserProfile(profile)
+        }
+        // === End 新增 ===
     }
     
     /// 獲取用戶睡眠會話記錄
@@ -326,16 +398,8 @@ public class UserSleepProfileManager {
         var optimizedThresholds = OptimizedThresholds()
         
         // 2. 心率分析
-        let avgHR = allHeartRates.reduce(0, +) / Double(allHeartRates.count)
-        let minHR = allHeartRates.min() ?? (restingHR * 0.9)
-        
-        // 計算初步的適應性心率閾值百分比
-        // 使用最低心率和平均心率的加權平均
-        let lowHRPercentage = minHR / restingHR
-        let avgHRPercentage = avgHR / restingHR
-        
-        // 加權計算 (更偏向最低心率)
-        var adjustedThreshold = (lowHRPercentage * 0.7) + (avgHRPercentage * 0.3)
+        _ = allHeartRates.reduce(0, +) / Double(allHeartRates.count)
+        _ = allHeartRates.min() ?? (restingHR * 0.9)
         
         // 3. 睡眠確認時間分析
         var adjustedDuration: TimeInterval = 180  // 默認3分鐘
@@ -398,50 +462,24 @@ public class UserSleepProfileManager {
         }
         
         // 6. 用戶反饋數據分析
-        let sessionsWithFeedback = recentSessions.filter { $0.userFeedback != SleepSession.SleepFeedback.none }
+        _ = recentSessions.filter { $0.userFeedback != SleepSession.SleepFeedback.none }
         
-        // 初始化變數，放在if條件外面以擴大作用域
-        var falsePositives = 0
-        var falseNegatives = 0
-        var totalWithFeedback = 0
-        
-        if !sessionsWithFeedback.isEmpty {
-            falsePositives = sessionsWithFeedback.filter { $0.userFeedback == .falsePositive }.count
-            falseNegatives = sessionsWithFeedback.filter { $0.userFeedback == .falseNegative }.count
-            totalWithFeedback = sessionsWithFeedback.count
-            
-            // 根據錯誤類型調整閾值
-            if falsePositives > totalWithFeedback / 3 {
-                // 較多假陽性，移除心率閾值調整，只調整靜止比例
-                // 同時增加靜止比例要求
-                adjustedRestingRatio += 0.05
-                print("較多假陽性反饋，增加靜止比例要求")
-            }
-            
-            if falseNegatives > totalWithFeedback / 3 {
-                // 較多假陰性，移除心率閾值調整，只調整靜止比例
-                // 同時降低靜止比例要求
-                adjustedRestingRatio -= 0.05
-                print("較多假陰性反饋，降低靜止比例要求")
-            }
-            
-            // 根據用戶反饋調整時間
-            if falsePositives > totalWithFeedback / 3 {
-                // 假陽性多，增加確認時間
-                adjustedDuration += 45
-                print("較多假陽性反饋，增加確認時間")
-            }
-            
-            if falseNegatives > totalWithFeedback / 4 {
-                // 假陰性多，減少確認時間
-                adjustedDuration -= 30
-                print("較多假陰性反饋，減少確認時間")
-            }
+        // 混合方案：feedback 準確連續5筆才啟動緩慢微調，否則維持 profile 現值
+        var adjustedThreshold = profile.hrThresholdPercentage
+        let lastN = 10
+        let lastNSessions = recentSessions.suffix(lastN)
+        let accurateCount = lastNSessions.filter { $0.userFeedback == SleepSession.SleepFeedback.accurate }.count
+        let falsePositiveCount = lastNSessions.filter { $0.userFeedback == SleepSession.SleepFeedback.falsePositive }.count
+        if lastNSessions.count == lastN && (accurateCount >= 7 || falsePositiveCount >= 3) {
+            // 只用 feedback 為準確的 session 的平均HR計算建議值
+            let sleepSessions = recentSessions.filter { $0.userFeedback == SleepSession.SleepFeedback.accurate }
+            let avgSleepHR = sleepSessions.map { $0.averageHeartRate ?? 0 }.reduce(0,+) / Double(max(1, sleepSessions.count))
+            let newThreshold = (avgSleepHR / restingHR) + 0.01 // buffer 1%
+            adjustedThreshold = (profile.hrThresholdPercentage * 0.4) + (newThreshold * 0.6)
+            print("長期微調：最近10筆有7準確或3誤報，閾值緩慢收斂到 \(adjustedThreshold)")
+        } else {
+            print("長期優化：feedback 準確/誤報比例不足，閾值維持不變")
         }
-        
-        // 確保心率閾值百分比在合理範圍內
-        adjustedThreshold = min(max(adjustedThreshold, OptimizedThresholds.minThresholdPercentage), 
-                               OptimizedThresholds.maxThresholdPercentage)
         
         // 確保確認時間在合理範圍內
         adjustedDuration = min(max(adjustedDuration, OptimizedThresholds.minConfirmationTime), 
@@ -476,6 +514,9 @@ public class UserSleepProfileManager {
         }
         
         guard var userProfile = profile else { return }
+        
+        // 更新最近一次靜息心率紀錄
+        userProfile.lastRestingHR = restingHR
         
         // 設置首次使用日期
         if userProfile.firstUseDate == nil {
@@ -621,22 +662,27 @@ public class UserSleepProfileManager {
         switch feedbackType {
         case .falseNegative: // 漏報情況 - 更積極調整
             switch consecutiveCount {
-            case 0: return 0.015  // 首次 +1.5%
-            case 1: return 0.013  // 第二次 +1.3%
-            case 2: return 0.010  // 第三次 +1.0%
-            case 3: return 0.007  // 第四次 +0.7%
-            case 4: return 0.005  // 第五次 +0.5%
-            case 5: return 0.003  // 第六次 +0.3%
-            case 6: return 0.002  // 第七次 +0.2%
-            default: return 0.0   // 第八次以後停止調整
+            case 0: return 0.04  // 首次 +4%
+            case 1: return 0.03  // 第二次 +3%
+            case 2: return 0.02  // 第三次 +2%
+            case 3: return 0.01  // 第四次 +1%
+            case 4: return 0.01  // 第五次 +1%
+            case 5: return 0.01  // 第六次 +1%
+            case 6: return 0.01  // 第七次 +1%
+            case 7: return 0.01  // 第八次 +1%
+            default: return 0.0   // 第九次以後停止調整
             }
         case .falsePositive: // 誤報情況 - 較溫和調整
             switch consecutiveCount {
-            case 0: return 0.010  // 首次 +1.0%
-            case 1: return 0.007  // 第二次 +0.7%
-            case 2: return 0.003  // 第三次 +0.3%
-            case 3: return 0.002  // 第四次 +0.2%
-            default: return 0.0   // 第五次以後停止調整
+            case 0: return 0.03  // 首次 +3%
+            case 1: return 0.03  // 第二次 +3%
+            case 2: return 0.03  // 第三次 +3%
+            case 3: return 0.02  // 第四次 +2%
+            case 4: return 0.02  // 第五次 +2%
+            case 5: return 0.01  // 第六次 +1%
+            case 6: return 0.01  // 第七次 +1%
+            case 7: return 0.01  // 第八次 +1%
+            default: return 0.0   // 第九次以後停止調整
             }
         default:
             return 0.0 // 其他情況不進行調整
@@ -658,10 +704,10 @@ public class UserSleepProfileManager {
         var adjustmentDirection: Int = 0
         
         switch feedbackType {
-        case .falsePositive: // 誤報 - 系統過於寬鬆，應增加閾值
-            adjustmentDirection = 1
-        case .falseNegative: // 漏報 - 系統過於嚴格，應降低閾值
+        case .falsePositive: // 誤報 - 系統過於寬鬆，應收緊閾值（數值下調）
             adjustmentDirection = -1
+        case .falseNegative: // 漏報 - 系統過於嚴格，應放寬閾值（數值上調）
+            adjustmentDirection = 1
         default:
             break
         }
@@ -750,6 +796,17 @@ public class UserSleepProfileManager {
         if var profile = getUserProfile(forUserId: userId) {
             profile.sessionsSinceLastDurationAdjustment += 1
             saveUserProfile(profile)
+        }
+    }
+
+    // 計算偏離比例對應的分數
+    private static func calculateDeviationScore(for ratio: Double) -> Int {
+        switch ratio {
+        case ..<0.94: return 3   // 非常低
+        case 0.94..<0.97: return 2
+        case 0.97...1.06: return 0 // 正常區間
+        case 1.06..<1.10: return 2  // 偏高
+        default: return 3           // 非常高
         }
     }
 } 

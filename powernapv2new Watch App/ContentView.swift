@@ -51,6 +51,9 @@ struct ContentView: View {
     // 新增：跟踪重置選項
     @State private var showingResetOptions: Bool = false
     
+    // 新增：跟踪系統判定
+    @State private var systemDetectionDisplay: String = "-"
+    
     // 根據ViewModel狀態計算UI狀態
     private var uiState: UIState {
         if !viewModel.isNapping {
@@ -61,6 +64,8 @@ struct ContentView: View {
             return .countdown
         }
     }
+    
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         ZStack {
@@ -102,6 +107,13 @@ struct ContentView: View {
                 testFunctionsView
                 }
                 .tag(3)
+
+            // 高級日誌頁面（新）
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
+                AdvancedLogsView()
+            }
+            .tag(4)
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
             // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
@@ -134,6 +146,14 @@ struct ContentView: View {
             // 鬧鈴停止UI覆蓋層
             if viewModel.showingAlarmStopUI {
                 alarmStopView
+            }
+        }
+        .onAppear {
+            viewModel.loadUserPreferences()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .background {
+                viewModel.recordNoFeedbackIfNeeded()
             }
         }
     }
@@ -402,6 +422,38 @@ struct ContentView: View {
                     .buttonStyle(PlainButtonStyle())
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
+
+                    // 新增：強制觸發閾值優化按鈕
+                    Button(action: {
+                        viewModel.forceReallyOptimizeThreshold()
+                    }) {
+                        Text("真正強制優化")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(Color.blue)
+                            .cornerRadius(25)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.horizontal, 20)
+                    .padding(.top, 5)
+                    
+                    // 新增：產生高級日誌測試檔按鈕
+                    Button(action: generateFakeAdvancedLogFile) {
+                        HStack {
+                            Image(systemName: "doc.badge.plus")
+                            Text("產生高級日誌測試檔")
+                        }
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.blue)
+                        .padding(8)
+                        .background(Color(white: 0.15))
+                        .cornerRadius(8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.top, 8)
+                    .padding(.bottom, 2)
                 }
                 .padding(.bottom, 20)
             }
@@ -704,11 +756,41 @@ struct ContentView: View {
     
     // 睡眠分析狀態視圖
     private var statusView: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 4) {
             Text("睡眠狀態分析")
                 .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
+                .foregroundColor(.white)
                 .padding(.bottom, 4)
+            
+            // 新增：本次狀態顯示
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("本次狀態")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                    
+                    Text(getSleepSessionStatus())
+                        .font(.system(size: 12))
+                        .foregroundColor(getSleepSessionStatus() == "已入睡" ? .green : .gray)
+                }
+                
+                Spacer()
+                
+                // 僅供參考標記
+                if getSleepSessionStatus() == "未入睡" || getSleepSessionStatus() == "監測中取消" {
+                    Text("僅供參考，未納入優化")
+                        .font(.system(size: 10))
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Color.black.opacity(0.4))
+                        .cornerRadius(4)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+            .background(Color(white: 0.15))
+            .cornerRadius(8)
         }
     }
     
@@ -837,7 +919,7 @@ struct ContentView: View {
                 
                 Text(getUserFeedback())
                     .font(.system(size: 12))
-                    .foregroundColor(getUserFeedback() == "準確" ? .green : .orange)
+                    .foregroundColor(getUserFeedback() == "準確" ? .green : (getUserFeedback() == "無" ? .gray : .orange))
             }
         }
         .padding(.vertical, 8)
@@ -914,96 +996,92 @@ struct ContentView: View {
     
     // 獲取精度數據
     private func getPrecisionData() -> String {
-        // 從日誌中解析精度數據
-        if let precisionRange = logContent.range(of: "精度: (\\d+\\.?\\d*)%", options: .regularExpression) {
-            let precisionString = String(logContent[precisionRange])
-                .replacingOccurrences(of: "精度: ", with: "")
-                .replacingOccurrences(of: "%", with: "")
-            return precisionString
-        }
-        
-        // 從其他可能的位置尋找
-        if let precisionRange = logContent.range(of: "準確率: (\\d+\\.?\\d*)%", options: .regularExpression) {
-            let precisionString = String(logContent[precisionRange])
-                .replacingOccurrences(of: "準確率: ", with: "")
-                .replacingOccurrences(of: "%", with: "")
-            return precisionString
-        }
-        
-        // 從準確與不準確反饋次數計算
-        let accurateRegex = try? NSRegularExpression(pattern: "準確.*?(\\d+)", options: [])
-        let inaccurateRegex = try? NSRegularExpression(pattern: "不準確.*?(\\d+)", options: [])
-        
-        if let accurateMatch = accurateRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
-           let accurateRange = Range(accurateMatch.range(at: 1), in: logContent),
-           let inaccurateMatch = inaccurateRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
-           let inaccurateRange = Range(inaccurateMatch.range(at: 1), in: logContent),
-           let accurateCount = Int(logContent[accurateRange]),
-           let inaccurateCount = Int(logContent[inaccurateRange]) {
-            
-            let total = accurateCount + inaccurateCount
-            if total > 0 {
-                let precision = Double(accurateCount) / Double(total) * 100
-                return String(format: "%.1f", precision)
+        // 新格式：從日誌行中提取準確率數據
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("準確率") || line.contains("判斷準確率") {
+                let precisionRegex = try? NSRegularExpression(pattern: "準確率[^\\d]*(\\d+\\.?\\d*)%", options: [])
+                if let match = precisionRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let precisionRange = Range(match.range(at: 1), in: line) {
+                    return String(line[precisionRange])
+                }
             }
         }
         
-        return "-"  // 修改為無數據符號
+        // 舊格式
+        let precisionRegex = try? NSRegularExpression(pattern: "準確率: (\\d+)%", options: [])
+        if let match = precisionRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+           let precisionRange = Range(match.range(at: 1), in: logContent) {
+            return String(logContent[precisionRange])
+        }
+        
+        // 根據反饋推測準確率
+        if getUserFeedback() == "準確" {
+            return "100"
+        } else if getUserFeedback() == "誤報" || getUserFeedback() == "漏報" {
+            return "0"
+        }
+        
+        return "-"
     }
     
-    // 獲取召回率數據
     private func getRecallData() -> String {
-        // 從日誌中解析召回率數據
-        if let recallRange = logContent.range(of: "召回率: (\\d+\\.?\\d*)%", options: .regularExpression) {
-            let recallString = String(logContent[recallRange])
-                .replacingOccurrences(of: "召回率: ", with: "")
-                .replacingOccurrences(of: "%", with: "")
-            return recallString
+        // 新格式：從日誌行中提取識別率數據
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("識別率") || line.contains("睡眠識別率") {
+                let recallRegex = try? NSRegularExpression(pattern: "識別率[^\\d]*(\\d+\\.?\\d*)%", options: [])
+                if let match = recallRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let recallRange = Range(match.range(at: 1), in: line) {
+                    return String(line[recallRange])
+                }
+            }
         }
         
-        // 從其他可能的位置尋找
-        if let recallRange = logContent.range(of: "識別率: (\\d+\\.?\\d*)%", options: .regularExpression) {
-            let recallString = String(logContent[recallRange])
-                .replacingOccurrences(of: "識別率: ", with: "")
-                .replacingOccurrences(of: "%", with: "")
-            return recallString
+        // 舊格式
+        let recallRegex = try? NSRegularExpression(pattern: "識別率: (\\d+)%", options: [])
+        if let match = recallRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+           let recallRange = Range(match.range(at: 1), in: logContent) {
+            return String(logContent[recallRange])
         }
         
-        // 計算基於錯過的睡眠事件
-        if logContent.contains("漏報") {
-            return "85"  // 如果有漏報，則稍低的召回率
+        // 根據反饋推測識別率
+        if getSleepSessionStatus() == "已入睡" && getUserFeedback() == "準確" {
+            return "100"
+        } else if getSleepSessionStatus() == "未入睡" && getUserFeedback() == "誤報" {
+            return "100"
+        } else if getUserFeedback() == "漏報" {
+            return "0"
         }
         
-        return "-"  // 修改為無數據符號
+        return "-"
     }
     
     private func getAverageSleepHR() -> String {
-        // 從日誌中提取平均睡眠心率
-        let hrRegex = try? NSRegularExpression(pattern: "平均心率: (\\d+) BPM", options: [])
-        if let match = hrRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+        // 新格式匹配：[時間戳] HR: 值 - 狀態
+        let newFormatRegex = try? NSRegularExpression(pattern: "HR: (\\d+\\.?\\d*)", options: [])
+        var heartRates = [Double]()
+        
+        // 遍歷日誌行提取心率
+        for line in logContent.components(separatedBy: .newlines) {
+            if let match = newFormatRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+               let hrRange = Range(match.range(at: 1), in: line),
+               let hr = Double(line[hrRange]) {
+                heartRates.append(hr)
+            }
+        }
+        
+        if !heartRates.isEmpty {
+            let avgHR = heartRates.reduce(0, +) / Double(heartRates.count)
+            return "\(Int(avgHR))"
+        }
+        
+        // 舊格式：直接從平均心率記錄中提取
+        let avgHRRegex = try? NSRegularExpression(pattern: "平均心率: (\\d+)", options: [])
+        if let match = avgHRRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
            let hrRange = Range(match.range(at: 1), in: logContent) {
             return String(logContent[hrRange])
         }
         
-        // 嘗試另一種格式
-        let hrRegex2 = try? NSRegularExpression(pattern: "HR: (\\d+)", options: [])
-        var hrValues: [Int] = []
-        
-        if let matches = hrRegex2?.matches(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)) {
-            for match in matches {
-                if let hrRange = Range(match.range(at: 1), in: logContent),
-                   let hr = Int(logContent[hrRange]) {
-                    hrValues.append(hr)
-                }
-            }
-            
-            if !hrValues.isEmpty {
-                let avgHR = hrValues.reduce(0, +) / hrValues.count
-                return "\(avgHR)"
-            }
-        }
-        
-        return "-"  // 修改為無數據符號
+        return "-"  // 無數據符號
     }
     
     private func getSleepHRPercentage() -> String {
@@ -1013,6 +1091,17 @@ struct ContentView: View {
             return "-" // 如果沒有心率數據，直接返回-
         }
         
+        // 嘗試從新格式中提取靜息心率
+        let rhrNewRegex = try? NSRegularExpression(pattern: "RHR: (\\d+\\.?\\d*)", options: [])
+        
+        if let match = rhrNewRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+           let rhrRange = Range(match.range(at: 1), in: logContent),
+           let rhr = Double(logContent[rhrRange]), rhr > 0 {
+            let percentage = (avgHR / rhr) * 100
+            return "\(Int(percentage))%"
+        }
+        
+        // 嘗試從舊格式中提取靜息心率
         let rhrRegex = try? NSRegularExpression(pattern: "靜息心率: (\\d+)", options: [])
         
         if let match = rhrRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
@@ -1033,27 +1122,93 @@ struct ContentView: View {
     }
     
     private func getHRDeviation() -> (String, Bool) {
-        // 從日誌中提取心率偏離比例
-        let deviationRegex = try? NSRegularExpression(pattern: "偏離比例: ([+-]?\\d+\\.?\\d*)%", options: [])
+        // 新格式中的心率偏離信息
+        // 從日誌行中查找包含偏離比例的信息
+        let deviationRegex = try? NSRegularExpression(pattern: "偏離: ([+-]?\\d+\\.?\\d*)%", options: [])
         
-        if let match = deviationRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+        for line in logContent.components(separatedBy: .newlines) {
+            if let match = deviationRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+               let deviationRange = Range(match.range(at: 1), in: line) {
+                let deviationStr = String(line[deviationRange])
+                let isDown = deviationStr.contains("-") || line.contains("向下")
+                return ("\(deviationStr)", isDown)
+            }
+        }
+        
+        // 檢查是否包含"向下"或"向上"關鍵詞
+        if logContent.contains("向下") {
+            // 嘗試提取數字
+            let numRegex = try? NSRegularExpression(pattern: "(-?\\d+\\.?\\d*)%[^\\d]*向下", options: [])
+            if let match = numRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+               let numRange = Range(match.range(at: 1), in: logContent) {
+                return (String(logContent[numRange]), true)
+            }
+            return ("5", true) // 預設值
+        } else if logContent.contains("向上") {
+            let numRegex = try? NSRegularExpression(pattern: "(\\d+\\.?\\d*)%[^\\d]*向上", options: [])
+            if let match = numRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+               let numRange = Range(match.range(at: 1), in: logContent) {
+                return (String(logContent[numRange]), false)
+            }
+            return ("5", false) // 預設值
+        }
+        
+        // 原有的解析方式
+        let oldDeviationRegex = try? NSRegularExpression(pattern: "偏離比例: ([+-]?\\d+\\.?\\d*)%", options: [])
+        
+        if let match = oldDeviationRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
            let deviationRange = Range(match.range(at: 1), in: logContent) {
             let deviationStr = String(logContent[deviationRange])
             let isDown = deviationStr.contains("-") || logContent.contains("向下")
             return ("\(deviationStr)%", isDown)
         }
         
+        // 嘗試從原始心率數據計算偏離
+        if let avgHR = Double(getAverageSleepHR()), avgHR > 0 {
+            // 嘗試獲取靜息心率或預期心率
+            let rhrRegex = try? NSRegularExpression(pattern: "RHR: (\\d+\\.?\\d*)", options: [])
+            if let match = rhrRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
+               let rhrRange = Range(match.range(at: 1), in: logContent),
+               let rhr = Double(logContent[rhrRange]), rhr > 0 {
+                // 計算偏離百分比 (HR - RHR) / RHR * 100
+                let deviation = (avgHR - rhr) / rhr * 100
+                let isDown = deviation < 0
+                return (String(format: "%.1f", abs(deviation)), isDown)
+            }
+        }
+        
         return ("-", true)  // 修改為無數據符號
     }
     
     private func getAnomalyScore() -> Int {
-        // 解析異常評分
+        // 新格式：直接尋找包含異常評分的行
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("異常評分:") || line.contains("異常評分：") {
+                let scoreRegex = try? NSRegularExpression(pattern: "異常評分[：:] *(\\d+)", options: [])
+                if let match = scoreRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let scoreRange = Range(match.range(at: 1), in: line),
+                   let score = Int(line[scoreRange]) {
+                    return score
+                }
+            }
+        }
+        
+        // 舊格式解析
         let anomalyRegex = try? NSRegularExpression(pattern: "異常評分: (\\d+)", options: [])
         
         if let match = anomalyRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
            let anomalyRange = Range(match.range(at: 1), in: logContent),
            let score = Int(logContent[anomalyRange]) {
             return score
+        }
+        
+        // 檢查是否顯示了具體異常狀態
+        if logContent.contains("暫時異常") {
+            return 5
+        } else if logContent.contains("持久異常") {
+            return 8
+        } else if logContent.contains("需要重校準") {
+            return 12
         }
         
         // 檢查是否有異常字眼
@@ -1065,19 +1220,41 @@ struct ContentView: View {
     }
     
     private func getAnomalyThreshold() -> String {
-        // 從日誌中提取異常閾值
+        // 新格式：查找包含閾值的行
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("閾值") && line.contains("%") {
+                let thresholdRegex = try? NSRegularExpression(pattern: "閾值[^\\d]*(\\d+)%", options: [])
+                if let match = thresholdRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let thresholdRange = Range(match.range(at: 1), in: line) {
+                    return String(line[thresholdRange])
+                }
+            }
+        }
+        
+        // 舊格式
         let thresholdRegex = try? NSRegularExpression(pattern: "異常閾值: (\\d+)%", options: [])
         
         if let match = thresholdRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
            let thresholdRange = Range(match.range(at: 1), in: logContent) {
-            return "\(logContent[thresholdRange])%"
+            return "\(logContent[thresholdRange])"
         }
         
-        return "8%"  // 保留默認閾值
+        return "8"  // 保留默認閾值
     }
     
     private func getCumulativeScore() -> String {
-        // 從日誌中提取累計分數
+        // 新格式：查找包含累計分數的行
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("累計分數") || line.contains("累積分數") {
+                let scoreRegex = try? NSRegularExpression(pattern: "累[計積]分數[^\\d]*(\\d+\\.?\\d*)", options: [])
+                if let match = scoreRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let scoreRange = Range(match.range(at: 1), in: line) {
+                    return String(line[scoreRange])
+                }
+            }
+        }
+        
+        // 舊格式
         let scoreRegex = try? NSRegularExpression(pattern: "累計分數: (\\d+)", options: [])
         
         if let match = scoreRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
@@ -1089,7 +1266,22 @@ struct ContentView: View {
     }
     
     private func getThresholdValues() -> (String, String) {
-        // 提取閾值百分比和具體BPM值
+        // 新格式：從日誌行中提取閾值
+        for line in logContent.components(separatedBy: .newlines) {
+            // 尋找包含閾值百分比和BPM值的行
+            if (line.contains("閾值") || line.contains("threshold")) && line.contains("%") && line.contains("BPM") {
+                let thresholdRegex = try? NSRegularExpression(pattern: "閾值[^\\d]*(\\d+\\.?\\d*)%[^\\d]*(\\d+\\.?\\d*) *BPM", options: [.caseInsensitive])
+                if let match = thresholdRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let percentRange = Range(match.range(at: 1), in: line),
+                   let bpmRange = Range(match.range(at: 2), in: line) {
+                    let percent = String(line[percentRange])
+                    let bpm = String(line[bpmRange])
+                    return ("\(percent)%", bpm)
+                }
+            }
+        }
+        
+        // 舊格式：提取閾值百分比和具體BPM值
         let thresholdRegex = try? NSRegularExpression(pattern: "閾值.*?(\\d+)%.*?(\\d+) BPM", options: [])
         
         if let match = thresholdRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
@@ -1113,32 +1305,79 @@ struct ContentView: View {
             return ("\(percent)%", bpm)
         }
         
+        // 嘗試從心率數據中推算
+        if let avgHR = Double(getAverageSleepHR()), avgHR > 0 {
+            // 假設閾值是RHR的85%（一個合理的默認值）
+            let estimatedThreshold = Int(avgHR * 0.85)
+            return ("85%", "\(estimatedThreshold)")
+        }
+        
         return ("-", "-")  // 修改為無數據符號
     }
     
     private func getSystemDetection() -> (String, Bool) {
-        // 解析系統檢測結果
-        if logContent.contains("檢測到睡眠") {
+        // 新格式：從日誌行中提取系統判定結果
+        for line in logContent.components(separatedBy: .newlines) {
+            // 檢查是否包含深度睡眠或輕度睡眠
+            if line.contains("深度睡眠") || line.contains("輕度睡眠") {
+                return ("睡眠", true)
+            }
+            
+            // 檢查系統判定結果
+            if line.contains("系統判定") {
+                if line.contains("睡眠") {
+                    let aboveThreshold = !line.contains("不符合閾值")
+                    return ("睡眠", aboveThreshold)
+                } else if line.contains("未檢測到") || line.contains("未達標準") {
+                    return ("未檢測到睡眠", false)
+                }
+            }
+        }
+        
+        // 舊格式解析
+        if logContent.contains("檢測到睡眠") || logContent.contains("系統成功檢測到睡眠") {
             return ("睡眠", true)
-        } else if logContent.contains("未檢測到睡眠") {
-            return ("清醒", false)
+        } else if logContent.contains("未檢測到睡眠") || logContent.contains("系統未檢測到睡眠") {
+            return ("未檢測到睡眠", false)
+        } else if logContent.contains("未達入睡標準") {
+            return ("未達入睡標準", false)
         }
         
         // 根據sleepState判斷
         if logContent.contains("深度睡眠") || logContent.contains("輕度睡眠") {
             return ("睡眠", true)
         } else if logContent.contains("清醒") || logContent.contains("休息") {
-            return ("清醒", false)
+            if getSleepSessionStatus() == "未入睡" {
+                return ("未檢測到睡眠", false)
+            } else {
+                return ("清醒", false)
+            }
         }
         
-        return ("-", false)  // 修改為無數據符號
+        // 根據本次狀態判定
+        if getSleepSessionStatus() == "已入睡" {
+            return ("睡眠", true)
+        } else if getSleepSessionStatus() == "未入睡" {
+            return ("未檢測到睡眠", false)
+        }
+        
+        return ("-", false)  // 無數據符號
     }
     
     private func getDetectionErrorType() -> String {
-        // 解析漏報或誤報
-        if logContent.contains("漏報") {
+        // 新格式：從日誌行中提取漏報或誤報信息
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("漏報") {
+                return "漏報"
+            } else if line.contains("誤報") || line.contains("誤判") {
+                return "誤報"
+            }
+        }
+        
+        // 根據UI顯示判斷
+        if getUserFeedback() == "漏報" {
             return "漏報"
-        } else if logContent.contains("誤報") || logContent.contains("誤判") {
+        } else if getUserFeedback() == "誤報" {
             return "誤報"
         }
         
@@ -1146,18 +1385,64 @@ struct ContentView: View {
     }
     
     private func getUserFeedback() -> String {
-        // 從日誌中提取用戶反饋
-        if logContent.contains("用戶反饋: 準確") {
-            return "準確"
-        } else if logContent.contains("用戶反饋: 不準確") {
-            return "不準確"
+        // 新格式：從日誌行中提取用戶反饋
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("用戶反饋") {
+                if line.contains("準確") {
+                    return "準確"
+                } else if line.contains("不準確") || line.contains("誤報") {
+                    return "誤報"
+                } else if line.contains("漏報") {
+                    return "漏報"
+                }
+            }
         }
         
-        return "-"  // 修改為無數據符號
+        // 舊格式處理
+        if logContent.contains("用戶反饋: 準確") {
+            return "準確"
+        } else if logContent.contains("用戶反饋: 不準確") || logContent.contains("用戶反饋: 誤報") {
+            return "誤報"
+        } else if logContent.contains("用戶反饋: 漏報") {
+            return "漏報"
+        } else if viewModel.lastFeedbackType != .unknown {
+            // 從ViewModel中獲取最新反饋
+            switch viewModel.lastFeedbackType {
+            case .accurate:
+                return "準確"
+            case .falsePositive:
+                return "誤報"
+            case .falseNegative:
+                return "漏報"
+            default:
+                return "無"
+            }
+        }
+        
+        return "無"  // 沒有反饋時顯示「無」而非「-」
     }
     
     private func getThresholdAdjustment() -> String {
-        // 獲取閾值調整信息
+        // 新格式：從日誌行中提取閾值調整信息
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("閾值調整") {
+                // 提取調整值
+                let adjustRegex = try? NSRegularExpression(pattern: "閾值調整[^\\d+-]*([+-]?\\d+\\.?\\d*)%", options: [])
+                if let match = adjustRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let adjustRange = Range(match.range(at: 1), in: line) {
+                    let adjustment = String(line[adjustRange])
+                    if adjustment.contains("+") || adjustment.contains("-") {
+                        return adjustment + "%"
+                    } else if Double(adjustment) ?? 0 > 0 {
+                        return "+" + adjustment + "%"
+                    } else {
+                        return adjustment + "%"
+                    }
+                }
+            }
+        }
+        
+        // 舊格式
         let adjustRegex = try? NSRegularExpression(pattern: "閾值調整: ([^\\n]+)", options: [])
         
         if let match = adjustRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
@@ -1184,8 +1469,40 @@ struct ContentView: View {
     }
     
     private func getConfirmationTime() -> (Int, String) {
-        // 獲取確認時間及變化
-        // 尋找確認時間
+        // 新格式：從日誌行中提取確認時間信息
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("確認時間") && line.contains("秒") {
+                // 提取時間值
+                let timeRegex = try? NSRegularExpression(pattern: "確認時間[^\\d]*(\\d+)秒", options: [])
+                if let match = timeRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let timeRange = Range(match.range(at: 1), in: line),
+                   let time = Int(line[timeRange]) {
+                    
+                    // 檢查是否包含變化信息
+                    if line.contains("增加") || line.contains("+") {
+                        let changeRegex = try? NSRegularExpression(pattern: "增加[^\\d]*([+-]?\\d+)秒|\\+([\\d]+)秒", options: [])
+                        if let changeMatch = changeRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                           let changeRange = Range(changeMatch.range(at: 1), in: line),
+                           let seconds = Int(line[changeRange]) {
+                            return (time, "+\(seconds)秒")
+                        }
+                        return (time, "+秒") // 有增加但未找到具體數值
+                    } else if line.contains("減少") || line.contains("-") {
+                        let changeRegex = try? NSRegularExpression(pattern: "減少[^\\d]*([+-]?\\d+)秒|-([\\d]+)秒", options: [])
+                        if let changeMatch = changeRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                           let changeRange = Range(changeMatch.range(at: 1), in: line),
+                           let seconds = Int(line[changeRange]) {
+                            return (time, "-\(seconds)秒")
+                        }
+                        return (time, "-秒") // 有減少但未找到具體數值
+                    }
+                    
+                    return (time, "不變")
+                }
+            }
+        }
+        
+        // 舊格式
         let timeRegex = try? NSRegularExpression(pattern: "確認時間: (\\d+)秒", options: [])
         
         if let match = timeRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
@@ -1210,6 +1527,18 @@ struct ContentView: View {
             return (time, "不變")
         }
         
+        // 如果僅有確認時間而無更改信息
+        for line in logContent.components(separatedBy: .newlines) {
+            let simpleTimeRegex = try? NSRegularExpression(pattern: "(\\d+)秒", options: [])
+            if line.contains("確認") && line.contains("秒") {
+                if let match = simpleTimeRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+                   let timeRange = Range(match.range(at: 1), in: line),
+                   let time = Int(line[timeRange]) {
+                    return (time, "不變")
+                }
+            }
+        }
+        
         return (0, "-") // 修改為無數據符號
     }
     
@@ -1217,8 +1546,10 @@ struct ContentView: View {
     private func formatRawLogEntries(_ content: String) -> String {
         let lines = content.components(separatedBy: .newlines)
         
-        // 獲取最後10條數據記錄
-        let dataLines = lines.filter { $0.contains(",") && !$0.contains("Timestamp") }
+        // 新格式：尋找包含HR:的行
+        let dataLines = lines.filter { 
+            $0.contains("HR:") || ($0.contains(",") && !$0.contains("Timestamp")) 
+        }
         if dataLines.count > 0 {
             let lastDataLines = Array(dataLines.suffix(min(10, dataLines.count)))
             return lastDataLines.map { formatDataLine($0) }.joined(separator: "\n")
@@ -1227,8 +1558,15 @@ struct ContentView: View {
         return "無原始數據記錄"
     }
     
-    // 格式化數據行 - 更清晰的格式
+    // 格式化數據行 - 支持新舊兩種格式
     private func formatDataLine(_ line: String) -> String {
+        // 新格式: [時間戳] HR: 數值 - 狀態
+        if line.contains("HR:") && line.contains("[") {
+            // 已經是我們所需的格式，直接返回
+            return line.trimmingCharacters(in: .whitespaces)
+        }
+        
+        // 舊格式處理邏輯
         let components = line.components(separatedBy: ",")
         if components.count < 9 {
             return line // 返回原始行
@@ -1500,12 +1838,6 @@ struct ContentView: View {
                     
                     // 處理反饋
                     viewModel.processFeedback(wasAccurate: true)
-                    
-                    // 3秒後關閉
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        viewModel.showingFeedbackPrompt = false
-                        feedbackStage = .initial // 重置狀態
-                    }
                 }) {
                     VStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -1715,6 +2047,73 @@ struct ContentView: View {
         } catch {
             logContent = "無法讀取文件: \(error.localizedDescription)"
         }
+    }
+    
+    // 新增：獲取睡眠會話狀態
+    private func getSleepSessionStatus() -> String {
+        // 新格式：從日誌行中提取睡眠會話狀態
+        for line in logContent.components(separatedBy: .newlines) {
+            if line.contains("深度睡眠") || line.contains("輕度睡眠") {
+                return "已入睡"
+            } else if line.contains("監測中取消") || line.contains("用戶取消監測") {
+                return "監測中取消"
+            } else if line.contains("未檢測到睡眠") || line.contains("未達入睡標準") {
+                return "未入睡"
+            }
+            
+            // 檢查狀態行
+            if line.contains("本次狀態") || line.contains("睡眠狀態") {
+                if line.contains("已入睡") {
+                    return "已入睡"
+                } else if line.contains("未入睡") {
+                    return "未入睡"
+                } else if line.contains("監測中取消") {
+                    return "監測中取消"
+                }
+            }
+        }
+        
+        // 舊格式
+        if logContent.contains("檢測到睡眠") || 
+           logContent.contains("系統成功檢測到睡眠") || 
+           logContent.contains("深度睡眠") || 
+           logContent.contains("輕度睡眠") {
+            return "已入睡"
+        } else if logContent.contains("監測中取消") || 
+                  logContent.contains("用戶取消監測") {
+            return "監測中取消"
+        } else if logContent.contains("未檢測到睡眠") || 
+                  logContent.contains("未達入睡標準") ||
+                  logContent.contains("系統未檢測到睡眠") {
+            return "未入睡"
+        } else {
+            return "狀態不明"
+        }
+    }
+    
+    private func generateFakeAdvancedLogFile() {
+        let fakeLogLines = [
+            // sessionStart
+            "{\"ts\":\"2025-05-23T08:00:00.000Z\",\"type\":\"sessionStart\",\"payload\":{\"thresholdBPM\":60,\"rhr\":65,\"thresholdPercent\":92,\"minDurationSeconds\":180}}",
+            // phaseChange
+            "{\"ts\":\"2025-05-23T08:01:00.000Z\",\"type\":\"phaseChange\",\"payload\":{\"newPhase\":\"lightSleep\"}}",
+            // hr
+            "{\"ts\":\"2025-05-23T08:10:00.000Z\",\"type\":\"hr\",\"payload\":{\"bpm\":58,\"phase\":\"lightSleep\",\"acc\":0.01}}",
+            // anomaly
+            "{\"ts\":\"2025-05-23T08:20:00.000Z\",\"type\":\"anomaly\",\"payload\":{\"score\":2,\"totalScore\":5}}",
+            // optimization (長期優化)
+            "{\"ts\":\"2025-05-23T08:25:00.000Z\",\"type\":\"optimization\",\"payload\":{\"oldThreshold\":90,\"newThreshold\":92,\"deltaPercent\":2,\"oldDuration\":180,\"newDuration\":195,\"deltaDuration\":15}}",
+            // feedback (用戶反饋：誤報)
+            "{\"ts\":\"2025-05-23T08:30:00.000Z\",\"type\":\"feedback\",\"payload\":{\"type\":\"falsePositive\",\"accurate\":false}}",
+            // sessionEnd（短期調整後，閾值+2%，確認時間+15秒）
+            "{\"ts\":\"2025-05-23T08:31:00.000Z\",\"type\":\"sessionEnd\",\"payload\":{\"avgSleepHR\":62,\"rhr\":65,\"thresholdBPM\":62,\"thresholdPercent\":94,\"minDurationSeconds\":195,\"deviationPercent\":3.3,\"anomalyScore\":2,\"cumulativeScore\":5,\"deltaPercentShort\":2,\"deltaDurationShort\":15,\"detectedSleep\":true,\"notes\":\"測試用session\"}}"
+        ]
+        let content = fakeLogLines.joined(separator: "\n")
+        let fileName = "powernap_session_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .medium).replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-").replacingOccurrences(of: " ", with: "_") + ".log"
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("AdvancedLogFiles")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let fileURL = dir.appendingPathComponent(fileName)
+        try? content.write(to: fileURL, atomically: true, encoding: .utf8)
     }
 }
 
