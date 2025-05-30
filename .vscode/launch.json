@@ -1,0 +1,22 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:powernapv2new}",
+            "name": "Debug Simulation",
+            "program": "${workspaceFolder:powernapv2new}/.build/debug/Simulation",
+            "preLaunchTask": "swift: Build Debug Simulation"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:powernapv2new}",
+            "name": "Release Simulation",
+            "program": "${workspaceFolder:powernapv2new}/.build/release/Simulation",
+            "preLaunchTask": "swift: Build Release Simulation"
+        }
+    ]
+}

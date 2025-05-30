@@ -104,6 +104,7 @@
 				904D9A322DBE47A70085D237 /* powernapv2new Watch App */,
 				904D9A432DBE47A90085D237 /* powernapv2new Watch AppTests */,
 				904D9A4D2DBE47A90085D237 /* powernapv2new Watch AppUITests */,
+				907D34382DE9A7B4004A49D9 /* Frameworks */,
 				904D9A292DBE47A70085D237 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -117,6 +118,13 @@
 				904D9A4A2DBE47A90085D237 /* powernapv2new Watch AppUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		907D34382DE9A7B4004A49D9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -244,6 +252,8 @@
 			);
 			mainGroup = 904D9A212DBE47A70085D237;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 904D9A292DBE47A70085D237 /* Products */;
 			projectDirPath = "";

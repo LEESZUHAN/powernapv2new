@@ -1,0 +1,4 @@
+module PowerNapCore {
+    header "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/debug/PowerNapCore.build/PowerNapCore-Swift.h"
+    requires objc
+}

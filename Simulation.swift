@@ -95,12 +95,13 @@ struct SimulationApp {
             }
             session = session.withFeedback(feedback)
             userManager.saveSleepSession(session)
-            // 重新取得最新 profile 以顯示分數
+            // 重新取得最新 profile（調整後）
             let profileNow3 = userManager.getUserProfile(forUserId: userId)!
+            let threshold2 = profileNow3.hrThresholdPercentage * rhr
+            let thresholdPercent = (rhr > 0) ? (profileNow3.hrThresholdPercentage * 100) : 0
             let dailyScore = profileNow3.dailyDeviationScore
             let cumulativeScore = profileNow3.cumulativeScore
-            let thresholdPercent = (rhr > 0) ? (profileNow3.hrThresholdPercentage * 100) : 0
-            print("Day \(day+1): 平均HR=\(String(format: "%.1f", avgHR))，ratio=\(String(format: "%.3f", ratio))，今日分數=\(dailyScore)，累計分數=\(cumulativeScore)，系統判定=\(sysDetect ? "睡著" : "未睡著")，feedback=\(allDayFeedback.last!)，閾值=\(String(format: "%.1f", threshold)) (\(String(format: "%.0f", thresholdPercent))%)")
+            print("Day \(day+1): 平均HR=\(String(format: "%.1f", avgHR))，ratio=\(String(format: "%.3f", ratio))，今日分數=\(dailyScore)，累計分數=\(cumulativeScore)，系統判定=\(sysDetect ? "睡著" : "未睡著")，feedback=\(allDayFeedback.last!)，閾值=\(String(format: "%.1f", threshold2)) (\(String(format: "%.0f", thresholdPercent))%)")
         }
 
         print("\n已生成 30 天睡眠資料（前15天98~102%，後15天一半快入睡(78~82%)、一半慢入睡(85~90%)），feedback 依據系統判斷與用戶真實自動產生")
