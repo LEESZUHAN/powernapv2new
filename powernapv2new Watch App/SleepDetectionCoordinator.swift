@@ -388,8 +388,8 @@ public class SleepDetectionCoordinator {
         let hrBelowThresholdRatio = calculateHeartRateBelowThresholdRatio(for: requiredDuration)
         let restingRatio = calculateRestingRatio(for: requiredDuration)
         
-        // 綜合判斷 - 需要90%的心率低於閾值且達到年齡組要求的靜止比例
-        let hrConditionMet = hrBelowThresholdRatio >= 0.9 // 90%的時間心率低於閾值
+        // 綜合判斷 - 需要75%的心率低於閾值且達到年齡組要求的靜止比例（與 CLI 同步）
+        let hrConditionMet = hrBelowThresholdRatio >= 0.75 // 75%的時間心率低於閾值
         let restingConditionMet = restingRatio >= restingRatioThreshold
         
         // 記錄判斷結果

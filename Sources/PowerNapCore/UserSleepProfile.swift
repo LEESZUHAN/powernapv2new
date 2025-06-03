@@ -239,7 +239,7 @@ public struct OptimizedThresholds {
     
     // 心率閾值百分比的上下限
     static let minThresholdPercentage: Double = 0.70  // 最低降至RHR的70%
-    static let maxThresholdPercentage: Double = 1.10  // 最高不超過RHR的110%
+    static let maxThresholdPercentage: Double = 1.20  // 最高不超過RHR的120%
     
     // 靜止比例的上下限 - 新增
     static let minRestingRatio: Double = 0.5  // 最低要求50%靜止
@@ -662,15 +662,9 @@ public class UserSleepProfileManager {
         switch feedbackType {
         case .falseNegative: // 漏報情況 - 更積極調整
             switch consecutiveCount {
-            case 0: return 0.04  // 首次 +4%
-            case 1: return 0.03  // 第二次 +3%
-            case 2: return 0.02  // 第三次 +2%
-            case 3: return 0.01  // 第四次 +1%
-            case 4: return 0.01  // 第五次 +1%
-            case 5: return 0.01  // 第六次 +1%
-            case 6: return 0.01  // 第七次 +1%
-            case 7: return 0.01  // 第八次 +1%
-            default: return 0.0   // 第九次以後停止調整
+            case 0: return 0.04  // 第1次 +4%
+            case 1: return 0.04  // 第2次 +4%
+            default: return 0.03 // 第3次起固定 +3%
             }
         case .falsePositive: // 誤報情況 - 較溫和調整
             switch consecutiveCount {
@@ -727,8 +721,8 @@ public class UserSleepProfileManager {
         // 應用調整
         let currentThreshold = profile.hrThresholdPercentage
         let newThreshold = currentThreshold + (Double(adjustmentDirection) * adjustmentAmount)
-        // 確保在合理範圍內 (70%-110%)
-        let finalThreshold = min(max(newThreshold, 0.70), 1.10)
+        // 確保在合理範圍內 (70%-120%)
+        let finalThreshold = min(max(newThreshold, 0.70), 1.20)
         let before = currentThreshold * 100
         let after = finalThreshold * 100
         print("【feedback觸發】調整前閾值: \(String(format: "%.2f", before))%，調整後閾值: \(String(format: "%.2f", after))%，feedbackType=\(feedbackType.rawValue)，連續次數=\(profile.consecutiveFeedbackAdjustments+1)")

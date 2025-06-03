@@ -641,17 +641,15 @@ class HeartRateService: HeartRateServiceProtocol {
         let decrease = firstHalfAvg - secondHalfAvg
         let decreasePercentage = decrease / firstHalfAvg
         
-        // ΔHR輔助判定機制：下降 ≥ 5 bpm 且 < 個人 RHR
-        // 1. 檢查下降幅度是否達到5bpm
-        let hasSignificantDecrease = decrease >= 5.0 && decreasePercentage >= 0.05
+        // ΔHR輔助判定機制：動態門檻
+        // 至少下降 max(4 bpm, RHR×6%)，並且下降比例 ≥5%
+        let dynamicDropThreshold = max(4.0, restingHeartRate * 0.06)
+        let hasSignificantDecrease = decrease >= dynamicDropThreshold && decreasePercentage >= 0.05
         
-        // 2. 確認是否可能是睡眠相關的心率下降
-        let isBelowRestingHR = secondHalfAvg < restingHeartRate
-        
-        if hasSignificantDecrease && isBelowRestingHR {
+        if hasSignificantDecrease {
             logger.info("檢測到顯著心率下降: \(decrease) bpm (\(decreasePercentage*100)%), 當前心率低於靜息心率")
         }
         
-        return hasSignificantDecrease && isBelowRestingHR
+        return hasSignificantDecrease
     }
 } 

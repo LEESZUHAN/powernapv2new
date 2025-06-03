@@ -25,7 +25,14 @@ struct SimulationApp {
             if !lowAnomalyDays.contains(d) { highAnomalyDays.insert(d) }
         }
 
-        let rhr: Double = 60 // 假設靜息
+        // MARK: - 情境定義
+        enum Scenario {
+            case postMeal   // M-1 餐後血糖高（RHR +5% 上下）
+        }
+
+        let scenario: Scenario = .postMeal // 目前只跑 M-1，可之後切換
+
+        let rhr: Double = 60 // 假設靜息心率
         var allDayAvgHR: [Double] = []
         var allDayFeedback: [String] = []
         var allDaySysDetect: [Bool] = []
@@ -42,14 +49,22 @@ struct SimulationApp {
             var hrList: [Double] = []
             let fastSleep = (day % 2 == 0) // 後15天一半天數快入睡，一半慢入睡
             let realSleep: Bool
-            for _ in 0..<200 {
+            for i in 0..<200 {
                 let hr: Double
-                if day < 15 {
-                    hr = rhr * Double.random(in: 0.98...1.02, using: &generator) + Double.random(in: -2...2, using: &generator)
-                } else if fastSleep {
-                    hr = rhr * Double.random(in: 0.78...0.82, using: &generator) + Double.random(in: -2...2, using: &generator)
-                } else {
-                    hr = rhr * Double.random(in: 0.85...0.90, using: &generator) + Double.random(in: -2...2, using: &generator)
+                switch scenario {
+                case .postMeal:
+                    // 加入「時間軸」：前120秒逐步降至 ~90%閾值，之後再慢降
+                    if i < 120 {
+                        // 緩降區：從 1.08×RHR 緩降到 1.00×RHR
+                        let t = Double(i) / 119.0 // 0→1
+                        let factor = 1.08 - 0.08 * t  // 1.08 → 1.00
+                        hr = rhr * factor + Double.random(in: -2...2, using: &generator)
+                    } else {
+                        // 進一步下降區：目標 0.82×RHR，線性下滑
+                        let t = Double(i - 120) / 79.0 // 0→1
+                        let factor = 1.00 - 0.18 * t   // 1.00 → 0.82
+                        hr = rhr * factor + Double.random(in: -2...2, using: &generator)
+                    }
                 }
                 sumHR += hr
                 hrList.append(hr)
@@ -59,9 +74,42 @@ struct SimulationApp {
             allDayAvgHR.append(avgHR)
             session = session.completing()
             let profileNow2 = userManager.getUserProfile(forUserId: userId)!
-            let threshold = profileNow2.hrThresholdPercentage * rhr
+            // 加入使用者敏感度：+5%
+            let effectiveThresholdPercent = profileNow2.hrThresholdPercentage + 0.05
+            let threshold = effectiveThresholdPercent * rhr
             let ratio = avgHR / threshold
-            let sysDetect = hrList.filter { $0 < threshold }.count > 100
+            let windowSeconds = profileNow2.minDurationSeconds // 例如成人 180 秒
+            let windowSamples = min(windowSeconds, hrList.count)
+            let requiredRatio = 0.75
+            var belowCount = 0
+            var sysDetect = false
+            for (i, v) in hrList.enumerated() {
+                if v < threshold { belowCount += 1 }
+
+                if i >= windowSamples {
+                    // 移除滑動窗口前端的值
+                    if hrList[i - windowSamples] < threshold {
+                        belowCount -= 1
+                    }
+                }
+
+                if i >= windowSamples - 1 {
+                    let ratioBelow = Double(belowCount) / Double(windowSamples)
+                    if ratioBelow >= requiredRatio {
+                        sysDetect = true
+                        break
+                    }
+                }
+            }
+            // 若比例不足，檢查 ΔHR（前/後段平均差）
+            if !sysDetect {
+                let firstHalfAvg = hrList.prefix(100).reduce(0,+)/100.0
+                let secondHalfAvg = hrList.suffix(100).reduce(0,+)/100.0
+                let delta = firstHalfAvg - secondHalfAvg
+                if delta >= max(4.0, rhr * 0.06) && (secondHalfAvg < threshold) {
+                    sysDetect = true
+                }
+            }
             if day < 15 {
                 realSleep = true
             } else if fastSleep {
@@ -97,11 +145,14 @@ struct SimulationApp {
             userManager.saveSleepSession(session)
             // 重新取得最新 profile（調整後）
             let profileNow3 = userManager.getUserProfile(forUserId: userId)!
-            let threshold2 = profileNow3.hrThresholdPercentage * rhr
-            let thresholdPercent = (rhr > 0) ? (profileNow3.hrThresholdPercentage * 100) : 0
+            let thresholdRaw = profileNow3.hrThresholdPercentage * rhr
+            let thresholdWithSens = (profileNow3.hrThresholdPercentage + 0.05) * rhr
+            let thresholdRawPct = profileNow3.hrThresholdPercentage * 100
+            let thresholdSensPct = (profileNow3.hrThresholdPercentage + 0.05) * 100
+            let avgPct = avgHR / rhr * 100
             let dailyScore = profileNow3.dailyDeviationScore
             let cumulativeScore = profileNow3.cumulativeScore
-            print("Day \(day+1): 平均HR=\(String(format: "%.1f", avgHR))，ratio=\(String(format: "%.3f", ratio))，今日分數=\(dailyScore)，累計分數=\(cumulativeScore)，系統判定=\(sysDetect ? "睡著" : "未睡著")，feedback=\(allDayFeedback.last!)，閾值=\(String(format: "%.1f", threshold2)) (\(String(format: "%.0f", thresholdPercent))%)")
+            print("Day \(day+1): 平均HR=\(String(format: "%.1f", avgHR)) (\(String(format: "%.0f", avgPct))%)，ratio=\(String(format: "%.3f", ratio))，今日分數=\(dailyScore)，累計分數=\(cumulativeScore)，系統判定=\(sysDetect ? "睡著" : "未睡著")，feedback=\(allDayFeedback.last!)，閾值=\(String(format: "%.1f", thresholdRaw)) (\(String(format: "%.0f", thresholdRawPct))%), +敏=\(String(format: "%.1f", thresholdWithSens)) (\(String(format: "%.0f", thresholdSensPct))%)")
         }
 
         print("\n已生成 30 天睡眠資料（前15天98~102%，後15天一半快入睡(78~82%)、一半慢入睡(85~90%)），feedback 依據系統判斷與用戶真實自動產生")

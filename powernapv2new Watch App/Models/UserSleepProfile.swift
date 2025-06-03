@@ -239,7 +239,7 @@ public struct OptimizedThresholds {
     
     // 心率閾值百分比的上下限
     static let minThresholdPercentage: Double = 0.70  // 最低降至RHR的70%
-    static let maxThresholdPercentage: Double = 1.10  // 最高不超過RHR的110%
+    static let maxThresholdPercentage: Double = 1.20  // 最高不超過RHR的120%
     
     // 靜止比例的上下限 - 新增
     static let minRestingRatio: Double = 0.5  // 最低要求50%靜止
@@ -343,20 +343,25 @@ public class UserSleepProfileManager {
                         return nil
                     }
                     let avgRatio = ratios.isEmpty ? ratio : (ratios.reduce(0, +) / Double(ratios.count))
-                    let feedbackType: SleepSession.SleepFeedback = avgRatio < 1.0 ? .falsePositive : .falseNegative
+                    var selectedFeedback: SleepSession.SleepFeedback? = nil
+                    if avgRatio <= 0.97 {
+                        selectedFeedback = .falsePositive
+                    } else if avgRatio >= 1.03 {
+                        selectedFeedback = .falseNegative
+                    }
                     // 取得 day 字串
                     let dayStr = DateFormatter.localizedString(from: session.startTime, dateStyle: .short, timeStyle: .none)
-                    let before = profile.hrThresholdPercentage * 100
-                    // log 調整前
-                    print("【異常分數觸發 Day: \(dayStr)】累計分數=\(profile.cumulativeScore)，ratio(2日均)=\(String(format: "%.3f", avgRatio))，feedbackType=\(feedbackType.rawValue)")
-                    print("調整前閾值: \(String(format: "%.2f", before))%")
-                    adjustHeartRateThreshold(forUserId: session.userId, feedbackType: feedbackType)
-                    // 重新取回已更新閾值的 profile，再寫入重置後的分數
-                    if var refreshed = getUserProfile(forUserId: session.userId) {
-                        refreshed.cumulativeScore = 0
-                        let after = refreshed.hrThresholdPercentage * 100
-                        print("調整後閾值: \(String(format: "%.2f", after))%\n")
-                        profile = refreshed // 以便後續 save 使用
+                    if let fb = selectedFeedback {
+                        let before = profile.hrThresholdPercentage * 100
+                        print("【異常分數觸發 Day: \(dayStr)】累計分數=\(profile.cumulativeScore)，ratio(2日均)=\(String(format: "%.3f", avgRatio))，feedbackType=\(fb.rawValue)")
+                        print("調整前閾值: \(String(format: "%.2f", before))%")
+                        adjustHeartRateThreshold(forUserId: session.userId, feedbackType: fb)
+                        if var refreshed = getUserProfile(forUserId: session.userId) {
+                            refreshed.cumulativeScore = 0
+                            let after = refreshed.hrThresholdPercentage * 100
+                            print("調整後閾值: \(String(format: "%.2f", after))%\n")
+                            profile = refreshed
+                        }
                     }
                 }
             }
@@ -664,14 +669,9 @@ public class UserSleepProfileManager {
         switch feedbackType {
         case .falseNegative: // 漏報情況 - 更積極調整
             switch consecutiveCount {
-            case 0: return 0.04  // 首次 +4%
-            case 1: return 0.03  // 第二次 +3%
-            case 2: return 0.02  // 第三次 +2%
-            case 3: return 0.02  // 第四次 +2%
-            case 4: return 0.02  // 第五次 +2%
-            case 5: return 0.01  // 第六次 +1%
-            case 6: return 0.01  // 第七次 +1%
-            default: return 0.01 // 之後都+1%
+            case 0: return 0.04  // 第1次 +4%
+            case 1: return 0.04  // 第2次 +4%
+            default: return 0.03 // 第3次起固定 +3%
             }
         case .falsePositive: // 誤報情況 - 較溫和調整
             switch consecutiveCount {
@@ -681,8 +681,8 @@ public class UserSleepProfileManager {
             case 3: return 0.02  // 第四次 +2%
             case 4: return 0.02  // 第五次 +2%
             case 5: return 0.02  // 第六次 +2%
-            case 6: return 0.01  // 第七次 +1%
-            default: return 0.01 // 之後都+1%
+            case 6: return 0.02  // 第七次 +2%
+            default: return 0.02 // 之後都+2%
             }
         default:
             return 0.0 // 其他情況不進行調整
@@ -733,8 +733,8 @@ public class UserSleepProfileManager {
             newThreshold = currentThreshold + adjustmentAmount // 漏報：放寬（+）
         }
         
-        // 確保在合理範圍內 (70%-110%)
-        let finalThreshold = min(max(newThreshold, 0.70), 1.10)
+        // 確保在合理範圍內 (70%-120%)
+        let finalThreshold = min(max(newThreshold, 0.70), 1.20)
         profile.hrThresholdPercentage = finalThreshold
         
         // 更新追蹤變數
