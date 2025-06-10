@@ -3,6 +3,9 @@ import HealthKit
 import Combine
 import os
 
+// === 新增：ΔHR window size 常數 ===
+private let deltaHRWindowSize = 60 // 每 5 秒一筆，60 筆約 5 分鐘
+
 // 泛型版滑動窗口，用於心率數據分析
 class HeartRateWindow {
     private var values: [Double] = []
@@ -217,7 +220,7 @@ class HeartRateService: HeartRateServiceProtocol {
         
         // 心率趨勢分析
         let trendDirection = heartRateTrend
-        let isDownwardTrend = trendDirection < -0.5 // 下降趨勢
+        let isDownwardTrend = trendDirection < -0.20 // D-3 新門檻
         
         // 增強型睡眠檢測邏輯：
         // 1. 心率低於閾值 -- 基本條件
@@ -573,10 +576,10 @@ class HeartRateService: HeartRateServiceProtocol {
         let hrDecreasing = checkSignificantHeartRateDecrease()
         
         // 3. 趨勢分析 - 心率有持續下降趨勢
-        let hasDecliningTrend = self.heartRateTrend < -0.15
+        let hasDecliningTrend = self.heartRateTrend < -0.20
         
         // 4. 靜息相對性 - 當前心率接近用戶靜息心率
-        let nearRestingHR = currentHR <= restingHeartRate * 1.05
+        let nearRestingHR = currentHR <= restingHeartRate * 1.10
         
         // 判斷睡眠條件 - 滿足下列條件之一:
         // a) 心率低於閾值
@@ -621,35 +624,34 @@ class HeartRateService: HeartRateServiceProtocol {
     
     // 檢查是否有顯著心率下降，即ΔHR輔助判定
     private func checkSignificantHeartRateDecrease() -> Bool {
-        // 需要至少6個樣本才能進行分析
-        if heartRateWindow.items.count < 6 {
+        // 需要足夠樣本才能進行分析
+        if heartRateWindow.items.count < deltaHRWindowSize * 2 {
             return false
         }
-        
         let items = heartRateWindow.items
-        
-        // 將心率窗口分為前半部分和後半部分
-        let halfIndex = items.count / 2
-        let firstHalf = Array(items[0..<halfIndex])
-        let secondHalf = Array(items[halfIndex..<items.count])
-        
-        // 計算前半部分和後半部分的平均心率
+        // 取最前面 deltaHRWindowSize 筆與最後 deltaHRWindowSize 筆
+        let firstHalf = Array(items.prefix(deltaHRWindowSize))
+        let secondHalf = Array(items.suffix(deltaHRWindowSize))
+        // 計算前後段平均心率
         let firstHalfAvg = firstHalf.reduce(0, +) / Double(firstHalf.count)
         let secondHalfAvg = secondHalf.reduce(0, +) / Double(secondHalf.count)
-        
         // 計算心率下降量和下降百分比
         let decrease = firstHalfAvg - secondHalfAvg
         let decreasePercentage = decrease / firstHalfAvg
-        
-        // ΔHR輔助判定機制：動態門檻
-        // 至少下降 max(4 bpm, RHR×6%)，並且下降比例 ≥5%
-        let dynamicDropThreshold = max(4.0, restingHeartRate * 0.06)
-        let hasSignificantDecrease = decrease >= dynamicDropThreshold && decreasePercentage >= 0.05
-        
+        // D-3 新 ΔHR 規則：至少下降 max(10 bpm, RHR×12%)
+        let dynamicDropThreshold = max(10.0, restingHeartRate * 0.12)
+        // 前段必須高於閾值 5％，末段必須低於閾值且 90% 以下
+        // 這裡使用 heartRateThreshold 當作 +敏 閾值，粗估 rawThreshold = heartRateThreshold * 0.95
+        let rawThreshold = heartRateThreshold * 0.95
+        let firstAbove = firstHalfAvg > rawThreshold * 1.05
+        let lastBelowCount = secondHalf.filter { $0 < rawThreshold }.count
+        let lastBelowRatio = Double(lastBelowCount) / Double(secondHalf.count)
+        let lastBelowEnough = lastBelowRatio >= 0.90
+
+        let hasSignificantDecrease = firstAbove && lastBelowEnough && decrease >= dynamicDropThreshold
         if hasSignificantDecrease {
             logger.info("檢測到顯著心率下降: \(decrease) bpm (\(decreasePercentage*100)%), 當前心率低於靜息心率")
         }
-        
         return hasSignificantDecrease
     }
 } 

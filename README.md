@@ -53,4 +53,15 @@ PowerNap 是一款專為 Apple Watch 設計的應用程式，旨在協助使用�
 
 ## 版本信息
 
-當前版本：v2.3.1 (2024-05-20) 
+當前版本：v2.3.1 (2024-05-20)
+
+### 近期變更摘要（v2.3.2 計畫）
+
+* 2024-06-10：
+  * ΔHR 改為輔助訊號，新增三條觸發條件
+  * trend 門檻調整為 –0.20，並加入 HR < 1.10×RHR 保護
+  * 異常分數門檻 scoreThreshold 由 12 → **8**
+  * 日誌 payload 新增 `trend`、`detectSource`、`schemaVersion`
+  * TechnicalParamsTable.md、HeartRateSystem.md、ConvergenceSystem.md 已同步更新
+
+更多信息請參閱 [docs/README.md](docs/README.md)。 

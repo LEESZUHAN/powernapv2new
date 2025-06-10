@@ -132,6 +132,8 @@ public struct SleepSession: Codable {
     let averageHeartRate: Double?
     let minimumHeartRate: Double?
     let userFeedback: SleepFeedback?
+    // 新增：當次 Session 以當下閾值計算的 ratio，供跨日平均使用
+    let ratioToThreshold: Double?
     
     public enum SleepFeedback: String, Codable {
         case accurate     // 用戶反饋檢測準確
@@ -151,7 +153,8 @@ public struct SleepSession: Codable {
             detectedSleepTime: nil,
             averageHeartRate: nil,
             minimumHeartRate: nil,
-            userFeedback: SleepFeedback.none
+            userFeedback: SleepFeedback.none,
+            ratioToThreshold: nil
         )
     }
     
@@ -169,7 +172,8 @@ public struct SleepSession: Codable {
             detectedSleepTime: self.detectedSleepTime,
             averageHeartRate: self.averageHeartRate,
             minimumHeartRate: self.minimumHeartRate,
-            userFeedback: self.userFeedback
+            userFeedback: self.userFeedback,
+            ratioToThreshold: self.ratioToThreshold
         )
     }
     
@@ -187,7 +191,8 @@ public struct SleepSession: Codable {
             detectedSleepTime: self.detectedSleepTime,
             averageHeartRate: avgHR,
             minimumHeartRate: minHR,
-            userFeedback: self.userFeedback
+            userFeedback: self.userFeedback,
+            ratioToThreshold: self.ratioToThreshold
         )
     }
     
@@ -202,7 +207,8 @@ public struct SleepSession: Codable {
             detectedSleepTime: time,
             averageHeartRate: self.averageHeartRate,
             minimumHeartRate: self.minimumHeartRate,
-            userFeedback: self.userFeedback
+            userFeedback: self.userFeedback,
+            ratioToThreshold: self.ratioToThreshold
         )
     }
     
@@ -217,7 +223,24 @@ public struct SleepSession: Codable {
             detectedSleepTime: self.detectedSleepTime,
             averageHeartRate: self.averageHeartRate,
             minimumHeartRate: self.minimumHeartRate,
-            userFeedback: feedback
+            userFeedback: feedback,
+            ratioToThreshold: self.ratioToThreshold
+        )
+    }
+    
+    /// 設定 ratioToThreshold
+    public func withRatioToThreshold(_ ratio: Double) -> SleepSession {
+        return SleepSession(
+            id: self.id,
+            userId: self.userId,
+            startTime: self.startTime,
+            endTime: self.endTime,
+            heartRates: self.heartRates,
+            detectedSleepTime: self.detectedSleepTime,
+            averageHeartRate: self.averageHeartRate,
+            minimumHeartRate: self.minimumHeartRate,
+            userFeedback: self.userFeedback,
+            ratioToThreshold: ratio
         )
     }
 }
@@ -284,27 +307,14 @@ public class UserSleepProfileManager {
     public func saveSleepSession(_ session: SleepSession) {
         var sessions = getSleepSessions(forUserId: session.userId)
         
-        // 更新或添加會話
-        if let index = sessions.firstIndex(where: { $0.id == session.id }) {
-            sessions[index] = session
+        // 更新或添加會話（先照原樣存入）
+        if let idx = sessions.firstIndex(where: { $0.id == session.id }) {
+            sessions[idx] = session
         } else {
             sessions.append(session)
         }
-        
-        // 只保留最近30次會話
-        if sessions.count > 30 {
-            sessions.sort { $0.startTime > $1.startTime }
-            sessions = Array(sessions.prefix(30))
-        }
-        
-        do {
-            let data = try JSONEncoder().encode(sessions)
-            defaults.set(data, forKey: "\(sleepSessionsKey)_\(session.userId)")
-        } catch {
-            print("編碼睡眠會話錯誤: \(error.localizedDescription)")
-        }
 
-        // === 新增: 偏離比例 / 異常分數累計 ===
+        // 以下邏輯先插入暫存，稍後若有比率再更新
         if var profile = getUserProfile(forUserId: session.userId) {
             // 若跨日則重置今日分數
             let today = Calendar.current.startOfDay(for: Date())
@@ -318,15 +328,23 @@ public class UserSleepProfileManager {
                let restingHR = profile.lastRestingHR {
                 let thresholdBPM = profile.hrThresholdPercentage * restingHR
                 let ratio = avgHR / thresholdBPM
+
+                // 將本次 ratio 保存到 session，以供日後計算二日均
+                if let idxSession = sessions.firstIndex(where: { $0.id == session.id }) {
+                    sessions[idxSession] = sessions[idxSession].withRatioToThreshold(ratio)
+                }
+
                 let deltaScore = Self.calculateDeviationScore(for: ratio)
 
                 // debug print
                 let timeStr = DateFormatter.localizedString(from: session.startTime, dateStyle: .short, timeStyle: .none)
                 print("【分數計算debug Day: \(timeStr)】avgHR=\(String(format: "%.2f", avgHR)), restingHR=\(String(format: "%.2f", restingHR)), thresholdBPM=\(String(format: "%.2f", thresholdBPM)), ratio=\(String(format: "%.2f", ratio)), deltaScore=\(deltaScore), dailyScore(before)=\(profile.dailyDeviationScore), cumulativeScore(before)=\(profile.cumulativeScore)")
 
-                // 更新分數
-                profile.dailyDeviationScore += deltaScore
-                profile.cumulativeScore += deltaScore
+                let isExtreme = ratio < 0.94 || ratio > 1.10
+                if session.detectedSleepTime != nil || isExtreme {
+                    profile.dailyDeviationScore += deltaScore
+                    profile.cumulativeScore += deltaScore
+                }
 
                 print("【分數計算debug Day: \(timeStr)】dailyScore(after)=\(profile.dailyDeviationScore), cumulativeScore(after)=\(profile.cumulativeScore)")
 
@@ -336,7 +354,11 @@ public class UserSleepProfileManager {
                     let sessions = getSleepSessions(forUserId: session.userId)
                     let last2 = sessions.suffix(2)
                     let ratios = last2.compactMap { s -> Double? in
-                        if let avgHR = s.averageHeartRate, let restingHR = profile.lastRestingHR {
+                        if let r = s.ratioToThreshold {
+                            return r
+                        }
+                        if let avgHR = s.averageHeartRate,
+                           let restingHR = profile.lastRestingHR {
                             let thresholdBPM = profile.hrThresholdPercentage * restingHR
                             return thresholdBPM > 0 ? avgHR / thresholdBPM : nil
                         }
@@ -368,6 +390,13 @@ public class UserSleepProfileManager {
             saveUserProfile(profile)
         }
         // === End 新增 ===
+
+        do {
+            let data = try JSONEncoder().encode(sessions)
+            defaults.set(data, forKey: "\(sleepSessionsKey)_\(session.userId)")
+        } catch {
+            print("編碼睡眠會話錯誤: \(error.localizedDescription)")
+        }
     }
     
     /// 獲取用戶睡眠會話記錄

@@ -1,0 +1,4 @@
+module powernapv2new {
+    header "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/powernapv2new-Swift.h"
+    requires objc
+}

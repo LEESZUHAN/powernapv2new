@@ -25,14 +25,13 @@ struct SimulationApp {
             if !lowAnomalyDays.contains(d) { highAnomalyDays.insert(d) }
         }
 
-        // MARK: - 情境定義
-        enum Scenario {
-            case postMeal   // M-1 餐後血糖高（RHR +5% 上下）
-        }
+        // 劇烈組 B-3：藥物 & 碎片午睡
+        let betaBlockerDays = Set(3...5)      // Day4-6 低 HR 0.78-0.84
+        let coughMedDays    = Set([11,12])    // Day12-13 高 HR + 咳嗽高峰
+        let fragmentDays    = Set(19...21)    // Day20-22 HR 0.95 持續波動
 
-        let scenario: Scenario = .postMeal // 目前只跑 M-1，可之後切換
+        let rhr: Double = 60 // 假設靜息心率（預設閾值仍 90%）
 
-        let rhr: Double = 60 // 假設靜息心率
         var allDayAvgHR: [Double] = []
         var allDayFeedback: [String] = []
         var allDaySysDetect: [Bool] = []
@@ -47,24 +46,29 @@ struct SimulationApp {
             var session = SleepSession.create(userId: userId)
             var sumHR = 0.0
             var hrList: [Double] = []
-            let fastSleep = (day % 2 == 0) // 後15天一半天數快入睡，一半慢入睡
-            let realSleep: Bool
             for i in 0..<200 {
                 let hr: Double
-                switch scenario {
-                case .postMeal:
-                    // 加入「時間軸」：前120秒逐步降至 ~90%閾值，之後再慢降
-                    if i < 120 {
-                        // 緩降區：從 1.08×RHR 緩降到 1.00×RHR
-                        let t = Double(i) / 119.0 // 0→1
-                        let factor = 1.08 - 0.08 * t  // 1.08 → 1.00
-                        hr = rhr * factor + Double.random(in: -2...2, using: &generator)
+                // 決定今日HR模式
+                if betaBlockerDays.contains(day) {
+                    // β-blocker 低 HR 0.78–0.84
+                    let factor = Double.random(in: 0.78...0.84, using: &generator)
+                    hr = rhr * factor + Double.random(in: -1...1, using: &generator)
+                } else if coughMedDays.contains(day) {
+                    // 咳嗽藥：1.08–1.12，且每2分鐘(120樣本)前15樣本峰值1.20
+                    if i % 120 < 15 {
+                        hr = rhr * 1.20 + Double.random(in: -2...2, using: &generator)
                     } else {
-                        // 進一步下降區：目標 0.82×RHR，線性下滑
-                        let t = Double(i - 120) / 79.0 // 0→1
-                        let factor = 1.00 - 0.18 * t   // 1.00 → 0.82
+                        let factor = Double.random(in: 1.08...1.12, using: &generator)
                         hr = rhr * factor + Double.random(in: -2...2, using: &generator)
                     }
+                } else if fragmentDays.contains(day) {
+                    // 碎片睡：平均 0.95 並輕微波動
+                    let factor = Double.random(in: 0.93...0.97, using: &generator)
+                    hr = rhr * factor + Double.random(in: -3...3, using: &generator)
+                } else {
+                    // 正常日：0.98–1.02
+                    let factor = Double.random(in: 0.98...1.02, using: &generator)
+                    hr = rhr * factor + Double.random(in: -1...1, using: &generator)
                 }
                 sumHR += hr
                 hrList.append(hr)
@@ -78,6 +82,8 @@ struct SimulationApp {
             let effectiveThresholdPercent = profileNow2.hrThresholdPercentage + 0.05
             let threshold = effectiveThresholdPercent * rhr
             let ratio = avgHR / threshold
+            // 計算趨勢
+            let trend = calculateHeartRateTrend(from: hrList)
             let windowSeconds = profileNow2.minDurationSeconds // 例如成人 180 秒
             let windowSamples = min(windowSeconds, hrList.count)
             let requiredRatio = 0.75
@@ -110,13 +116,8 @@ struct SimulationApp {
                     sysDetect = true
                 }
             }
-            if day < 15 {
-                realSleep = true
-            } else if fastSleep {
-                realSleep = true
-            } else {
-                realSleep = false
-            }
+            // A-3 無快/慢入睡區分，全程 realSleep = true
+            let realSleep: Bool = true
             allDaySysDetect.append(sysDetect)
             allDayRealSleep.append(realSleep)
             let feedback: SleepSession.SleepFeedback
@@ -128,7 +129,8 @@ struct SimulationApp {
                 feedback = .falseNegative
                 allDayFeedback.append("漏報")
                 userManager.adjustHeartRateThreshold(forUserId: userId, feedbackType: .falseNegative)
-            } else if sysDetect && !realSleep && avgHR >= rhr * 0.80 && avgHR < rhr * 0.90 {
+            } else if sysDetect && realSleep && avgHR < threshold * 0.90 {
+                // 閾值與平均 HR 差距 >10% → 使用者可能尚未入睡；50% 機率回報誤報
                 if Double.random(in: 0...1, using: &generator) < 0.5 {
                     feedback = .falsePositive
                     allDayFeedback.append("誤報")
@@ -142,6 +144,7 @@ struct SimulationApp {
                 allDayFeedback.append("準確")
             }
             session = session.withFeedback(feedback)
+            session = session.withRatioToThreshold(ratio)
             userManager.saveSleepSession(session)
             // 重新取得最新 profile（調整後）
             let profileNow3 = userManager.getUserProfile(forUserId: userId)!
@@ -152,7 +155,7 @@ struct SimulationApp {
             let avgPct = avgHR / rhr * 100
             let dailyScore = profileNow3.dailyDeviationScore
             let cumulativeScore = profileNow3.cumulativeScore
-            print("Day \(day+1): 平均HR=\(String(format: "%.1f", avgHR)) (\(String(format: "%.0f", avgPct))%)，ratio=\(String(format: "%.3f", ratio))，今日分數=\(dailyScore)，累計分數=\(cumulativeScore)，系統判定=\(sysDetect ? "睡著" : "未睡著")，feedback=\(allDayFeedback.last!)，閾值=\(String(format: "%.1f", thresholdRaw)) (\(String(format: "%.0f", thresholdRawPct))%), +敏=\(String(format: "%.1f", thresholdWithSens)) (\(String(format: "%.0f", thresholdSensPct))%)")
+            print("Day \(day+1): 平均HR=\(String(format: "%.1f", avgHR)) (\(String(format: "%.0f", avgPct))%)，ratio=\(String(format: "%.3f", ratio))，trend=\(String(format: "%.2f", trend))，今日分數=\(dailyScore)，累計分數=\(cumulativeScore)，系統判定=\(sysDetect ? "睡著" : "未睡著")，feedback=\(allDayFeedback.last!)，閾值=\(String(format: "%.1f", thresholdRaw)) (\(String(format: "%.0f", thresholdRawPct))%), +敏=\(String(format: "%.1f", thresholdWithSens)) (\(String(format: "%.0f", thresholdSensPct))%)")
         }
 
         print("\n已生成 30 天睡眠資料（前15天98~102%，後15天一半快入睡(78~82%)、一半慢入睡(85~90%)），feedback 依據系統判斷與用戶真實自動產生")
@@ -183,13 +186,35 @@ struct SimulationApp {
             print("每日feedback: \(allDayFeedback.joined(separator: ", "))")
             print("每日閾值: \((0..<allDayAvgHR.count).map{ _ in String(format: "%.1f", userManager.getUserProfile(forUserId: userId)!.hrThresholdPercentage * rhr) }.joined(separator: ", "))")
             
-            if result.newThreshold > result.previousThreshold {
-                print("\n✅ 閾值有向上收斂，演算法正常！")
-            } else {
-                print("\n⚠️ 閾值未向上收斂，請檢查演算法！")
-            }
+            // 收斂方向提示僅供調試，此處先移除向上收斂警告
+            print("\n收斂流程完成，閾值由 \(String(format: "%.2f%%", result.previousThreshold*100)) → \(String(format: "%.2f%%", result.newThreshold*100))")
         default:
             print("優化未完成或失敗，最終狀態: \(optimizer.optimizationStatus)")
         }
+    }
+
+    // === 新增：計算 heartRateTrend（加權線性斜率，與主程式相同的加權線性斜率） ===
+    static func calculateHeartRateTrend(from hrSeries: [Double], sampleInterval: Double = 1.0) -> Double {
+        // Mimic HeartRateService.calculateHeartRateTrend()
+        guard hrSeries.count >= 3 else { return 0.0 }
+
+        var sumX = 0.0, sumY = 0.0, sumXY = 0.0, sumX2 = 0.0, weights = 0.0
+        for (i, hr) in hrSeries.enumerated() {
+            let x = Double(i) * sampleInterval  // 使用秒為單位
+            let weight = 1.0 + Double(i) * 0.2  // 與主程式相同的權重策略
+            sumX  += x * weight
+            sumY  += hr * weight
+            sumXY += x * hr * weight
+            sumX2 += x * x * weight
+            weights += weight
+        }
+
+        let meanX = sumX / weights
+        let meanY = sumY / weights
+        let slope = (sumXY - sumX * meanY) / (sumX2 - sumX * meanX)
+
+        // 標準化到 [-1,1]，假設『心率每分鐘變化 2BPM』為基準
+        let normalizedSlope = slope * 30.0 / 2.0  // 30 秒對應主程式係數
+        return max(min(normalizedSlope, 1.0), -1.0)
     }
 } 

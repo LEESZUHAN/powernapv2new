@@ -1199,6 +1199,9 @@ class PowerNapViewModel: ObservableObject {
     private var sessionStartThresholdPercent: Double? = nil
     private var sessionStartMinDuration: Int? = nil
     
+    // 1. 在 PowerNapViewModel class 層級新增 detectSource
+    private var detectSource: String = ""
+    
     init() {
         // 確保napDuration和napMinutes保持同步
         $napDuration
@@ -1784,6 +1787,19 @@ class PowerNapViewModel: ObservableObject {
         // 記錄睡眠分析總結數據
         logger.info("記錄最終睡眠分析數據: 檢測到睡眠: \(detectedSleep), 分類: \(notes)")
         
+        // === 新增：決定判定來源 detectSource ===
+        let ratioValue = (avgSleepHR != nil && heartRateThreshold > 0) ? (avgSleepHR! / heartRateThreshold) : 1.0
+        var detectSourceLocal = ""
+        if ratioValue < 0.75 {
+            detectSourceLocal = "滑動視窗"
+        } else if hrTrendIndicator <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
+            detectSourceLocal = "trend"
+        } else {
+            detectSourceLocal = "ΔHR"
+        }
+        // 更新屬性，供其他流程使用
+        self.detectSource = detectSourceLocal
+
         // 高級日誌：會話結束
         AdvancedLogger.shared.log(.sessionEnd, payload: [
             "detectedSleep": .bool(detectedSleep),
@@ -1795,7 +1811,11 @@ class PowerNapViewModel: ObservableObject {
             "deviationPercent": deviationPercent != nil ? .double(deviationPercent!) : .string("-"),
             "ratio": (avgSleepHR != nil && heartRateThreshold > 0) ? .double(avgSleepHR! / heartRateThreshold) : .string("-"),
             "deltaPercentShort": deltaPercentShort != nil ? .double(deltaPercentShort!) : .string("-"),
-            "deltaDurationShort": deltaDurationShort != nil ? .int(deltaDurationShort!) : .string("-")
+            "deltaDurationShort": deltaDurationShort != nil ? .int(deltaDurationShort!) : .string("-"),
+            "trend": .double(hrTrendIndicator),
+            "detectSource": .string(detectSourceLocal),
+            "adjustmentSourceShort": .string("feedback"),
+            "schemaVersion": .int(2)
         ])
         
         // 記錄到日誌文件
@@ -2014,7 +2034,8 @@ class PowerNapViewModel: ObservableObject {
                     // 高級日誌：參數優化
                     AdvancedLogger.shared.log(.optimization, payload: [
                         "oldThreshold": AdvancedLogger.CodableValue.double(result.previousThreshold),
-                        "newThreshold": AdvancedLogger.CodableValue.double(result.newThreshold)
+                        "newThreshold": AdvancedLogger.CodableValue.double(result.newThreshold),
+                        "adjustmentSourceLong": .string("optimization")
                     ])
                     // 當閾值發生變化時，我們接收到了變化值，但也需要更新自己的閾值記錄
                     self.refreshThresholdAfterOptimization(userId: userId)
@@ -2156,6 +2177,30 @@ class PowerNapViewModel: ObservableObject {
             deltaDurationShortFB = currentMinDurFB - startDur
         }
         
+        // === 新增：計算心率趨勢與判定來源 detectSource ===
+        var hrTrendIndicatorFB = 0.0
+        if hrHistoryWindow.count >= 3 {
+            var down = 0
+            var up = 0
+            for i in 1..<hrHistoryWindow.count {
+                let cur = hrHistoryWindow[i].value
+                let prev = hrHistoryWindow[i-1].value
+                if cur < prev - 1 { down += 1; up = 0 }
+                else if cur > prev + 1 { up += 1; down = 0 }
+            }
+            hrTrendIndicatorFB = Double(up - down) / Double(hrHistoryWindow.count)
+        }
+        let ratioFB = (avgSleepHR != nil && heartRateThreshold > 0) ? (avgSleepHR! / heartRateThreshold) : 1.0
+        var detectSourceFB = ""
+        if ratioFB < 0.75 {
+            detectSourceFB = "滑動視窗"
+        } else if hrTrendIndicatorFB <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
+            detectSourceFB = "trend"
+        } else {
+            detectSourceFB = "ΔHR"
+        }
+        self.detectSource = detectSourceFB
+
         AdvancedLogger.shared.log(.sessionEnd, payload: [
             "detectedSleep": AdvancedLogger.CodableValue.bool(detectedSleep),
             "notes": AdvancedLogger.CodableValue.string("用戶反饋後結束"),
@@ -2164,8 +2209,13 @@ class PowerNapViewModel: ObservableObject {
             "thresholdBPM": .double(heartRateThreshold),
             "thresholdPercent": .double(thresholdPercentFB),
             "deviationPercent": deviationPercentFB != nil ? .double(deviationPercentFB!) : .string("-"),
+            "ratio": .double(ratioFB),
             "deltaPercentShort": deltaPercentShortFB != nil ? .double(deltaPercentShortFB!) : .string("-"),
-            "deltaDurationShort": deltaDurationShortFB != nil ? .int(deltaDurationShortFB!) : .string("-")
+            "deltaDurationShort": deltaDurationShortFB != nil ? .int(deltaDurationShortFB!) : .string("-"),
+            "trend": .double(hrTrendIndicatorFB),
+            "detectSource": .string(detectSourceFB),
+            "adjustmentSourceShort": .string("feedback"),
+            "schemaVersion": .int(2)
         ])
         // 結束 session，寫入 csv
         sleepLogger.endSession(summary: "小睡會話已完成（用戶反饋後結束）")

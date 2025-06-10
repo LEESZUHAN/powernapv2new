@@ -54,6 +54,14 @@
 | InitialBoostFactor | 初始階段調整增益 | 1.2 (120%) | 1.0~1.5 | 系統初始階段的調整增益 |
 | StableStageFactor | 穩定階段調整降低係數 | 0.8 (80%) | 0.5~0.9 | 系統穩定階段的調整減少 |
 
+### 異常分數與觸發門檻（v2.4 更新）
+
+| 參數名稱 | 說明 | 預設值 | 調整範圍 | 備註 |
+|---------|------|--------|----------|------|
+| DeviationScoreThreshold | 累積分數觸發收斂門檻 | **8 分** | 6-12 分 | scoreThreshold 常量 |
+| ExtremeRatioThresholdLow | 極端低 ratio 閾值 | **0.94** | 0.90-0.96 | ratio < 值 → +3 分 |
+| ExtremeRatioThresholdHigh | 極端高 ratio 閾值 | **1.10** | 1.08-1.15 | ratio > 值 → +3 分 |
+
 ### 反饋影響參數
 
 用戶反饋對收斂機制的影響：

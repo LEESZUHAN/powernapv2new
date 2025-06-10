@@ -94,6 +94,24 @@ func calculateDecayFactor(sessions: Int, lastChangeDirection: AdjustmentDirectio
 }
 ```
 
+### 異常評分與觸發門檻（v2.4 更新）
+
+| 指標 | 條件 (ratio = AvgHR / Threshold) | 加分 |
+|------|---------------------------------|------|
+| 極端低 | ratio < **0.94** | +3 |
+| 偏低   | 0.94 ≤ ratio < 0.97 | +2 |
+| 正常   | 0.97 ≤ ratio ≤ 1.06 | +0 |
+| 偏高   | 1.06 < ratio ≤ 1.10 | +2 |
+| 極端高 | ratio > **1.10** | +3 |
+
+* **scoreThreshold**：由原 12 分下調至 **8 分**。累積分數 ≥ 8 時觸發 `adjustHeartRateThreshold`。  
+* **加分條件**：
+  1. `session.detectedSleepTime != nil`（系統已判睡）；或  
+  2. ratio 落在「極端區」(<0.94 或 >1.10)。
+  清醒且 ratio 在正常／偏區間者將不累積分數，避免髒資料干擾。
+
+> 此邏輯與 `UserSleepProfile.swift` 中 `calculateDeviationScore`、`scoreThreshold = 8` 完全對應。
+
 ### 反饋學習機制
 
 系統會記錄並分析用戶的反饋情況，調整參數優化方向：

@@ -1,0 +1,546 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.xctest/Contents/MacOS/powernapv2newPackageTests",
+      "packagePath" : "/Users/michaellee/Documents/powernapv2new",
+      "productName" : "powernapv2newPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.powernapv2new-arm64-apple-macosx15.0-release.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/sources",
+      "importPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/Sources/powernapv2new/powernapv2new.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "powernapv2new",
+      "moduleOutputPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules/powernapv2new.swiftmodule",
+      "objects" : [
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/powernapv2new.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx10.13",
+        "-O",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-module-cache-path",
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/powernapv2new-Swift.h",
+        "-swift-version",
+        "6",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "powernapv2new"
+      ],
+      "outputFileMapPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/powernapv2new.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules/powernapv2new.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/michaellee/Documents/powernapv2new/Sources/powernapv2new/powernapv2new.swift"
+      ],
+      "tempsPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build",
+      "wholeModuleOptimization" : true
+    },
+    "C.powernapv2newPackageTests-arm64-apple-macosx15.0-release.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/sources",
+      "importPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules/powernapv2newTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "powernapv2newPackageTests",
+      "moduleOutputPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules/powernapv2newPackageTests.swiftmodule",
+      "objects" : [
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx10.13",
+        "-O",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-module-cache-path",
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/powernapv2newPackageTests-Swift.h",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "powernapv2new"
+      ],
+      "outputFileMapPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules/powernapv2newPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build",
+      "wholeModuleOptimization" : true
+    },
+    "C.powernapv2newTests-arm64-apple-macosx15.0-release.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build/sources",
+      "importPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/Tests/powernapv2newTests/powernapv2newTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules/powernapv2new.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "powernapv2newTests",
+      "moduleOutputPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules/powernapv2newTests.swiftmodule",
+      "objects" : [
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build/powernapv2newTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx13.0",
+        "-index-store-path",
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/index/store",
+        "-O",
+        "-enable-testing",
+        "-j8",
+        "-DSWIFT_PACKAGE",
+        "-module-cache-path",
+        "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "powernapv2new"
+      ],
+      "outputFileMapPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build/powernapv2newTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules/powernapv2newTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/michaellee/Documents/powernapv2new/Tests/powernapv2newTests/powernapv2newTests.swift"
+      ],
+      "tempsPath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build",
+      "wholeModuleOptimization" : true
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "powernapv2new" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "powernapv2new",
+      "-package-name",
+      "powernapv2new",
+      "-whole-module-optimization",
+      "-num-threads",
+      "8",
+      "-c",
+      "/Users/michaellee/Documents/powernapv2new/Sources/powernapv2new/powernapv2new.swift",
+      "-I",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules",
+      "-target",
+      "arm64-apple-macosx10.13",
+      "-O",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-module-cache-path",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/powernapv2new-Swift.h",
+      "-swift-version",
+      "6",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "powernapv2new",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "powernapv2newPackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "powernapv2newPackageTests",
+      "-package-name",
+      "powernapv2new",
+      "-whole-module-optimization",
+      "-num-threads",
+      "8",
+      "-c",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.derived/runner.swift",
+      "-I",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules",
+      "-target",
+      "arm64-apple-macosx10.13",
+      "-O",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-module-cache-path",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/powernapv2newPackageTests-Swift.h",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "powernapv2new",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "powernapv2newTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "powernapv2newTests",
+      "-package-name",
+      "powernapv2new",
+      "-whole-module-optimization",
+      "-num-threads",
+      "8",
+      "-c",
+      "/Users/michaellee/Documents/powernapv2new/Tests/powernapv2newTests/powernapv2newTests.swift",
+      "-I",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/Modules",
+      "-target",
+      "arm64-apple-macosx13.0",
+      "-index-store-path",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/index/store",
+      "-O",
+      "-enable-testing",
+      "-j8",
+      "-DSWIFT_PACKAGE",
+      "-module-cache-path",
+      "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.2.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "powernapv2new",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "powernapv2new" : [
+
+    ],
+    "powernapv2newPackageTests" : [
+      "powernapv2newTests",
+      "powernapv2new"
+    ],
+    "powernapv2newTests" : [
+      "powernapv2new"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "writeCommands" : {
+    "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/Sources/powernapv2new/powernapv2new.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/sources"
+    },
+    "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/sources"
+    },
+    "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2new.build/powernapv2new.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build/powernapv2newTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newPackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/michaellee/Documents/powernapv2new/Tests/powernapv2newTests/powernapv2newTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/powernapv2newTests.build/sources"
+    },
+    "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/release/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

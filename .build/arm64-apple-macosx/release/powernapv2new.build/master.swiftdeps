@@ -1,0 +1,6 @@
+version: "Apple Swift version 6.0.3 (swiftlang-6.0.3.1.10 clang-1600.0.30.1)"
+options: "033dbd07728a763878d195e59ca9c32b336f1cd9124b29aee36e1cda386e73bf"
+build_start_time: [1749130786, 664134000]
+build_end_time: [1749130786, 776631000]
+inputs:
+  "/Users/michaellee/Documents/powernapv2new/Sources/powernapv2new/powernapv2new.swift": [1748591085, 236111182]

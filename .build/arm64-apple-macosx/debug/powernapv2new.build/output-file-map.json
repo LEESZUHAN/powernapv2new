@@ -1,0 +1,11 @@
+{
+  "": {
+    "swift-dependencies": "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/debug/powernapv2new.build/master.swiftdeps"
+  },
+  "/Users/michaellee/Documents/powernapv2new/Sources/powernapv2new/powernapv2new.swift": {
+    "dependencies": "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/debug/powernapv2new.build/powernapv2new.d",
+    "object": "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/debug/powernapv2new.build/powernapv2new.swift.o",
+    "swiftmodule": "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/debug/powernapv2new.build/powernapv2new~partial.swiftmodule",
+    "swift-dependencies": "/Users/michaellee/Documents/powernapv2new/.build/arm64-apple-macosx/debug/powernapv2new.build/powernapv2new.swiftdeps"
+  }
+}

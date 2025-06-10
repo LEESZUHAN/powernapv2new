@@ -43,6 +43,8 @@ struct AdvancedLogsView: View {
     @State private var thresholdLongDisplay: String = "-"
     @State private var confirmationShortDisplay: String = "-"
     @State private var confirmationLongDisplay: String = "-"
+    @State private var trendDisplay: String = "-"
+    @State private var detectSourceDisplay: String = "-"
     
     // MARK: - Body
     var body: some View {
@@ -230,56 +232,57 @@ struct AdvancedLogsView: View {
                     .padding(.horizontal, 10)
                     .background(Color(white: 0.15))
                     .cornerRadius(8)
-                    // 心率閾值調整 (短期)
+                    // 閾值調整（合併短/長/來源）
                     HStack {
-                        Text("閾值調整(短)")
+                        Text("閾值調整")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
-                        Text(thresholdShortDisplay)
+                        Text([thresholdShortDisplay, thresholdLongDisplay].filter { $0 != "-" }.joined(separator: " "))
                             .font(.system(size: 12))
-                            .foregroundColor(thresholdShortDisplay == "-" ? .gray : .blue)
+                            .foregroundColor((thresholdShortDisplay == "-" && thresholdLongDisplay == "-") ? .gray : .blue)
                     }
                     .padding(.vertical, 8)
                     .padding(.horizontal, 10)
                     .background(Color(white: 0.15))
                     .cornerRadius(8)
-                    // 心率閾值調整 (長期)
+                    // 確認時間（合併短/長）
                     HStack {
-                        Text("閾值調整(長)")
+                        Text("確認時間")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
-                        Text(thresholdLongDisplay)
+                        Text([confirmationShortDisplay, confirmationLongDisplay].filter { $0 != "-" }.joined(separator: " "))
                             .font(.system(size: 12))
-                            .foregroundColor(thresholdLongDisplay == "-" ? .gray : .blue)
+                            .foregroundColor((confirmationShortDisplay == "-" && confirmationLongDisplay == "-") ? .gray : .blue)
                     }
                     .padding(.vertical, 8)
                     .padding(.horizontal, 10)
                     .background(Color(white: 0.15))
                     .cornerRadius(8)
-                    // 確認時間 (短期)
+                    // trend
                     HStack {
-                        Text("確認時間(短)")
+                        Text("心率趨勢 (trend)")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
-                        Text(confirmationShortDisplay)
+                        Text(trendDisplay)
                             .font(.system(size: 12))
-                            .foregroundColor(confirmationShortDisplay == "-" ? .gray : .blue)
+                            .foregroundColor(trendDisplay == "-" ? .gray : .white)
                     }
                     .padding(.vertical, 8)
                     .padding(.horizontal, 10)
                     .background(Color(white: 0.15))
                     .cornerRadius(8)
+                    // 判定來源
                     HStack {
-                        Text("確認時間(長)")
+                        Text("判定來源")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
-                        Text(confirmationLongDisplay)
+                        Text(detectSourceDisplay)
                             .font(.system(size: 12))
-                            .foregroundColor(confirmationLongDisplay == "-" ? .gray : .blue)
+                            .foregroundColor(detectSourceDisplay == "-" ? .gray : .white)
                     }
                     .padding(.vertical, 8)
                     .padding(.horizontal, 10)
@@ -340,6 +343,8 @@ struct AdvancedLogsView: View {
             self.thresholdLongDisplay = "-"
             self.confirmationShortDisplay = "-"
             self.confirmationLongDisplay = "-"
+            self.trendDisplay = "-"
+            self.detectSourceDisplay = "-"
         }
 
         DispatchQueue.global(qos: .userInitiated).async(execute: DispatchWorkItem {
@@ -362,6 +367,11 @@ struct AdvancedLogsView: View {
             var deltaDurationShortVal: Int = 0
             var deltaPercentLongVal: Double = 0
             var deltaDurationLongVal: Int = 0
+            var tmpTrend: String = "-"
+            var tmpDetectSource: String = "-"
+            var tmpAdjustmentSourceShort: String = "-"
+            var tmpAdjustmentSourceLong: String = "-"
+            var tmpAdjustmentSourceAnomaly: String = "-"
 
             var detectedSleep: Bool? = nil
             var feedbackAccurate: Bool? = nil // nil 代表未評價
@@ -509,6 +519,45 @@ struct AdvancedLogsView: View {
             if deltaDurationLongVal != 0 {
                 confirmationLongDisplay = deltaDurationLongVal > 0 ? "+\(deltaDurationLongVal)秒" : "\(deltaDurationLongVal)秒"
             }
+            // trend
+            for entry in entries.reversed() {
+                if let log = entry as? AdvancedLogger.LogEntry, log.type == .sessionEnd {
+                    if let trendVal = log.payload["trend"]?.doubleValue {
+                        tmpTrend = String(format: "%.2f", trendVal)
+                    }
+                    if let src = log.payload["detectSource"]?.stringValue {
+                        tmpDetectSource = src
+                    }
+                    break
+                }
+            }
+            // 解析 adjustmentSourceShort
+            for entry in entries.reversed() {
+                if let log = entry as? AdvancedLogger.LogEntry, log.type == .sessionEnd {
+                    if let src = log.payload["adjustmentSourceShort"]?.stringValue {
+                        tmpAdjustmentSourceShort = src
+                    }
+                    break
+                }
+            }
+            // 解析 adjustmentSourceLong
+            for entry in entries.reversed() {
+                if let log = entry as? AdvancedLogger.LogEntry, log.type == .optimization {
+                    if let src = log.payload["adjustmentSourceLong"]?.stringValue {
+                        tmpAdjustmentSourceLong = src
+                    }
+                    break
+                }
+            }
+            // 解析 adjustmentSourceAnomaly
+            for entry in entries.reversed() {
+                if let log = entry as? AdvancedLogger.LogEntry, log.type == .anomaly {
+                    if let src = log.payload["adjustmentSourceAnomaly"]?.stringValue {
+                        tmpAdjustmentSourceAnomaly = src
+                    }
+                    break
+                }
+            }
             DispatchQueue.main.async {
                 self.logLines = entries.map { String(describing: $0) }
                 self.avgSleepHRDisplay = tmpAvgSleepHR
@@ -521,18 +570,23 @@ struct AdvancedLogsView: View {
                 self.confirmationTimeChangeDisplay = tmpConfirmationChange
                 self.systemDetectionDisplay = tmpSystemDetection
                 self.thresholdPercentDisplay = tmpThresholdPercent
+                self.trendDisplay = tmpTrend
+                self.detectSourceDisplay = tmpDetectSource
+                self.thresholdShortDisplay = thresholdShortDisplay + (tmpAdjustmentSourceShort != "-" ? " (" + tmpAdjustmentSourceShort + ")" : "")
+                self.thresholdLongDisplay = thresholdLongDisplay + (tmpAdjustmentSourceLong != "-" ? " (" + tmpAdjustmentSourceLong + ")" : "")
             }
         })
     }
     
     private func generateFakeLogFile() {
         let fakeLogLines = [
-            "{\"ts\":\"2025-05-23T08:00:00.000Z\",\"type\":\"sessionStart\",\"payload\":{\"thresholdBPM\":60,\"rhr\":65}}",
+            "{\"ts\":\"2025-05-23T08:00:00.000Z\",\"type\":\"sessionStart\",\"payload\":{\"thresholdBPM\":60,\"rhr\":65,\"thresholdPercent\":94,\"minDurationSeconds\":180}}",
             "{\"ts\":\"2025-05-23T08:01:00.000Z\",\"type\":\"phaseChange\",\"payload\":{\"newPhase\":\"lightSleep\"}}",
             "{\"ts\":\"2025-05-23T08:10:00.000Z\",\"type\":\"hr\",\"payload\":{\"bpm\":58,\"phase\":\"lightSleep\",\"acc\":0.01}}",
-            "{\"ts\":\"2025-05-23T08:20:00.000Z\",\"type\":\"anomaly\",\"payload\":{\"score\":2,\"totalScore\":5}}",
-            "{\"ts\":\"2025-05-23T08:30:00.000Z\",\"type\":\"feedback\",\"payload\":{\"type\":\"accurate\",\"accurate\":true}}",
-            "{\"ts\":\"2025-05-23T08:31:00.000Z\",\"type\":\"sessionEnd\",\"payload\":{\"avgSleepHR\":62,\"rhr\":65,\"thresholdBPM\":60,\"deviationPercent\":3.3,\"anomalyScore\":2,\"anomalyTotalScore\":5,\"detectedSleep\":true,\"notes\":\"測試用session\"}}"
+            "{\"ts\":\"2025-05-23T08:20:00.000Z\",\"type\":\"anomaly\",\"payload\":{\"score\":2,\"totalScore\":5,\"adjustmentSourceAnomaly\":\"anomaly\"}}",
+            "{\"ts\":\"2025-05-23T08:25:00.000Z\",\"type\":\"optimization\",\"payload\":{\"oldThreshold\":90,\"newThreshold\":92,\"deltaPercent\":2,\"oldDuration\":180,\"newDuration\":195,\"deltaDuration\":15,\"adjustmentSourceLong\":\"optimization\"}}",
+            "{\"ts\":\"2025-05-23T08:30:00.000Z\",\"type\":\"feedback\",\"payload\":{\"type\":\"falsePositive\",\"accurate\":false}}",
+            "{\"ts\":\"2025-05-23T08:31:00.000Z\",\"type\":\"sessionEnd\",\"payload\":{\"avgSleepHR\":62,\"rhr\":65,\"thresholdBPM\":60,\"thresholdPercent\":94,\"deviationPercent\":3.3,\"ratio\":1.03,\"deltaPercentShort\":2,\"deltaDurationShort\":15,\"trend\":-0.53,\"detectSource\":\"trend\",\"adjustmentSourceShort\":\"feedback\",\"detectedSleep\":true,\"notes\":\"測試用session\"}}"
         ]
         let content = fakeLogLines.joined(separator: "\n")
         let fileName = "powernap_session_" + DateFormatter.localizedString(from: Date(), dateStyle: .short, timeStyle: .medium).replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-").replacingOccurrences(of: " ", with: "_") + ".log"
