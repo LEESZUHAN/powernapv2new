@@ -726,24 +726,11 @@ public class UserSleepProfileManager {
         // 獲取配置文件
         guard var profile = getUserProfile(forUserId: userId) else { return }
         
-        // 只針對誤報和漏報進行處理
+        // 僅對誤報與漏報進行調整，其餘類型不處理
         guard feedbackType == .falsePositive || feedbackType == .falseNegative else { return }
         
-        // 檢查反饋類型，並設置相應調整方向
-        var adjustmentDirection: Int = 0
-        
-        switch feedbackType {
-        case .falsePositive: // 誤報 - 系統過於寬鬆，應收緊閾值（數值下調）
-            adjustmentDirection = -1
-        case .falseNegative: // 漏報 - 系統過於嚴格，應放寬閾值（數值上調）
-            adjustmentDirection = 1
-        default:
-            break
-        }
-        
-        // 檢查方向是否改變
-        if let lastFeedback = profile.lastFeedbackType, lastFeedback != feedbackType {
-            // 反饋類型改變，重置連續計數
+        // 如果反饋類型改變，重置連續調整次數
+        if let last = profile.lastFeedbackType, last != feedbackType {
             profile.consecutiveFeedbackAdjustments = 0
         }
         
@@ -797,7 +784,7 @@ public class UserSleepProfileManager {
             // 方向改變，重置連續計數
             profile.consecutiveDurationAdjustments = 0
         }
-        
+
         // 計算調整幅度
         let adjustmentAmount = calculateAdjustmentAmount(for: profile.consecutiveDurationAdjustments)
         

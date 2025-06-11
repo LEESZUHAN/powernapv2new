@@ -622,36 +622,8 @@ class HeartRateService: HeartRateServiceProtocol {
         }
     }
     
-    // 檢查是否有顯著心率下降，即ΔHR輔助判定
+    // ΔHR 輔助判定已停用，直接回傳 false
     private func checkSignificantHeartRateDecrease() -> Bool {
-        // 需要足夠樣本才能進行分析
-        if heartRateWindow.items.count < deltaHRWindowSize * 2 {
-            return false
-        }
-        let items = heartRateWindow.items
-        // 取最前面 deltaHRWindowSize 筆與最後 deltaHRWindowSize 筆
-        let firstHalf = Array(items.prefix(deltaHRWindowSize))
-        let secondHalf = Array(items.suffix(deltaHRWindowSize))
-        // 計算前後段平均心率
-        let firstHalfAvg = firstHalf.reduce(0, +) / Double(firstHalf.count)
-        let secondHalfAvg = secondHalf.reduce(0, +) / Double(secondHalf.count)
-        // 計算心率下降量和下降百分比
-        let decrease = firstHalfAvg - secondHalfAvg
-        let decreasePercentage = decrease / firstHalfAvg
-        // D-3 新 ΔHR 規則：至少下降 max(10 bpm, RHR×12%)
-        let dynamicDropThreshold = max(10.0, restingHeartRate * 0.12)
-        // 前段必須高於閾值 5％，末段必須低於閾值且 90% 以下
-        // 這裡使用 heartRateThreshold 當作 +敏 閾值，粗估 rawThreshold = heartRateThreshold * 0.95
-        let rawThreshold = heartRateThreshold * 0.95
-        let firstAbove = firstHalfAvg > rawThreshold * 1.05
-        let lastBelowCount = secondHalf.filter { $0 < rawThreshold }.count
-        let lastBelowRatio = Double(lastBelowCount) / Double(secondHalf.count)
-        let lastBelowEnough = lastBelowRatio >= 0.90
-
-        let hasSignificantDecrease = firstAbove && lastBelowEnough && decrease >= dynamicDropThreshold
-        if hasSignificantDecrease {
-            logger.info("檢測到顯著心率下降: \(decrease) bpm (\(decreasePercentage*100)%), 當前心率低於靜息心率")
-        }
-        return hasSignificantDecrease
+        return false
     }
 } 

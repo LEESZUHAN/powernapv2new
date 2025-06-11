@@ -1025,9 +1025,12 @@ class SleepDataLogger {
         pendingLogEntries.removeAll()
         lastLogWriteTime = Date()
         
+        // 捕捉當前檔案路徑，避免被 endSession 置 nil 後解包失敗
+        guard let pathCopy = self.logFilePath else { return }
+        
         // 使用後台線程寫入
         DispatchQueue.global(qos: .utility).async {
-            if let fileHandle = try? FileHandle(forWritingTo: self.logFilePath!) {
+            if let fileHandle = try? FileHandle(forWritingTo: pathCopy) {
                 fileHandle.seekToEndOfFile()
                 if let data = dataToWrite.data(using: .utf8) {
                     fileHandle.write(data)
@@ -1423,10 +1426,10 @@ class PowerNapViewModel: ObservableObject {
         // 獲取目標百分比（成人默認0.9，加上用戶調整）
         let targetPercentage = profile.hrThresholdPercentage + userHRThresholdOffset
         
-        // 應用敏感度調整
-        let sensitivityAdjustment = sleepSensitivity * 0.1 // 0-10% 變化
+        // 應用敏感度調整（直接加上百分比，而非乘以(1+X)）
+        let sensitivityAdjustment = sleepSensitivity * 0.1 // 0-10% 直接百分比
         
-        // 應用異常調整（如果有）
+        // 應用異常調整（仍採用乘數方式）
         var anomalyAdjustment: Double = 0.0
         
         // 獲取當前異常狀態
@@ -1452,8 +1455,9 @@ class PowerNapViewModel: ObservableObject {
             break
         }
         
-        // 直接計算最終閾值
-        let finalThreshold = restingHeartRate * targetPercentage * (1 + sensitivityAdjustment) * (1 + anomalyAdjustment)
+        // 先將敏感度直接相加，再乘上異常調整倍率
+        let additivePercentage = targetPercentage + sensitivityAdjustment
+        let finalThreshold = restingHeartRate * additivePercentage * (1 + anomalyAdjustment)
         
         // 更新UI顯示的閾值
         heartRateThreshold = finalThreshold
@@ -1463,9 +1467,17 @@ class PowerNapViewModel: ObservableObject {
         
         // 計算並記錄實際的閾值百分比(相對於RHR)
         let actualPercentage = (finalThreshold / restingHeartRate) * 100
-        let basePercentage = targetPercentage * 100
+        _ = additivePercentage * (1 + anomalyAdjustment) * 100 // 便於 log 對照（僅保留以避免警告）
         
-        logger.info("更新心率閾值: \(finalThreshold) BPM (目標百分比: \(String(format: "%.1f", basePercentage))%, 敏感度調整: \(sensitivityAdjustment), 異常調整: \(anomalyAdjustment), 實際百分比: \(String(format: "%.1f", actualPercentage))%)")
+        logger.info("""
+        更新心率閾值:
+          – 基準(raw)百分比: \(String(format: "%.1f", profile.hrThresholdPercentage * 100))%
+          – 手動偏移: \(String(format: "%+.1f", self.userHRThresholdOffset * 100))%
+          – +敏感度: \(String(format: "%+.1f", sensitivityAdjustment * 100))%
+          – ×異常倍率: \(String(format: "%.3f", 1 + anomalyAdjustment))
+          = 最終百分比: \(String(format: "%.1f", actualPercentage))%
+          = 閾值: \(String(format: "%.3f", finalThreshold)) BPM
+        """)
     }
     
     // 新增：設置用戶心率閾值偏移
@@ -1512,11 +1524,10 @@ class PowerNapViewModel: ObservableObject {
         let displayPercentage = (basePercentage + roundedOffset) * 100
         
         // 考慮敏感度調整後的實際百分比
-        let sensitivityAdjustment = sleepSensitivity * 0.1
-        let effectivePercentage = (basePercentage + roundedOffset) * (1 + sensitivityAdjustment)
-        let effectiveDisplayPercentage = effectivePercentage * 100
+        let sensitivityAdjustment = self.sleepSensitivity * 0.1
+        let effectiveDisplayPercentage = (basePercentage + roundedOffset + sensitivityAdjustment) * 100
         
-        logger.info("用戶調整了心率閾值：設定為RHR的\(String(format: "%.1f", displayPercentage))%，含敏感度調整後為\(String(format: "%.1f", effectiveDisplayPercentage))% (偏移值：\(roundedOffset))")
+        logger.info("用戶調整心率閾值 → 基準: RHR的\(String(format: "%.1f", displayPercentage))%，+敏感度後為\(String(format: "%.1f", effectiveDisplayPercentage))%  (偏移值: \(String(format: "%+.2f", roundedOffset)))")
     }
     
     // 新增：設置睡眠敏感度
@@ -1795,7 +1806,7 @@ class PowerNapViewModel: ObservableObject {
         } else if hrTrendIndicator <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
             detectSourceLocal = "trend"
         } else {
-            detectSourceLocal = "ΔHR"
+            detectSourceLocal = "unknown"
         }
         // 更新屬性，供其他流程使用
         self.detectSource = detectSourceLocal
@@ -2093,39 +2104,35 @@ class PowerNapViewModel: ObservableObject {
                 lastFeedbackType = .falsePositive
                 logger.info("用戶反饋：系統誤判為睡眠（過於寬鬆）")
                 
-                if !isSimulatingFeedback() {
-                    // 應用不對稱用戶反饋機制 - 調整心率閾值
-                    userProfileManager.adjustHeartRateThreshold(
-                        forUserId: userId,
-                        feedbackType: .falsePositive
-                    )
-                    
-                    // 同時也調整確認時間
-                    userProfileManager.adjustConfirmationTime(
-                        forUserId: userId, 
-                        direction: 1,  // 增加確認時間
-                        fromFeedback: true
-                    )
-                }
+                // 應用不對稱用戶反饋機制 - 調整心率閾值
+                userProfileManager.adjustHeartRateThreshold(
+                    forUserId: userId,
+                    feedbackType: .falsePositive
+                )
+                
+                // 同時也調整確認時間
+                userProfileManager.adjustConfirmationTime(
+                    forUserId: userId, 
+                    direction: 1,  // 增加確認時間
+                    fromFeedback: true
+                )
             } else {
                 // 漏報：系統認為用戶未睡眠，但實際已入睡(過於嚴謹)
                 lastFeedbackType = .falseNegative
                 logger.info("用戶反饋：系統未檢測到睡眠（過於嚴謹）")
                 
-                if !isSimulatingFeedback() {
-                    // 應用不對稱用戶反饋機制 - 調整心率閾值
-                    userProfileManager.adjustHeartRateThreshold(
-                        forUserId: userId,
-                        feedbackType: .falseNegative
-                    )
-                    
-                    // 同時也調整確認時間
-                    userProfileManager.adjustConfirmationTime(
-                        forUserId: userId, 
-                        direction: -1,  // 減少確認時間
-                        fromFeedback: true
-                    )
-                }
+                // 應用不對稱用戶反饋機制 - 調整心率閾值
+                userProfileManager.adjustHeartRateThreshold(
+                    forUserId: userId,
+                    feedbackType: .falseNegative
+                )
+                
+                // 同時也調整確認時間
+                userProfileManager.adjustConfirmationTime(
+                    forUserId: userId, 
+                    direction: -1,  // 減少確認時間
+                    fromFeedback: true
+                )
             }
             
             // 將此反饋保存到用戶配置文件
@@ -2135,8 +2142,11 @@ class PowerNapViewModel: ObservableObject {
                 logger.info("用戶反饋：檢測不準確，累計次數：\(profile.inaccurateDetectionCount)")
             }
             
-            // 用戶反饋後刷新當前閾值
-            refreshThresholdAfterOptimization(userId: userId)
+            // 重新載入最新用戶檔案並立即刷新閾值
+            if let updated = userProfileManager.getUserProfile(forUserId: userId) {
+                currentUserProfile = updated
+                updateHeartRateThreshold()
+            }
         }
         
         // 不在這裡關閉反饋提示，由UI層控制關閉時機
@@ -2197,7 +2207,7 @@ class PowerNapViewModel: ObservableObject {
         } else if hrTrendIndicatorFB <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
             detectSourceFB = "trend"
         } else {
-            detectSourceFB = "ΔHR"
+            detectSourceFB = "unknown"
         }
         self.detectSource = detectSourceFB
 
@@ -2305,6 +2315,12 @@ class PowerNapViewModel: ObservableObject {
         // 確保只執行一次
         guard !alarmStopped else { return }
         alarmStopped = true
+        
+        // 若小睡流程尚未正式結束，先完整終止並寫入 sessionEnd
+        if isNapping {
+            stopNap()
+            return // stopNap 會顯示回饋提示並處理後續
+        }
         
         // 顯示反饋提示（如果適用）
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -2679,11 +2695,15 @@ class PowerNapViewModel: ObservableObject {
     private func stopAllTimers() {
         napTimer?.invalidate(); napTimer = nil
         statsUpdateTimer?.invalidate(); statsUpdateTimer = nil
-        NotificationManager.shared.stopContinuousAlarm() // alarmTimer
+        // 移除自動停止鬧鈴，讓喚醒流程維持連續震動
         SleepDataLogger.shared.stopLoggingTimer()
         heartRateService.stopMonitoring() // 內部會停 sleepDetectionTimer、trendAnalysisTimer
         motionManager.stopMonitoring()    // 內部會停 updateTimer
         sleepDetectionCoordinator.stopMonitoring() // 內部會停 stateTransitionTimer
+        
+        // 新增：確保背景沒有 Workout 與 Extended Runtime Session 持續
+        workoutManager.stopWorkoutSession()
+        runtimeManager.stopSession()
     }
 }
 

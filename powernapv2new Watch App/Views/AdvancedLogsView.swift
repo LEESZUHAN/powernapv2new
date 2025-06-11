@@ -60,7 +60,7 @@ struct AdvancedLogsView: View {
     private var logFileListView: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack {
-                Text("高級日誌分析")
+                Text("歷史紀錄")
                     .font(.headline)
                     .foregroundColor(.white)
                     .padding(.vertical, 5)
@@ -371,14 +371,10 @@ struct AdvancedLogsView: View {
             var tmpDetectSource: String = "-"
             var tmpAdjustmentSourceShort: String = "-"
             var tmpAdjustmentSourceLong: String = "-"
-            var tmpAdjustmentSourceAnomaly: String = "-"
-
+            // tmpAdjustmentSourceAnomaly 與 _newThreshold / _newConfirmation 目前未使用，省略以避免編譯警告
             var detectedSleep: Bool? = nil
             var feedbackAccurate: Bool? = nil // nil 代表未評價
-            var lastThreshold: Double? = nil
-            var _newThreshold: Double? = nil // 保留供未來邏輯使用，暫不讀取
-            var lastConfirmation: Int? = nil
-            var _newConfirmation: Int? = nil // 保留供未來邏輯使用，暫不讀取
+
             for line in lines {
                 if let d = line.data(using: .utf8),
                    let entry = try? decoder.decode(AdvancedLogger.LogEntry.self, from: d) {
@@ -459,14 +455,7 @@ struct AdvancedLogsView: View {
             // 解析 feedback/type、thresholdPercent、minDurationSeconds
             for entry in entries {
                 if let log = entry as? AdvancedLogger.LogEntry, log.type == .sessionEnd {
-                    if let t = log.payload["thresholdPercent"], let v = t.doubleValue {
-                        if lastThreshold == nil { lastThreshold = v }
-                        _newThreshold = v
-                    }
-                    if let c = log.payload["minDurationSeconds"], let v = c.doubleValue {
-                        if lastConfirmation == nil { lastConfirmation = Int(v) }
-                        _newConfirmation = Int(v)
-                    }
+                    // thresholdPercent 解析價用於顯示，移除 lastThreshold 判斷
                 }
             }
             // 解析 thresholdPercent
@@ -545,15 +534,6 @@ struct AdvancedLogsView: View {
                 if let log = entry as? AdvancedLogger.LogEntry, log.type == .optimization {
                     if let src = log.payload["adjustmentSourceLong"]?.stringValue {
                         tmpAdjustmentSourceLong = src
-                    }
-                    break
-                }
-            }
-            // 解析 adjustmentSourceAnomaly
-            for entry in entries.reversed() {
-                if let log = entry as? AdvancedLogger.LogEntry, log.type == .anomaly {
-                    if let src = log.payload["adjustmentSourceAnomaly"]?.stringValue {
-                        tmpAdjustmentSourceAnomaly = src
                     }
                     break
                 }

@@ -94,26 +94,19 @@ struct ContentView: View {
             }
             .tag(1)
                 
-                // 數據記錄頁面
-                ZStack {
-                    Color.black.edgesIgnoringSafeArea(.all)
-                    dataLogsView
-                }
-                .tag(2)
-                
-            // 測試功能頁面（最後）
-                ZStack {
-                    Color.black.edgesIgnoringSafeArea(.all)
-                testFunctionsView
-                }
-                .tag(3)
-
             // 高級日誌頁面（新）
             ZStack {
                 Color.black.edgesIgnoringSafeArea(.all)
                 AdvancedLogsView()
             }
-            .tag(4)
+            .tag(2)
+
+            // 測試功能頁面
+            ZStack {
+                Color.black.edgesIgnoringSafeArea(.all)
+                testFunctionsView
+            }
+            .tag(3)
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
             // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
@@ -474,19 +467,33 @@ struct ContentView: View {
             // 等待文字 - 接近置中
             // 根據睡眠狀態顯示不同的訊息
             if viewModel.napPhase == .sleeping {
-                VStack(spacing: 8) {
-                    Text("已偵測到睡眠")
-                        .font(.system(size: 22))
-                        .foregroundColor(.green)
-                    
-                    Text("計時\(timeString(from: viewModel.remainingTime))")
-                        .font(.system(size: 20))
-                        .foregroundColor(.white)
-                }
+                // 已開始倒數階段 - 顯示倒數計時
+                Text(timeString(from: viewModel.remainingTime))
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+
+                // 睡眠提示訊息
+                Text("已偵測到睡眠")
+                    .font(.system(size: 14))
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.2))
+                    .cornerRadius(10)
+
+                // 睡眠階段指示器
+                Text(sleepPhaseText)
+                    .font(.system(size: 18))
+                    .foregroundColor(.gray)
             } else {
-            Text("等待入睡...")
-                .font(.system(size: 22))
-                .foregroundColor(.gray)
+                // 監測中狀態 - 只顯示設定時間與簡單提示
+                Text(timeString(from: viewModel.napDuration))
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.6))
+
+                Text("監測中")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
             }
             
             Spacer()
@@ -1917,7 +1924,7 @@ struct ContentView: View {
             Button(action: {
                 viewModel.showingFeedbackPrompt = false
                 feedbackStage = .initial
-                selectedTab = 3 // 切換到設置頁面
+                selectedTab = 1 // 切換到設置頁面 (設定頁現為第二頁)
             }) {
                 Text("前往設置")
                     .font(.system(size: 16, weight: .medium))
@@ -1964,6 +1971,13 @@ struct ContentView: View {
                 .multilineTextAlignment(.center)
         }
         .padding()
+        .onAppear {
+            // 自動在2秒後關閉反饋提示
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                viewModel.showingFeedbackPrompt = false
+                feedbackStage = .initial
+            }
+        }
     }
     
     // 鬧鈴停止UI覆蓋層
@@ -2143,7 +2157,10 @@ struct HeartRateThresholdSettingView: View {
     
     // 當前閾值顯示
     private var currentThresholdText: String {
-        return "RHR的\(Int((basePercentage + viewModel.userHRThresholdOffset) * 100))%"
+        let rhr = viewModel.restingHeartRate
+        guard rhr > 0 else { return "RHR的--%" }
+        let percent = Int(round(viewModel.heartRateThreshold / rhr * 100))
+        return "RHR的\(percent)%"
     }
     
     var body: some View {
