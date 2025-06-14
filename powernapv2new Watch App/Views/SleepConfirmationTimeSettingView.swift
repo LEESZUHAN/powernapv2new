@@ -49,7 +49,7 @@ struct SleepConfirmationTimeSettingView: View {
                         .monospacedDigit()
                         .foregroundColor(.white)
                     
-                    Text("分:秒")
+                    Text(NSLocalizedString("minutes_seconds", comment: "分:秒"))
                         .font(.caption2)
                         .foregroundColor(.gray)
                 }
@@ -86,7 +86,7 @@ struct SleepConfirmationTimeSettingView: View {
                 
                 // 保存按鈕
                 Button(action: saveChanges) {
-                    Text("保存設定")
+                    Text(NSLocalizedString("save_settings", comment: "保存設定"))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -108,7 +108,7 @@ struct SleepConfirmationTimeSettingView: View {
                                 .foregroundColor(.orange)
                                 .font(.system(size: 18))
                             
-                            Text("重置時間")
+                            Text(NSLocalizedString("reset_time", comment: "重置時間"))
                                 .foregroundColor(.white)
                                 .font(.system(size: 16, weight: .medium))
                             
@@ -135,7 +135,7 @@ struct SleepConfirmationTimeSettingView: View {
                                 .foregroundColor(isLearningEnabled ? .green : .gray)
                                 .font(.system(size: 18))
                             
-                            Text(isLearningEnabled ? "智慧學習已開啟" : "智慧學習已關閉")
+                            Text(isLearningEnabled ? NSLocalizedString("smart_learning_enabled", comment: "智慧學習已開啟") : NSLocalizedString("smart_learning_disabled", comment: "智慧學習已關閉"))
                                 .foregroundColor(isLearningEnabled ? .white : .gray)
                                 .font(.system(size: 16, weight: .medium))
                             
@@ -160,11 +160,11 @@ struct SleepConfirmationTimeSettingView: View {
                 
                 // 調整提示和範圍提示 - 移到下方
                 VStack(spacing: 2) {
-                    Text("每次±10秒")
+                    Text(NSLocalizedString("every_adjustment", comment: "每次±10秒"))
                         .font(.caption2)
                         .foregroundColor(.gray)
                     
-                    Text("範圍: 1-6分鐘")
+                    Text(NSLocalizedString("time_range", comment: "範圍: 1-6分鐘"))
                         .font(.caption2)
                         .foregroundColor(.gray)
                 }
@@ -177,11 +177,11 @@ struct SleepConfirmationTimeSettingView: View {
                 
                 // 說明 - 保持在最下方
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("關於確認時間")
+                    Text(NSLocalizedString("about_confirmation_time", comment: "關於確認時間"))
                         .font(.caption)
                         .foregroundColor(.white)
                     
-                    Text("確認時間是系統判定您已進入睡眠所需的持續低心率時間。心率波動較大的用戶可能需要較長的確認時間(3-4分鐘)，而容易快速入睡的用戶可以設置較短的確認時間(1-2分鐘)。")
+                    Text(NSLocalizedString("confirmation_time_explanation", comment: "確認時間是系統判定您已進入睡眠所需的持續低心率時間。心率波動較大的用戶可能需要較長的確認時間(3-4分鐘)，而容易快速入睡的用戶可以設置較短的確認時間(1-2分鐘)。"))
                         .font(.caption2)
                         .foregroundColor(.gray)
                         .lineSpacing(2)
@@ -194,31 +194,31 @@ struct SleepConfirmationTimeSettingView: View {
             .padding(.horizontal)
         }
         .background(Color.black)
-        .navigationTitle("睡眠確認時間")
+        .navigationTitle(NSLocalizedString("sleep_confirmation_time", comment: "睡眠確認時間"))
         .alert(isPresented: $showingAlert) {
             Alert(
-                title: Text("設定已更新"),
+                title: Text(NSLocalizedString("settings_updated", comment: "設定已更新")),
                 message: Text(alertMessage),
-                dismissButton: .default(Text("確定")) {
+                dismissButton: .default(Text(NSLocalizedString("ok", comment: "確定"))) {
                     self.presentationMode.wrappedValue.dismiss()
                 }
             )
         }
-        .alert("重置確認時間", isPresented: $showingResetAlert) {
-            Button("確定", role: .destructive) {
+        .alert(NSLocalizedString("reset_confirmation_time", comment: "重置確認時間"), isPresented: $showingResetAlert) {
+            Button(NSLocalizedString("ok", comment: "確定"), role: .destructive) {
                 resetTime()
             }
-            Button("取消", role: .cancel) {}
+            Button(NSLocalizedString("cancel_button", comment: "取消"), role: .cancel) {}
         } message: {
-            Text("這將重置為您年齡組的預設時間，並重新開始智慧學習。")
+            Text(NSLocalizedString("reset_confirmation_time_message", comment: "這將重置為您年齡組的預設時間，並重新開始智慧學習。"))
         }
-        .alert("繼續智慧學習", isPresented: $showingContinueAlert) {
-            Button("確定", role: .none) {
+        .alert(NSLocalizedString("continue_smart_learning", comment: "繼續智慧學習"), isPresented: $showingContinueAlert) {
+            Button(NSLocalizedString("ok", comment: "確定"), role: .none) {
                 continueSmartLearning()
             }
-            Button("取消", role: .cancel) {}
+            Button(NSLocalizedString("cancel_button", comment: "取消"), role: .cancel) {}
         } message: {
-            Text("這將基於當前的時間設定繼續智慧學習。")
+            Text(NSLocalizedString("continue_smart_learning_message", comment: "這將基於當前的時間設定繼續智慧學習。"))
         }
     }
     
@@ -258,7 +258,7 @@ struct SleepConfirmationTimeSettingView: View {
                 WKInterfaceDevice.current().play(.success)
                 #endif
                 
-                alertMessage = "確認時間已設為 \(formattedTime)"
+                alertMessage = String.localizedStringWithFormat(NSLocalizedString("confirmation_time_set_to", comment: "確認時間已設為 %@"), formattedTime)
                 showingAlert = true
             } else {
                 // 值未變化，但可能需要更新學習狀態
@@ -285,7 +285,7 @@ struct SleepConfirmationTimeSettingView: View {
             let timeString = String(format: "%d:%02d", minutes, seconds)
             
             // 設置提示信息
-            alertMessage = "確認時間已重置為 \(timeString)"
+            alertMessage = String.localizedStringWithFormat(NSLocalizedString("confirmation_time_reset_to", comment: "確認時間已重置為 %@"), timeString)
             showingAlert = true
         }
         
@@ -307,7 +307,7 @@ struct SleepConfirmationTimeSettingView: View {
             
             if showAlert {
                 // 設置提示信息
-                alertMessage = "已開啟智慧學習，將基於現有設定 \(formattedTime) 繼續優化"
+                alertMessage = String.localizedStringWithFormat(NSLocalizedString("smart_learning_enabled_with_setting", comment: "已開啟智慧學習，將基於現有設定 %@ 繼續優化"), formattedTime)
                 showingAlert = true
             }
         } else {
@@ -316,7 +316,7 @@ struct SleepConfirmationTimeSettingView: View {
             
             if showAlert {
                 // 設置提示信息
-                alertMessage = "已關閉智慧學習，系統將不再自動調整確認時間"
+                alertMessage = NSLocalizedString("smart_learning_disabled_message", comment: "已關閉智慧學習，系統將不再自動調整確認時間")
                 showingAlert = true
             }
         }
@@ -334,7 +334,7 @@ struct SleepConfirmationTimeSettingView: View {
             viewModel.continueSleepLearning()
             
             // 設置提示信息
-            alertMessage = "已開啟智慧學習，將基於現有設定 \(formattedTime) 繼續優化"
+            alertMessage = String.localizedStringWithFormat(NSLocalizedString("smart_learning_enabled_with_setting", comment: "已開啟智慧學習，將基於現有設定 %@ 繼續優化"), formattedTime)
             showingAlert = true
             
             // 觸發震動反饋

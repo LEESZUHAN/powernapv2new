@@ -1,0 +1,6 @@
+/* Watch App Permission Descriptions Localization */
+"WKNotificationUsageDescription" = "Send notifications to wake you up when your nap time ends";
+
+/* HealthKit Permission Descriptions */
+"NSHealthShareUsageDescription" = "To detect your sleep state and record your Power Nap sessions, we need to read heart rate data, resting heart rate data, and date of birth. Heart rate data is used to monitor real-time heart rate changes to determine if you are asleep; resting heart rate data is used to establish personalized sleep detection criteria; date of birth is used to automatically determine your age group for optimal sleep detection parameters.";
+"NSHealthUpdateUsageDescription" = "To record your Power Nap sessions to the Health app for unified tracking and analysis, we need to write sleep analysis data.";

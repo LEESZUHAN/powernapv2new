@@ -395,14 +395,29 @@ public class SleepDetectionCoordinator {
         // 記錄判斷結果
         logger.info("睡眠評估: 心率條件\(hrConditionMet ? "滿足" : "不滿足")(\(hrBelowThresholdRatio*100)%), 靜止條件\(restingConditionMet ? "滿足" : "不滿足")(\(restingRatio*100)%)")
         
-        // 只有同時滿足心率和靜止比例條件才轉換到深度睡眠
+        // 1) 主要路徑：滑動視窗 ≥75%
         if hrConditionMet && restingConditionMet {
             transitionToState(SleepState.deepSleep)
-            
+
             // 記錄睡眠檢測時間
             if detectedSleepTime == nil {
                 detectedSleepTime = Date()
-                logger.info("檢測到睡眠，時間：\(self.detectedSleepTime!)")
+                logger.info("檢測到睡眠（window），時間：\(self.detectedSleepTime!)")
+            }
+            return
+        }
+
+        // 2) Trend 補助路徑：僅當滑動比例達 0.60 但不足 0.75 時，再檢查 HR trend
+        let trendRatioThreshold = 0.60 // 與 CLI 同步的下限門檻
+        if hrBelowThresholdRatio >= trendRatioThreshold && restingConditionMet {
+            // trend ≤ –0.20 代表 30 秒內每分鐘下降 2BPM 以上
+            if heartRateTrend <= -0.20 {
+                transitionToState(SleepState.deepSleep)
+
+                if detectedSleepTime == nil {
+                    detectedSleepTime = Date()
+                    logger.info("檢測到睡眠（trend 補助），時間：\(self.detectedSleepTime!)")
+                }
             }
         }
     }

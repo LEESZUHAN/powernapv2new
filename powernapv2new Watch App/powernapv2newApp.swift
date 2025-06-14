@@ -13,13 +13,42 @@ import UserNotifications
 struct powernapv2new_Watch_AppApp: App {
     // 確保已經請求了HealthKit權限和通知權限
     init() {
-        requestHealthKitPermissions()
-        requestNotificationPermissions()
+        if UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+            requestHealthKitPermissions()
+            requestNotificationPermissions()
+        }
+        // 產生並保存 pseudonymous installationId，供 CloudKitLogger 使用
+        let defaults = UserDefaults.standard
+        let installKey = "installationId"
+        if defaults.string(forKey: installKey) == nil {
+            defaults.set(UUID().uuidString, forKey: installKey)
+        }
+        // 若尚未設置 shareUsage，預設開啟（可於設定中關閉）
+        if defaults.object(forKey: "shareUsage") == nil {
+            defaults.set(true, forKey: "shareUsage")
+        }
+        
+        // Telemetry 功能已移除，僅保留本地 ID
+        
+        // 測試 CloudKit 連接（延遲執行避免阻塞啟動）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            TelemetryLogger.shared.testCloudKitConnection()
+        }
+        
+        // 測試 CloudKit 匯出（延遲執行）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            TelemetryLogger.shared.testExportAllRecords()
+        }
+        
+        // 啟動 CrashMonitor（MetricsKit Crash 收集）
+        #if !os(watchOS)
+        _ = CrashMonitor.shared
+        #endif
     }
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
     

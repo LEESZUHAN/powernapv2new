@@ -212,6 +212,16 @@ class HeartRateAnomalyTracker {
         return "異常狀態: \(status.rawValue), 累計分數: \(String(format: "%.1f", cumulativeScore)), 暫時異常: \(temporaryAnomalies), 持久異常: \(persistentAnomalies), 向上異常: \(upwardAnomalies), 向下異常: \(downwardAnomalies), 重置次數: \(baselineResets)"
     }
     
+    // MARK: - 公開 Getter
+    /// 取得最新一次異常評分 (若無則為 0)
+    func getLatestAnomalyScore() -> Double {
+        return anomalyScores.values.max() ?? 0
+    }
+    /// 取得累計異常分數
+    func getCumulativeScore() -> Double {
+        return cumulativeScore
+    }
+    
     // MARK: - 私有方法
     
     /// 更新累計異常分數
@@ -318,5 +328,7 @@ struct HeartRateAnomalyTracker {
     func getAnomalySummary() -> String { "" }
     func evaluateHeartRateDeviation(heartRate: Double, expectedHR: Double, date: Date = Date()) -> AnomalyStatus { .none }
     func resetBaseline() { /* no-op stub */ }
+    func getLatestAnomalyScore() -> Double { 0 }
+    func getCumulativeScore() -> Double { 0 }
 }
 #endif 

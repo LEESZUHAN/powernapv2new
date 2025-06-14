@@ -49,6 +49,7 @@ class HeartRateService: HeartRateServiceProtocol {
     // MARK: - 私有屬性
     private let healthStore = HKHealthStore()
     private var heartRateQuery: HKAnchoredObjectQuery?
+    private var observerQuery: HKObserverQuery?
     private var restingHeartRateQuery: HKQuery?
     private var heartRateObserver: AnyCancellable?
     private var sleepDetectionTimer: Timer?
@@ -161,6 +162,12 @@ class HeartRateService: HeartRateServiceProtocol {
             heartRateQuery = nil
         }
         
+        // 停止 observer 查詢
+        if let observer = observerQuery {
+            healthStore.stop(observer)
+            observerQuery = nil
+        }
+        
         // 停止定時器
         sleepDetectionTimer?.invalidate()
         sleepDetectionTimer = nil
@@ -175,6 +182,15 @@ class HeartRateService: HeartRateServiceProtocol {
             UserSleepProfileManager.shared.saveSleepSession(completedSession)
             currentSleepSession = nil
             logger.info("睡眠會話已完成並保存")
+        }
+        
+        // 額外保險：停用本 App 針對心率類型的所有背景推送
+        if let hrType = HKObjectType.quantityType(forIdentifier: .heartRate) {
+            healthStore.disableBackgroundDelivery(for: hrType) { success, error in
+                if let error = error {
+                    self.logger.warning("停用背景心率推送失敗: \(error.localizedDescription)")
+                }
+            }
         }
     }
     
@@ -319,8 +335,8 @@ class HeartRateService: HeartRateServiceProtocol {
             self.processHeartRateSamples(samples)
         }
         
-        // 使用observer query來獲取實時更新
-        let observerQuery = HKObserverQuery(sampleType: heartRateType, predicate: predicate) { [weak self] (_, completionHandler, error) in
+        // 使用 observer query 來獲取實時更新
+        let observer = HKObserverQuery(sampleType: heartRateType, predicate: predicate) { [weak self] (_, completionHandler, error) in
             guard let self = self else {
                 completionHandler()
                 return
@@ -352,13 +368,17 @@ class HeartRateService: HeartRateServiceProtocol {
         
         // 啟動查詢
         healthStore.execute(heartRateQuery)
-        healthStore.execute(observerQuery)
+        healthStore.execute(observer)
         
         // 保存查詢引用以便後續停止
         self.heartRateQuery = heartRateQuery
+        self.observerQuery = observer
     }
     
     private func processHeartRateSamples(_ samples: [HKSample]?) {
+        // 如果已停止監測，忽略任何回傳樣本，避免停止後仍持續輸出日誌
+        guard isMonitoring else { return }
+        
         guard let heartRateSamples = samples as? [HKQuantitySample] else {
             return
         }

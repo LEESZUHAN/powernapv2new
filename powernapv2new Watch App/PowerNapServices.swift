@@ -107,49 +107,33 @@ class WorkoutSessionManager: NSObject, HKWorkoutSessionDelegate {
     
     func stopWorkoutSession() {
         #if os(watchOS)
-        guard let workoutSession = workoutSession, 
-              workoutSession.state != .ended else {
-            return
-        }
+        guard let workoutSession = workoutSession else { return }
         
-        // 在結束workoutSession前先結束數據收集
-        // 使用同步方法確保順序正確
-        let group = DispatchGroup()
-        var endCollectionError: Error?
-        
-        group.enter()
-        workoutBuilder?.endCollection(withEnd: Date()) { [weak self] success, error in
-            defer { group.leave() }
-            
-            if let error = error {
-                self?.logger.error("無法結束數據收集: \(error.localizedDescription)")
-                endCollectionError = error
-                return
+        switch workoutSession.state {
+        case .running, .paused, .prepared, .stopped:
+            // 先結束收集
+            if let builder = workoutBuilder {
+                builder.endCollection(withEnd: Date()) { [weak self] _, _ in
+                    // 結束 WorkoutSession
+                    workoutSession.end()
+
+                    // 完成並保存（或丟棄）WorkoutBuilder，這一步會停止後端感測器的高頻取樣
+                    builder.finishWorkout { _, _ in
+                        self?.logger.info("WorkoutBuilder 已 finish – 完全釋放感測器")
+                    }
+                }
+            } else {
+                workoutSession.end()
             }
-            
-            if success {
-                self?.logger.info("成功結束數據收集")
-            }
+        case .ended:
+            logger.info("WorkoutSession 已是 Ended/Invalid，跳過")
+        case .notStarted:
+            // 若從未啟動過但被要求停止，直接嘗試 end()
+            workoutSession.end()
+        @unknown default:
+            workoutSession.end()
         }
-        
-        // 等待數據收集結束，然後再結束會話
-        // 設置超時防止無限等待
-        let result = group.wait(timeout: .now() + 2.0)
-        
-        if result == .timedOut {
-            logger.warning("等待結束數據收集超時，繼續結束會話")
-        } else if endCollectionError != nil {
-            logger.warning("結束數據收集出錯，嘗試忽略錯誤並繼續結束會話")
-        }
-        
-        // 結束會話
-        workoutSession.end()
-                
-                // 棄用workout數據，因為這只是一個休息會話
-        workoutBuilder?.discardWorkout()
         #endif
-        
-        logger.info("停止HKWorkoutSession")
     }
     
     // MARK: - HKWorkoutSessionDelegate
@@ -257,6 +241,8 @@ class SleepDetectionService {
     
     private let logger = Logger(subsystem: "com.yourdomain.powernapv2new", category: "SleepDetectionService")
     private let healthStore = HKHealthStore()
+    // 追蹤心率查詢以便在停止時關閉
+    private var heartRateQuery: HKAnchoredObjectQuery?
     
     // 運動緩衝時間（秒）
     private let motionBufferTimeInterval: TimeInterval = 5.0
@@ -311,7 +297,24 @@ class SleepDetectionService {
     
     // 停止監測
     func stopMonitoring() {
-        // 取消任何進行中的心率查詢或訂閱
+        // 停止心率查詢
+        if let q = heartRateQuery {
+            healthStore.stop(q)
+            heartRateQuery = nil
+        }
+        
+        // 停用背景推送（保險）
+        if let hrType = HKObjectType.quantityType(forIdentifier: .heartRate) {
+            healthStore.disableBackgroundDelivery(for: hrType) { success, error in
+                if let error = error {
+                    self.logger.warning("停用背景心率推送失敗: \(error.localizedDescription)")
+                }
+            }
+        }
+        
+        isResting = false
+        isProbablySleeping = false
+        logger.info("SleepDetectionService 已停止監測")
     }
     
     // 請求HealthKit許可權
@@ -403,7 +406,8 @@ class SleepDetectionService {
         // 設置心率數據查詢
         let predicate = HKQuery.predicateForSamples(withStart: Date(), end: nil, options: .strictStartDate)
         
-        let heartRateQuery = HKAnchoredObjectQuery(type: heartRateType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { query, samples, deletedObjects, anchor, error in
+        let anchoredQuery = HKAnchoredObjectQuery(type: heartRateType, predicate: predicate, anchor: nil, limit: HKObjectQueryNoLimit) { [weak self] query, samples, deletedObjects, anchor, error in
+            guard let self = self else { return }
             
             if let error = error {
                 self.logger.error("心率查詢錯誤: \(error.localizedDescription)")
@@ -415,7 +419,9 @@ class SleepDetectionService {
         }
         
         // 添加更新處理器
-        heartRateQuery.updateHandler = { query, samples, deletedObjects, anchor, error in
+        anchoredQuery.updateHandler = { [weak self] query, samples, deletedObjects, anchor, error in
+            guard let self = self else { return }
+            
             if let error = error {
                 self.logger.error("心率更新錯誤: \(error.localizedDescription)")
                 return
@@ -426,7 +432,9 @@ class SleepDetectionService {
         }
         
         // 執行查詢
-        healthStore.execute(heartRateQuery)
+        healthStore.execute(anchoredQuery)
+        // 保存引用方便停止
+        self.heartRateQuery = anchoredQuery
     }
     
     // 處理心率樣本
@@ -689,6 +697,11 @@ class NotificationManager: NSObject {
         
         // 設置通知代理
         UNUserNotificationCenter.current().delegate = self
+        
+        // 註冊鬧鐘通知類別
+        let stop = UNNotificationAction(identifier: "STOP_ALARM", title: "停止鬧鈴", options: [.authenticationRequired])
+        let category = UNNotificationCategory(identifier: "PN_ALARM", actions: [stop], intentIdentifiers: [], options: [])
+        UNUserNotificationCenter.current().setNotificationCategories([category])
     }
     
     // 發送喚醒通知 - 持續模式
@@ -722,12 +735,14 @@ class NotificationManager: NSObject {
     // 發送帶延遲的通知
     private func sendNotificationWithDelay(_ delay: TimeInterval, identifier: String) {
         let content = UNMutableNotificationContent()
-        content.title = "小睡結束"
-        content.body = "是時候起來了！"
+        content.title = NSLocalizedString("nap_ended_notification_title", comment: "小睡結束通知標題")
+        content.body = NSLocalizedString("wake_up_notification_body", comment: "喚醒通知內容")
         content.sound = UNNotificationSound.defaultCritical
-        content.categoryIdentifier = "WAKEUP"
+        content.categoryIdentifier = "PN_ALARM"
         content.interruptionLevel = .timeSensitive
         content.relevanceScore = 1.0
+        // 將所有鬧鐘通知歸入同一執行緒，避免 Banner 疊加
+        content.threadIdentifier = "PN_ALARM_THREAD"
         
         // 設置延遲
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
@@ -868,7 +883,10 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
     
     // 處理用戶與通知的交互
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
-        // 用戶點擊了通知，可以添加特定行為
+        // 處理停止鬧鐘動作
+        if response.actionIdentifier == "STOP_ALARM" {
+            stopContinuousAlarm()
+        }
         completionHandler()
     }
 }
@@ -1591,6 +1609,13 @@ class PowerNapViewModel: ObservableObject {
         
         logger.info("開始小睡會話，設定時間: \(self.napDuration) 秒")
         
+        // Telemetry：紀錄 Session 開始
+        TelemetryLogger.shared.log("session_start", [
+            "durationSeconds": String(format: "%.0f", self.napDuration),
+            "rhr": String(format: "%.1f", restingHeartRate),
+            "thresholdBPM": String(format: "%.1f", heartRateThreshold)
+        ])
+        
         // 開始記錄睡眠數據
         sleepLogger.startNewSession()
         
@@ -1660,19 +1685,16 @@ class PowerNapViewModel: ObservableObject {
             napPhase: currentNapPhase
         )
         
-        // 按相反順序停止服務
-        // 1. 首先停止HealthKit會話
-        workoutManager.stopWorkoutSession()
-        
-        // 2. 停止睡眠監測服務
-        sleepServices.stopMonitoring()
-        sleepDetection.stopMonitoring()
-        
-        // 3. 停止心率和運動監測
+        // 按相反順序停止服務，先停止心率與監測查詢
         heartRateService.stopMonitoring()
         motionManager.stopMonitoring()
         
-        // 4. 最後停止運行時服務
+        // 再停止睡眠監測協調器
+        sleepServices.stopMonitoring()
+        sleepDetection.stopMonitoring()
+        
+        // 最後結束 Workout 與 Extended Runtime
+        workoutManager.stopWorkoutSession()
         runtimeManager.stopSession()
         
         // 更新用戶配置文件
@@ -1705,6 +1727,9 @@ class PowerNapViewModel: ObservableObject {
         // 更新狀態
         isNapping = false
         napPhase = .awaitingSleep
+        
+        // 一次性送出本次 Session 的 Telemetry
+        TelemetryLogger.shared.flush()
         
         logger.info("小睡會話已停止")
         stopAllTimers()
@@ -1798,15 +1823,34 @@ class PowerNapViewModel: ObservableObject {
         // 記錄睡眠分析總結數據
         logger.info("記錄最終睡眠分析數據: 檢測到睡眠: \(detectedSleep), 分類: \(notes)")
         
+        // 將此次 Session 結果加入 Telemetry 緩衝，結束時一次送出
+        var telemetryParams: [String: String] = [
+            "detectedSleep": detectedSleep ? "true" : "false",
+            "classification": notes,
+            "rhr": String(format: "%.1f", restingHeartRate),
+            "thresholdBPM": String(format: "%.1f", heartRateThreshold),
+            "avgSleepHR": avgSleepHR != nil ? String(format: "%.1f", avgSleepHR!) : "-",
+            "deviationPercent": deviationPercent != nil ? String(format: "%.1f", deviationPercent!) : "-",
+            "anomalyScore": String(format: "%.1f", heartRateAnomalyTracker.getLatestAnomalyScore()),
+            "cumulativeScore": String(format: "%.1f", heartRateAnomalyTracker.getCumulativeScore()),
+            "feedbackType": String(describing: lastFeedbackType)
+        ]
+        if let avgSleepHR = avgSleepHR {
+            telemetryParams["avgSleepHR"] = String(format: "%.1f", avgSleepHR)
+        }
+        if let deviationPercent = deviationPercent {
+            telemetryParams["deviationPercent"] = String(format: "%.1f", deviationPercent)
+        }
+        // TelemetryLogger.shared.log("session_end", telemetryParams) // 先暫存
+        
         // === 新增：決定判定來源 detectSource ===
         let ratioValue = (avgSleepHR != nil && heartRateThreshold > 0) ? (avgSleepHR! / heartRateThreshold) : 1.0
-        var detectSourceLocal = ""
-        if ratioValue < 0.75 {
-            detectSourceLocal = "滑動視窗"
-        } else if hrTrendIndicator <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
+        let detectSourceLocal: String
+        if hrTrendIndicator <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
             detectSourceLocal = "trend"
         } else {
-            detectSourceLocal = "unknown"
+            // 預設視為滑動視窗判睡
+            detectSourceLocal = NSLocalizedString("sliding_window", comment: "滑動視窗")
         }
         // 更新屬性，供其他流程使用
         self.detectSource = detectSourceLocal
@@ -1849,6 +1893,13 @@ class PowerNapViewModel: ObservableObject {
             "phase": .string(sleepPhaseText),
             "acc": .double(currentAcceleration)
         ])
+
+        // 補充 Telemetry 欄位並送出 session_end
+        telemetryParams["ratio"] = String(format: "%.3f", ratioValue)
+        telemetryParams["trend"] = String(format: "%.3f", hrTrendIndicator)
+        telemetryParams["thresholdPercent"] = String(format: "%.1f", thresholdPercent)
+        telemetryParams["detectSource"] = detectSourceLocal
+        TelemetryLogger.shared.log("session_end", telemetryParams)
     }
     
     // 設置小睡計時器
@@ -2201,13 +2252,11 @@ class PowerNapViewModel: ObservableObject {
             hrTrendIndicatorFB = Double(up - down) / Double(hrHistoryWindow.count)
         }
         let ratioFB = (avgSleepHR != nil && heartRateThreshold > 0) ? (avgSleepHR! / heartRateThreshold) : 1.0
-        var detectSourceFB = ""
-        if ratioFB < 0.75 {
-            detectSourceFB = "滑動視窗"
-        } else if hrTrendIndicatorFB <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
+        let detectSourceFB: String
+        if hrTrendIndicatorFB <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
             detectSourceFB = "trend"
         } else {
-            detectSourceFB = "unknown"
+            detectSourceFB = NSLocalizedString("sliding_window", comment: "滑動視窗")
         }
         self.detectSource = detectSourceFB
 
@@ -2232,6 +2281,19 @@ class PowerNapViewModel: ObservableObject {
         
         hasSubmittedFeedback = true
         stopAllTimers() // feedback 寫入後才關閉所有 timer
+
+        // === 新增：獨立上傳 session_feedback 事件 ===
+        TelemetryLogger.shared.log("session_feedback", [
+            "accurate": wasAccurate ? "true" : "false",
+            "feedbackType": String(describing: lastFeedbackType),
+            "anomalyScore": String(format: "%.1f", heartRateAnomalyTracker.getLatestAnomalyScore()),
+            "cumulativeScore": String(format: "%.1f", heartRateAnomalyTracker.getCumulativeScore()),
+            "trend": String(format: "%.3f", hrTrendIndicatorFB),
+            "ratio": String(format: "%.3f", ratioFB),
+            "detectSource": detectSourceFB
+        ])
+        // 立即 flush，避免使用者錯過上傳
+        TelemetryLogger.shared.flush()
     }
     
     // 判斷是否正在模擬反饋(測試模式)

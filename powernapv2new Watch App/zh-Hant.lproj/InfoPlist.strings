@@ -1,0 +1,6 @@
+/* Watch App 權限描述本地化 */
+"WKNotificationUsageDescription" = "在您的小睡時間結束時發送通知來喚醒您";
+
+/* HealthKit 權限描述 */
+"NSHealthShareUsageDescription" = "為了偵測您的入睡狀態並記錄您的 Power Nap，需要讀取心率數據、靜息心率數據和生日資訊。心率數據用於監測即時心率變化，判斷您是否入睡；靜息心率數據用於建立個人化睡眠判定基準；生日資訊用於自動判斷您的年齡組別，以套用最適合的睡眠偵測參數。";
+"NSHealthUpdateUsageDescription" = "為了將您的 Power Nap 時段記錄到「健康」App 中，方便您統一查看，需要寫入睡眠分析數據。";

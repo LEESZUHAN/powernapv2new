@@ -1,0 +1,223 @@
+/* Phase 1: Core Function Localization (Base) */
+
+/* Main Function Buttons */
+"minutes_label" = "Minutes";
+"start_rest_button" = "Start Rest";
+"cancel_button" = "Cancel";
+"confirm_cancel" = "Confirm Cancel";
+"continue_monitoring" = "Continue Monitoring";
+"back_button" = "Back";
+"stop_alarm" = "Stop Alarm";
+
+/* Status Display */
+"monitoring_status" = "Monitoring";
+"sleep_detected" = "Sleep Detected";
+"waiting_deep_sleep" = "Waiting for Deep Sleep";
+"loading" = "Loading...";
+
+/* Nap End Related */
+"nap_ended_title" = "Nap Ended!";
+"time_to_wake_up" = "Time to Wake Up";
+
+/* Notification Content */
+"nap_ended_notification_title" = "Nap Ended";
+"wake_up_notification_body" = "Time to wake up!";
+
+/* Phase 2: Settings & Feedback System */
+
+/* Settings Interface */
+"settings_title" = "Settings";
+"sleep_confirmation_time" = "Sleep Confirmation Time";
+"heart_rate_threshold" = "Heart Rate Threshold";
+"detection_sensitivity" = "Detection Sensitivity";
+"fragmented_sleep" = "Fragmented Sleep";
+"age_group_setting" = "Age Group Setting";
+"data_sharing" = "Data Sharing";
+"help_info" = "Help";
+"heart_rate_info" = "Heart Rate Info";
+"reset_heart_rate_sensitivity" = "Reset HR & Sensitivity";
+"reset_all_parameters" = "Reset All Parameters";
+
+/* Feedback System */
+"sleep_detection_accurate" = "Was sleep detection accurate?";
+"accurate" = "Accurate";
+"inaccurate" = "Inaccurate";
+"not_now" = "Not Now";
+"need_adjust_sensitivity" = "Need to adjust detection sensitivity?";
+"system_recorded_optimized" = "System has recorded and optimized settings.";
+"manual_adjust_hint" = "For manual adjustments, you can";
+"go_to_settings" = "Go to Settings";
+"later" = "Later";
+"thanks_feedback" = "Thank you for your feedback!";
+"continue_optimize" = "We will continue optimizing sleep detection";
+"feedback_recorded" = "Your feedback has been recorded";
+
+/* Sleep Confirmation Time Settings */
+"save_settings" = "Save Settings";
+"reset_time" = "Reset Time";
+"smart_learning_enabled" = "Smart Learning Enabled";
+"smart_learning_disabled" = "Smart Learning Disabled";
+"every_adjustment" = "±10 seconds each time";
+"time_range" = "Range: 1-6 minutes";
+"about_confirmation_time" = "About Confirmation Time";
+"settings_updated" = "Settings Updated";
+"ok" = "OK";
+"reset_confirmation_time" = "Reset Confirmation Time";
+"continue_smart_learning" = "Continue Smart Learning";
+
+/* Status Related */
+"fell_asleep" = "Fell Asleep";
+"not_asleep" = "Not Asleep";
+"monitoring_cancelled" = "Monitoring Cancelled";
+"status_unknown" = "Status Unknown";
+
+/* Phase 3: Advanced Logs & Test Functions */
+
+/* Advanced Logs Interface */
+"advanced_logs" = "Advanced Logs";
+"history_records" = "History Records";
+"no_records" = "No Records";
+"refresh" = "Refresh";
+"sleep_data_records" = "Sleep Data Records";
+"raw_data_records" = "Raw Data Records";
+"no_raw_data" = "No Raw Data Records";
+
+/* Test Functions */
+"dev_test_functions" = "Dev Test Functions";
+"test_alarm_function" = "Test Alarm Function";
+"test_feedback_prompt" = "Test Feedback Prompt";
+"scenario_test_area" = "Scenario Test Area";
+"scenario_1_correct_detection" = "Scenario 1: Correct Detection";
+"scenario_2_no_detection" = "Scenario 2: No Detection";
+"scenario_3_false_positive" = "Scenario 3: False Positive";
+"scenario_4_correct_no_detection" = "Scenario 4: Correct No Detection";
+"test_alarm_flow" = "Test Alarm Flow";
+"force_really_optimize" = "Force Really Optimize";
+"generate_advanced_log_test_file" = "Generate Advanced Log Test File";
+
+/* Heart Rate Data Analysis */
+"sleep_status_analysis" = "Sleep Status Analysis";
+"current_status" = "Current Status";
+"heart_rate_data" = "Heart Rate Data";
+"deviation_ratio" = "Deviation Ratio";
+"anomaly_score" = "Anomaly Score";
+"cumulative_score" = "Cumulative Score";
+"threshold_percentage" = "Threshold Percentage";
+"system_detection" = "System Detection";
+"false_positive_negative" = "False Positive/Negative";
+"user_feedback" = "User Feedback";
+"detection_precision" = "Detection Precision";
+"sleep_recognition_rate" = "Sleep Recognition Rate";
+"hr_threshold_adjustment" = "HR Threshold Adjustment";
+"confirmation_time" = "Confirmation Time";
+
+/* Directions & Status */
+"down" = "Down";
+"up" = "Up";
+"below" = "Below";
+"threshold" = "Threshold";
+"of" = "of";
+"bpm" = "BPM";
+"sleep" = "Sleep";
+"no_detection" = "No Detection";
+"no_feedback" = "None";
+"unchanged" = "Unchanged";
+
+/* Applicable Scenarios */
+"applicable_scenarios" = "Applicable Scenarios";
+
+/* AdvancedLogsView Remaining Text */
+"heart_rate_trend" = "Heart Rate Trend";
+"detection_source" = "Detection Source";
+"raw_logs" = "Raw Logs";
+
+/* Heart Rate Monitoring Related */
+"heart_rate" = "Heart Rate";
+"resting_heart_rate" = "Resting Heart Rate";
+"threshold" = "Threshold";
+"movement_intensity" = "Movement Intensity";
+"movement_threshold" = "Movement Threshold";
+"movement_status" = "Movement Status";
+"stationary" = "Stationary";
+"resting" = "Resting";
+"active" = "Active";
+"sleep_status" = "Sleep Status";
+"possibly_sleeping" = "Possibly Sleeping";
+"awake" = "Awake";
+
+/* Data Analysis Related */
+"reference_only" = "Reference Only, Not Included in Optimization";
+"meets_threshold" = "Meets Threshold";
+"does_not_meet_threshold" = "Does Not Meet Threshold";
+"accurate" = "Accurate";
+"false_positive" = "False Positive";
+"false_negative" = "False Negative";
+"no_data" = "None";
+"seconds" = "Seconds";
+
+/* Log Analysis Keywords */
+"precision_rate" = "Precision Rate";
+"accuracy_rate" = "Accuracy Rate";
+"recognition_rate" = "Recognition Rate";
+"sleep_recognition_rate" = "Sleep Recognition Rate";
+"average_heart_rate" = "Average Heart Rate";
+"deviation" = "Deviation";
+"downward" = "Downward";
+"upward" = "Upward";
+"default_value" = "Default Value";
+
+/* Missing Localized Text */
+"sliding_window" = "Sliding Window";
+"not_evaluated" = "Not Evaluated";
+"not_sleeping" = "Not Sleeping";
+"current_selection" = "Current Selection";
+"current_heart_rate_threshold" = "Current Heart Rate Threshold";
+"threshold_description" = "When heart rate is below this threshold and stable, the system will determine you have entered sleep state";
+
+/* Age Group Settings */
+"teenager_group" = "Teenager (< 18 years)";
+"teenager_description" = "Prefers faster sleep detection, threshold set to 87.5%";
+"adult_group" = "Adult (18-60 years)";
+"adult_description" = "Standard detection setting, threshold set to 90%";
+"senior_group" = "Senior (> 60 years)";
+"senior_description" = "More rigorous detection, threshold set to 93.5%";
+"age_group_explanation" = "Selecting your age group optimizes sleep detection thresholds and confirmation times.\n• Teenager: More sensitive detection, 2-minute confirmation time\n• Adult: Standard detection, 3-minute confirmation time\n• Senior: More rigorous detection, 4-minute confirmation time";
+
+/* Age Group Names */
+"teenager" = "Teenager";
+"adult" = "Adult";
+"senior" = "Senior";
+
+/* Additional Missing Text */
+"reference_only_not_optimized" = "Reference Only, Not Included in Optimization";
+"settings" = "Settings";
+"heart_rate_info_title" = "Heart Rate Info";
+"reset_hr_sensitivity" = "Reset HR & Sensitivity";
+"reset_all_parameters" = "Reset All Parameters";
+"strict" = "Strict";
+"neutral" = "Neutral";
+"loose" = "Loose";
+"raise_standard_strict" = "Raise Standard (More Strict)";
+"lower_standard_loose" = "Lower Standard (More Loose)";
+"heart_rate_threshold_explanation" = "Heart Rate Threshold Explanation";
+"strict_detection_explanation" = "• Strict: Lower threshold requires lower heart rate for sleep detection, reduces false positives but may delay detection";
+"loose_detection_explanation" = "• Loose: Higher threshold makes sleep detection easier, may detect faster but increases false positive rate";
+"sensitivity_adjustment_explanation" = "Sensitivity Adjustment Explanation";
+"strict_sensitivity_explanation" = "• Strict: System determines sleep state more strictly, reduces false positive rate but may delay detection";
+"loose_sensitivity_explanation" = "• Loose: System determines sleep state more loosely, may detect faster but increases false positive rate";
+"age_group_settings_explanation" = "Age Group Settings Explanation";
+"sleep_threshold" = "Sleep Threshold";
+"automatic_optimization" = "Automatic Optimization";
+"enabled" = "Enabled";
+"recent_optimization" = "Recent Optimization";
+"minutes_seconds" = "Min:Sec";
+"fragmented_sleep_mode" = "Enable Fragmented Sleep Mode";
+"fragmented_sleep_explanation" = "Fragmented Sleep Mode Explanation";
+"fragmented_sleep_description" = "If you frequently experience fragmented sleep (frequent brief awakenings), enabling this mode can improve sleep detection accuracy.";
+"changes_after_enabling" = "Changes after enabling:";
+"shorten_confirmation_time" = "• Shorten sleep confirmation time to capture brief sleep";
+"optimize_micro_awakening" = "• Optimize handling of micro-awakenings";
+"adjust_hr_monitoring" = "• Adjust heart rate monitoring mode to adapt to rapid changes";
+"light_sleeper" = "• Light sleepers: Sleep habits with easy brief awakenings";
+"environment_sensitive" = "• Environment sensitive: Sensitive to environmental sounds or light";
+"nap_difficulty" = "• Nap difficulty: Difficulty maintaining nap state"; 

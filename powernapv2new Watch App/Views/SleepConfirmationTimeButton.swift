@@ -16,12 +16,12 @@ struct SleepConfirmationTimeButton: View {
                         .foregroundColor(.blue)
                         .font(.system(size: 16))
                     
-                    Text("睡眠確認時間")
+                    Text(NSLocalizedString("sleep_confirmation_time", comment: "睡眠確認時間"))
                         .font(.headline)
                         .foregroundColor(.white)
                 }
                 
-                Text("設定判定睡眠所需的時間")
+                Text(NSLocalizedString("sleep_confirmation_time_description", comment: "設定判定睡眠所需的時間"))
                     .font(.caption)
                     .foregroundColor(.gray)
             }

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UserNotifications
+import HealthKit
 
 // 導入PowerNapViewModel
 @preconcurrency import Foundation
@@ -67,15 +68,23 @@ struct ContentView: View {
     
     @Environment(\.scenePhase) private var scenePhase
     
-    var body: some View {
-        ZStack {
+    @State private var showOnboarding: Bool = false
+    
+    // 分享匿名使用資料開關（設定頁）
+    @State private var shareUsageSetting: Bool = {
+        if let saved = UserDefaults.standard.object(forKey: "shareUsage") as? Bool {
+            return saved
+        }
+        return true
+    }()
+    
+    // 抽出主 TabView，避免在 if-else 外掛修飾符造成 Any 型別
+    @ViewBuilder
+    private var mainTabView: some View {
         TabView(selection: $selectedTab) {
             // 主頁面
             ZStack {
-                // 背景色
                 Color.black.edgesIgnoringSafeArea(.all)
-                
-                // 根據UI狀態顯示不同內容
                 switch uiState {
                 case .preparing:
                     preparingView
@@ -86,22 +95,22 @@ struct ContentView: View {
                 }
             }
             .tag(0)
-            
-            // 設置頁面
+
+            // 設置
             ZStack {
                 Color.black.edgesIgnoringSafeArea(.all)
                 settingsView
             }
             .tag(1)
-                
-            // 高級日誌頁面（新）
+
+            // 高級日誌
             ZStack {
                 Color.black.edgesIgnoringSafeArea(.all)
                 AdvancedLogsView()
             }
             .tag(2)
 
-            // 測試功能頁面
+            // 測試功能
             ZStack {
                 Color.black.edgesIgnoringSafeArea(.all)
                 testFunctionsView
@@ -109,45 +118,35 @@ struct ContentView: View {
             .tag(3)
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
-            // 使用背景隱藏視圖來觸發PreferenceKey，避免ScrollView contentOffset警告
-            .background(
-                GeometryReader { geometry in
-                    Color.clear
-                        .preference(key: TabViewHeightPreference.self, value: geometry.size.height)
-                }
-            )
-            // 使用onPreferenceChange代替onAppear以避免每次頁面切換都重新加載
-            .onPreferenceChange(TabViewHeightPreference.self) { _ in 
-                // 只在首次加載時執行
-                if logFiles.isEmpty {
-                    loadLogFiles()
-                }
-                
-                // 從ViewModel加載設置值
-                if thresholdOffset == 0.0 && sleepSensitivity == 0.5 {
-                    thresholdOffset = viewModel.userHRThresholdOffset
-                    sleepSensitivity = viewModel.sleepSensitivity
-                    selectedAgeGroup = viewModel.userSelectedAgeGroup
-                }
+        .background(
+            GeometryReader { geometry in
+                Color.clear
+                    .preference(key: TabViewHeightPreference.self, value: geometry.size.height)
             }
-            
-            // 反饋提示覆蓋層
-            if viewModel.showingFeedbackPrompt {
-                feedbackPromptView
-            }
-            
-            // 鬧鈴停止UI覆蓋層
-            if viewModel.showingAlarmStopUI {
-                alarmStopView
+        )
+        .onPreferenceChange(TabViewHeightPreference.self) { _ in
+            if logFiles.isEmpty { loadLogFiles() }
+            if thresholdOffset == 0.0 && sleepSensitivity == 0.5 {
+                thresholdOffset = viewModel.userHRThresholdOffset
+                sleepSensitivity = viewModel.sleepSensitivity
+                selectedAgeGroup = viewModel.userSelectedAgeGroup
             }
         }
-        .onAppear {
-            viewModel.loadUserPreferences()
+    }
+    
+    var body: some View {
+        ZStack {
+        if showOnboarding {
+            OnboardingView(showOnboarding: $showOnboarding)
+        } else {
+            mainTabView
+                .overlay(
+                    Group {
+                        if viewModel.showingFeedbackPrompt { feedbackPromptView }
+                        if viewModel.showingAlarmStopUI { alarmStopView }
+                    }
+                )
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .background {
-                viewModel.recordNoFeedbackIfNeeded()
-            }
         }
     }
     
@@ -155,7 +154,7 @@ struct ContentView: View {
     private var preparingView: some View {
         VStack(spacing: 15) {
             // 修改為根據確認時間動態調整的時間範圍
-            Picker(selection: $viewModel.napMinutes, label: Text("分鐘數")) {
+            Picker(selection: $viewModel.napMinutes, label: Text(NSLocalizedString("minutes_label", comment: "分鐘數選擇標籤"))) {
                 ForEach(viewModel.validNapDurationRange, id: \.self) { minutes in
                     Text("\(minutes)").tag(minutes)
                     }
@@ -173,7 +172,7 @@ struct ContentView: View {
                 viewModel.napDuration = Double(viewModel.napMinutes) * 60
                     viewModel.startNap()
                 }) {
-                    Text("開始休息")
+                    Text(NSLocalizedString("start_rest_button", comment: "開始休息按鈕"))
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -193,7 +192,7 @@ struct ContentView: View {
     private var testFunctionsView: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 20) {
-                    Text("開發測試功能")
+                    Text(NSLocalizedString("dev_test_functions", comment: "開發測試功能"))
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
                     .padding(.top, 10)
@@ -202,31 +201,31 @@ struct ContentView: View {
                     // 心率資訊區塊
                     VStack(spacing: 10) {
                         HStack {
-                            Text("心率:")
+                            Text(NSLocalizedString("heart_rate", comment: "心率"))
                                 .foregroundColor(.gray)
                             Spacer()
                             Text("\(Int(viewModel.currentHeartRate))")
                                 .foregroundColor(.green)
                                 .font(.system(size: 18, weight: .bold))
-                            Text("BPM")
+                            Text(NSLocalizedString("bpm", comment: "BPM"))
                                 .foregroundColor(.gray)
                                 .font(.footnote)
                         }
                         
                         HStack {
-                            Text("靜止心率:")
+                            Text(NSLocalizedString("resting_heart_rate", comment: "靜止心率"))
                                 .foregroundColor(.gray)
                             Spacer()
                             Text("\(Int(viewModel.restingHeartRate))")
                                 .foregroundColor(.orange)
                                 .font(.system(size: 18, weight: .bold))
-                            Text("BPM")
+                            Text(NSLocalizedString("bpm", comment: "BPM"))
                                 .foregroundColor(.gray)
                                 .font(.footnote)
                         }
                         
                         HStack {
-                            Text("閾值:")
+                            Text(NSLocalizedString("threshold", comment: "閾值"))
                                 .foregroundColor(.gray)
                             Spacer()
                             Text("\(Int(viewModel.heartRateThreshold))")
@@ -242,7 +241,7 @@ struct ContentView: View {
                             .padding(.vertical, 5)
                         
                         HStack {
-                            Text("運動強度:")
+                            Text(NSLocalizedString("movement_intensity", comment: "運動強度"))
                                 .foregroundColor(.gray)
                             Spacer()
                             Text(String(format: "%.4f", viewModel.currentAcceleration))
@@ -251,7 +250,7 @@ struct ContentView: View {
                         }
                         
                         HStack {
-                            Text("運動閾值:")
+                            Text(NSLocalizedString("threshold", comment: "閾值"))
                                 .foregroundColor(.gray)
                             Spacer()
                             Text(String(format: "%.3f", viewModel.motionThreshold))
@@ -260,19 +259,19 @@ struct ContentView: View {
                         }
                         
                         HStack {
-                            Text("運動狀態:")
+                            Text(NSLocalizedString("movement_state", comment: "運動狀態"))
                                 .foregroundColor(.gray)
                             Spacer()
-                            Text(viewModel.isResting ? "靜止" : "活動中")
+                            Text(viewModel.isResting ? NSLocalizedString("resting", comment: "靜止") : NSLocalizedString("active", comment: "活動中"))
                                 .foregroundColor(viewModel.isResting ? .green : .red)
                                 .font(.system(size: 18, weight: .bold))
                         }
                         
                         HStack {
-                            Text("睡眠狀態:")
+                            Text(NSLocalizedString("sleep_state", comment: "睡眠狀態"))
                                 .foregroundColor(.gray)
                             Spacer()
-                            Text(viewModel.isProbablySleeping ? "可能睡眠中" : "清醒")
+                            Text(viewModel.isProbablySleeping ? NSLocalizedString("sleeping", comment: "可能睡眠中") : NSLocalizedString("awake", comment: "清醒"))
                                 .foregroundColor(viewModel.isProbablySleeping ? .blue : .yellow)
                                 .font(.system(size: 18, weight: .bold))
                         }
@@ -288,7 +287,7 @@ struct ContentView: View {
                         // 直接調用通知管理器發送通知
                         NotificationManager.shared.sendWakeupNotification()
                     }) {
-                        Text("測試鬧鈴功能")
+                        Text(NSLocalizedString("test_alarm_function", comment: "測試鬧鈴功能"))
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -314,7 +313,7 @@ struct ContentView: View {
                             }
                         }
                     }) {
-                        Text("測試反饋提示")
+                        Text(NSLocalizedString("test_feedback_prompt", comment: "測試反饋提示"))
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -327,7 +326,7 @@ struct ContentView: View {
         .padding(.top, 10)
                     
                     // 添加情境測試區域標題
-                    Text("情境測試區")
+                    Text(NSLocalizedString("scenario_test_area", comment: "情境測試區"))
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(.white)
                         .padding(.top, 15)
@@ -337,7 +336,7 @@ struct ContentView: View {
                         feedbackStage = .initial
                         viewModel.simulateScenario1Feedback()
                     }) {
-                        Text("情境1：正確檢測睡眠")
+                        Text(NSLocalizedString("scenario_1_correct_detection", comment: "情境1：正確檢測睡眠"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -354,7 +353,7 @@ struct ContentView: View {
                         feedbackStage = .initial
                         viewModel.simulateScenario2Feedback()
                     }) {
-                        Text("情境2：未檢測到睡眠")
+                        Text(NSLocalizedString("scenario_2_no_detection", comment: "情境2：未檢測到睡眠"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -371,7 +370,7 @@ struct ContentView: View {
                         feedbackStage = .initial
                         viewModel.simulateScenario3Feedback()
                     }) {
-                        Text("情境3：誤判為睡眠")
+                        Text(NSLocalizedString("scenario_3_false_positive", comment: "情境3：誤判為睡眠"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -388,7 +387,7 @@ struct ContentView: View {
                         feedbackStage = .initial
                         viewModel.simulateScenario4Feedback()
                     }) {
-                        Text("情境4：正確未檢測")
+                        Text(NSLocalizedString("scenario_4_correct_no_detection", comment: "情境4：正確未檢測"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -404,7 +403,7 @@ struct ContentView: View {
                     Button(action: {
                         viewModel.simulateTimerEnd()
                     }) {
-                        Text("測試鬧鈴流程")
+                        Text(NSLocalizedString("test_alarm_flow", comment: "測試鬧鈴流程"))
                             .font(.system(size: 16, weight: .bold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -420,7 +419,7 @@ struct ContentView: View {
                     Button(action: {
                         viewModel.forceReallyOptimizeThreshold()
                     }) {
-                        Text("真正強制優化")
+                        Text(NSLocalizedString("force_really_optimize", comment: "真正強制優化"))
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -436,7 +435,7 @@ struct ContentView: View {
                     Button(action: generateFakeAdvancedLogFile) {
                         HStack {
                             Image(systemName: "doc.badge.plus")
-                            Text("產生高級日誌測試檔")
+                            Text(NSLocalizedString("generate_advanced_log_test_file", comment: "產生高級日誌測試檔"))
                         }
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.blue)
@@ -457,7 +456,7 @@ struct ContentView: View {
         VStack {
             Spacer().frame(height: 20)
             
-            Text("監測中")
+            Text(NSLocalizedString("monitoring_status", comment: "監測中狀態"))
                 .font(.system(size: 28, weight: .medium))
                 .foregroundColor(.white)
                 .padding(.bottom, 10)
@@ -473,7 +472,7 @@ struct ContentView: View {
                     .foregroundColor(.white)
 
                 // 睡眠提示訊息
-                Text("已偵測到睡眠")
+                Text(NSLocalizedString("sleep_detected", comment: "已偵測到睡眠"))
                     .font(.system(size: 14))
                     .foregroundColor(.green)
                     .padding(.horizontal, 10)
@@ -491,7 +490,7 @@ struct ContentView: View {
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundColor(.white.opacity(0.6))
 
-                Text("監測中")
+                Text(NSLocalizedString("monitoring_status", comment: "監測中狀態"))
                     .font(.system(size: 14))
                     .foregroundColor(.gray)
             }
@@ -508,7 +507,7 @@ struct ContentView: View {
                 viewModel.stopNap()
                     showingCancelConfirmation = false
                 }) {
-                    Text("確認取消")
+                    Text(NSLocalizedString("confirm_cancel", comment: "確認取消按鈕"))
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(.white)
                         .frame(width: 160, height: 44)
@@ -522,7 +521,7 @@ struct ContentView: View {
                     // 取消確認狀態
                     showingCancelConfirmation = false
                 }) {
-                    Text("繼續監測")
+                    Text(NSLocalizedString("continue_monitoring", comment: "繼續監測按鈕"))
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.gray)
                 }
@@ -538,7 +537,7 @@ struct ContentView: View {
                         showingCancelConfirmation = false
                     }
             }) {
-                Text("取消")
+                Text(NSLocalizedString("cancel_button", comment: "取消按鈕"))
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.white)
                     .frame(width: 120, height: 44)
@@ -569,7 +568,7 @@ struct ContentView: View {
                 .foregroundColor(.white)
             
                 // 新增：睡眠提示訊息
-                Text("已偵測到睡眠")
+                Text(NSLocalizedString("sleep_detected", comment: "已偵測到睡眠"))
                     .font(.system(size: 14))
                     .foregroundColor(.green)
                     .padding(.horizontal, 10)
@@ -588,7 +587,7 @@ struct ContentView: View {
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .foregroundColor(.white.opacity(0.6))
                     
-                    Text("等待深度睡眠")
+                    Text(NSLocalizedString("waiting_deep_sleep", comment: "等待深度睡眠"))
                         .font(.system(size: 14))
                         .foregroundColor(.gray)
                 }
@@ -605,7 +604,7 @@ struct ContentView: View {
             Button(action: {
                 viewModel.stopNap()
             }) {
-                Text("取消")
+                Text(NSLocalizedString("cancel_button", comment: "取消按鈕"))
                     .font(.system(size: 18, weight: .medium))
                     .foregroundColor(.white)
                     .frame(width: 120, height: 44)
@@ -635,14 +634,14 @@ struct ContentView: View {
     private var logFilesListView: some View {
         ScrollView(.vertical, showsIndicators: false) {
         VStack {
-            Text("睡眠數據記錄")
+            Text(NSLocalizedString("sleep_data_records", comment: "睡眠數據記錄"))
                 .font(.headline)
                 .foregroundColor(.white)
                     .padding(.vertical, 5)
             
                 LazyVStack(spacing: 5) { // 減少間距為5
                     if logFiles.isEmpty {
-                        Text("尚無記錄")
+                        Text(NSLocalizedString("no_records", comment: "尚無記錄"))
                             .foregroundColor(.gray)
                             .padding(.top, 20)
                     } else {
@@ -675,7 +674,7 @@ struct ContentView: View {
                     Button(action: loadLogFiles) {
                         HStack {
                             Image(systemName: "arrow.clockwise")
-                            Text("重新整理")
+                            Text(NSLocalizedString("refresh", comment: "重新整理"))
                         }
                         .font(.system(size: 14))
                         .foregroundColor(.blue)
@@ -698,7 +697,7 @@ struct ContentView: View {
                 }) {
                     HStack {
                         Image(systemName: "chevron.left")
-                        Text("返回")
+                        Text(NSLocalizedString("back_button", comment: "返回按鈕"))
                     }
                     .font(.system(size: 14))
                     .foregroundColor(.blue)
@@ -720,7 +719,7 @@ struct ContentView: View {
             
             ScrollView(.vertical, showsIndicators: false) {
                 if logContent.isEmpty {
-                    Text("載入中...")
+                    Text(NSLocalizedString("loading", comment: "載入中狀態"))
                         .foregroundColor(.gray)
                         .padding(.top, 20)
                 } else {
@@ -743,7 +742,7 @@ struct ContentView: View {
                         
                         // 原始數據記錄
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("原始數據記錄")
+                            Text(NSLocalizedString("raw_data_records", comment: "原始數據記錄"))
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.gray)
                                 .padding(.horizontal)
@@ -764,7 +763,7 @@ struct ContentView: View {
     // 睡眠分析狀態視圖
     private var statusView: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("睡眠狀態分析")
+            Text(NSLocalizedString("sleep_status_analysis", comment: "睡眠狀態分析"))
                 .font(.system(size: 16, weight: .bold))
                 .foregroundColor(.white)
                 .padding(.bottom, 4)
@@ -772,7 +771,7 @@ struct ContentView: View {
             // 新增：本次狀態顯示
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("本次狀態")
+                    Text(NSLocalizedString("current_status", comment: "本次狀態"))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
                     
@@ -785,7 +784,7 @@ struct ContentView: View {
                 
                 // 僅供參考標記
                 if getSleepSessionStatus() == "未入睡" || getSleepSessionStatus() == "監測中取消" {
-                    Text("僅供參考，未納入優化")
+                    Text(NSLocalizedString("reference_only_not_optimized", comment: "僅供參考，未納入優化"))
                         .font(.system(size: 10))
                         .foregroundColor(.orange)
                         .padding(.horizontal, 8)
@@ -810,12 +809,12 @@ struct ContentView: View {
                         .foregroundColor(.red)
                         .font(.system(size: 12))
                     
-                    Text("心率數據")
+                    Text(NSLocalizedString("heart_rate_data", comment: "心率數據"))
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white)
                 }
                 
-                Text("\(getAverageSleepHR()) BPM (RHR的\(getSleepHRPercentage()))")
+                Text("\(getAverageSleepHR()) \(NSLocalizedString("bpm", comment: "BPM")) (RHR\(NSLocalizedString("of", comment: "的"))\(getSleepHRPercentage()))")
                     .font(.system(size: 12))
                     .foregroundColor(.gray)
             }
@@ -823,12 +822,12 @@ struct ContentView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-                Text("偏離比例")
+                Text(NSLocalizedString("deviation_ratio", comment: "偏離比例"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
                 let (deviation, isDown) = getHRDeviation()
-                Text("\(deviation) (\(isDown ? "向下" : "向上"))")
+                Text("\(deviation) (\(isDown ? NSLocalizedString("down", comment: "向下") : NSLocalizedString("up", comment: "向上")))")
                     .font(.system(size: 12))
                     .foregroundColor(isDown ? .green : .orange)
             }
@@ -843,12 +842,12 @@ struct ContentView: View {
     private var anomalyDataView: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("異常評分")
+                Text(NSLocalizedString("anomaly_score", comment: "異常評分"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
                 let score = getAnomalyScore()
-                Text("\(score) (低於\(getAnomalyThreshold())閾值)")
+                Text("\(score) (\(NSLocalizedString("below", comment: "低於"))\(getAnomalyThreshold())\(NSLocalizedString("threshold", comment: "閾值")))")
                     .font(.system(size: 12))
                     .foregroundColor(score > 3 ? .orange : .green)
             }
@@ -856,7 +855,7 @@ struct ContentView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-                Text("累計分數")
+                Text(NSLocalizedString("cumulative_score", comment: "累計分數"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
@@ -875,10 +874,10 @@ struct ContentView: View {
     private var thresholdDataView: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("閾值百分比")
+                Text(NSLocalizedString("threshold_percentage", comment: "閾值百分比"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
-                
+
                 let (percent, bpm) = getThresholdValues()
                 Text("\(percent) (\(bpm) BPM)")
                     .font(.system(size: 12))
@@ -888,12 +887,12 @@ struct ContentView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-                Text("系統判定")
+                Text(NSLocalizedString("system_detection", comment: "系統判定"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
                 let (detected, aboveThreshold) = getSystemDetection()
-                Text("\(detected) (\(aboveThreshold ? "符合閾值" : "不符合閾值"))")
+                Text("\(detected) (\(aboveThreshold ? NSLocalizedString("meets_threshold", comment: "符合閾值") : NSLocalizedString("does_not_meet_threshold", comment: "不符合閾值")))")
                     .font(.system(size: 12))
                     .foregroundColor(detected == "睡眠" ? .green : .orange)
             }
@@ -908,7 +907,7 @@ struct ContentView: View {
     private var detectionResultView: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("漏/誤報")
+                Text(NSLocalizedString("false_positive_negative", comment: "漏/誤報"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
@@ -920,7 +919,7 @@ struct ContentView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-                Text("用戶反饋")
+                Text(NSLocalizedString("user_feedback", comment: "用戶反饋"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
@@ -939,7 +938,7 @@ struct ContentView: View {
     private var feedbackDataView: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("判斷準確率")
+                Text(NSLocalizedString("detection_precision", comment: "判斷準確率"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
@@ -952,7 +951,7 @@ struct ContentView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-                Text("睡眠識別率")
+                Text(NSLocalizedString("sleep_recognition_rate", comment: "睡眠識別率"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
@@ -972,25 +971,29 @@ struct ContentView: View {
     private var adjustmentDataView: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("心率閾值調整")
+                Text(NSLocalizedString("hr_threshold_adjustment", comment: "心率閾值調整"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
-                
+
                 let adjustment = getThresholdAdjustment()
-                Text(adjustment)
+                let timeWithSeconds = "\(getConfirmationTime().0) \(NSLocalizedString("seconds_format", comment: "秒"))"
+                let displayText = adjustment.isEmpty ? timeWithSeconds : "\(timeWithSeconds) \(adjustment)"
+                Text(displayText)
                     .font(.system(size: 12))
-                    .foregroundColor(adjustment.contains("+") ? .green : (adjustment.contains("-") ? .orange : .gray))
+                    .foregroundColor(getConfirmationTime().1.contains("+") ? .orange : (getConfirmationTime().1.contains("-") ? .green : .gray))
             }
             
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-                Text("確認時間")
+                Text(NSLocalizedString("confirmation_time", comment: "確認時間"))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white)
                 
                 let (time, change) = getConfirmationTime()
-                Text("\(time)秒 \(change)")
+                let secondsText = NSLocalizedString("seconds_format", comment: "秒")
+                let displayText = change.isEmpty ? "\(time) \(secondsText)" : "\(time) \(secondsText) \(change)"
+                Text(displayText)
                     .font(.system(size: 12))
                     .foregroundColor(change.contains("+") ? .orange : (change.contains("-") ? .green : .gray))
             }
@@ -1562,7 +1565,7 @@ struct ContentView: View {
             return lastDataLines.map { formatDataLine($0) }.joined(separator: "\n")
         }
         
-        return "無原始數據記錄"
+        return NSLocalizedString("no_raw_data", comment: "無原始數據記錄")
     }
     
     // 格式化數據行 - 支持新舊兩種格式
@@ -1632,7 +1635,7 @@ struct ContentView: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     // 標題改為左上角小標題風格
-                    Text("設定")
+                    Text(NSLocalizedString("settings", comment: "設定"))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.blue)
                         .padding(.horizontal)
@@ -1645,7 +1648,7 @@ struct ContentView: View {
                         NavigationLink(destination: SleepConfirmationTimeSettingView(viewModel: viewModel)) {
                             settingRow(
                                 icon: "clock",
-                                title: "睡眠確認時間",
+                                title: NSLocalizedString("sleep_confirmation_time_setting", comment: "睡眠確認時間"),
                                 iconColor: .blue
                             )
                         }
@@ -1655,7 +1658,7 @@ struct ContentView: View {
                         NavigationLink(destination: HeartRateThresholdSettingView(viewModel: viewModel)) {
                             settingRow(
                                 icon: "heart.text.square",
-                                title: "心率閾值",
+                                title: NSLocalizedString("heart_rate_threshold_setting", comment: "心率閾值"),
                                 iconColor: .red
                             )
                         }
@@ -1665,7 +1668,7 @@ struct ContentView: View {
                         NavigationLink(destination: SensitivityDetailSettingView(viewModel: viewModel, sleepSensitivity: $sleepSensitivity)) {
                             settingRow(
                                 icon: "gauge",
-                                title: "檢測敏感度",
+                                title: NSLocalizedString("detection_sensitivity_setting", comment: "檢測敏感度"),
                                 iconColor: .orange
                             )
                         }
@@ -1675,7 +1678,7 @@ struct ContentView: View {
                         NavigationLink(destination: FragmentedSleepSettingView(viewModel: viewModel)) {
                             settingRow(
                                 icon: "waveform.path.ecg",
-                                title: "碎片化睡眠",
+                                title: NSLocalizedString("fragmented_sleep_setting", comment: "碎片化睡眠"),
                                 iconColor: .purple
                             )
                         }
@@ -1685,8 +1688,28 @@ struct ContentView: View {
                         NavigationLink(destination: AgeGroupDetailSettingView(viewModel: viewModel, selectedAgeGroup: $selectedAgeGroup)) {
                             settingRow(
                                 icon: "person.3",
-                                title: "年齡組設置",
+                                title: NSLocalizedString("age_group_setting", comment: "年齡組設置"),
                                 iconColor: .green
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        // 資料分享設定 - 導航至次頁
+                        NavigationLink(destination: ShareUsageSettingView(shareUsage: $shareUsageSetting)) {
+                            settingRow(
+                                icon: "hand.raised.fill",
+                                title: NSLocalizedString("data_sharing_setting", comment: "資料分享"),
+                                iconColor: .yellow
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        // 說明 - 跳轉到 InfoMenuView
+                        NavigationLink(destination: InfoMenuView()) {
+                            settingRow(
+                                icon: "info.circle",
+                                title: NSLocalizedString("help_setting", comment: "說明"),
+                                iconColor: .cyan
                             )
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -1695,7 +1718,7 @@ struct ContentView: View {
                     
                     // 心率信息視圖
                     VStack(spacing: 0) {
-                        Text("心率信息")
+                        Text(NSLocalizedString("heart_rate_info_title", comment: "心率信息"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.gray)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -1716,7 +1739,7 @@ struct ContentView: View {
                             viewModel.setUserHeartRateThresholdOffset(0.0)
                             viewModel.setSleepSensitivity(0.5)
                         }) {
-                            Text("重設心率&靈敏度")
+                            Text(NSLocalizedString("reset_hr_sensitivity", comment: "重設心率&靈敏度"))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
@@ -1744,7 +1767,7 @@ struct ContentView: View {
                                 viewModel.setFragmentedSleepMode(false)
                             }
                         }) {
-                            Text("重置所有參數")
+                            Text(NSLocalizedString("reset_all_parameters", comment: "重置所有參數"))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
@@ -1832,7 +1855,7 @@ struct ContentView: View {
     // 初始反饋問題視圖
     private var initialFeedbackView: some View {
         VStack {
-            Text("睡眠檢測準確嗎？")
+            Text(NSLocalizedString("sleep_detection_accurate_question", comment: "睡眠檢測準確嗎？"))
                 .font(.headline)
                 .foregroundColor(.white)
                 .padding(.top, 5)
@@ -1850,7 +1873,7 @@ struct ContentView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 36))
                             .foregroundColor(.green)
-                        Text("準確")
+                        Text(NSLocalizedString("accurate", comment: "準確"))
                             .font(.caption)
                             .foregroundColor(.white)
                     }
@@ -1872,7 +1895,7 @@ struct ContentView: View {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 36))
                             .foregroundColor(.red)
-                        Text("不準確")
+                        Text(NSLocalizedString("inaccurate", comment: "不準確"))
                             .font(.caption)
                             .foregroundColor(.white)
                     }
@@ -1889,7 +1912,7 @@ struct ContentView: View {
                 viewModel.showingFeedbackPrompt = false
                 feedbackStage = .initial // 重置狀態
             }) {
-                Text("暫不評價")
+                Text(NSLocalizedString("not_now_evaluation", comment: "暫不評價"))
                     .font(.footnote)
                     .foregroundColor(.gray)
             }
@@ -1902,19 +1925,19 @@ struct ContentView: View {
     // 修改建議調整頁面視圖
     private var suggestionFeedbackView: some View {
         VStack(spacing: 15) {
-            Text("需要調整檢測靈敏度？")
+            Text(NSLocalizedString("need_adjust_sensitivity", comment: "需要調整檢測靈敏度？"))
                 .font(.headline)
                 .foregroundColor(.white)
                 .padding(.top, 5)
             
             // 簡化的描述文字
-            Text("系統已記錄並自動優化設定。")
+            Text(NSLocalizedString("system_recorded_optimized", comment: "系統已記錄並自動優化設定。"))
                     .font(.caption)
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                 
-            Text("如需手動調整，您可")
+            Text(NSLocalizedString("manual_adjust_hint", comment: "如需手動調整，您可"))
                     .font(.caption)
                 .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
@@ -1926,7 +1949,7 @@ struct ContentView: View {
                 feedbackStage = .initial
                 selectedTab = 1 // 切換到設置頁面 (設定頁現為第二頁)
             }) {
-                Text("前往設置")
+                Text(NSLocalizedString("go_to_settings", comment: "前往設置"))
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -1943,7 +1966,7 @@ struct ContentView: View {
                 viewModel.showingFeedbackPrompt = false
                 feedbackStage = .initial
             }) {
-                Text("稍後再說")
+                Text(NSLocalizedString("later", comment: "稍後再說"))
                     .font(.footnote)
                     .foregroundColor(.gray)
             }
@@ -1961,11 +1984,11 @@ struct ContentView: View {
                 .foregroundColor(.pink)
                 .padding(.top, 5)
             
-            Text("感謝您的反饋！")
+            Text(NSLocalizedString("thanks_feedback", comment: "感謝您的反饋！"))
                 .font(.headline)
                 .foregroundColor(.white)
             
-            Text(feedbackWasAccurate ? "我們將繼續優化睡眠檢測" : "您的反饋已記錄")
+            Text(feedbackWasAccurate ? NSLocalizedString("continue_optimize", comment: "我們將繼續優化睡眠檢測") : NSLocalizedString("feedback_recorded", comment: "您的反饋已記錄"))
                 .font(.caption)
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
@@ -1993,12 +2016,12 @@ struct ContentView: View {
                     .foregroundColor(.red)
                     .padding(.top, 20)
                 
-                Text("小睡結束！")
+                Text(NSLocalizedString("nap_ended_title", comment: "小睡結束標題"))
                     .font(.title3)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                 
-                Text("現在是時候起來了")
+                Text(NSLocalizedString("time_to_wake_up", comment: "起來時間提示"))
                     .font(.body)
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
@@ -2009,7 +2032,7 @@ struct ContentView: View {
                     // 停止鬧鈴
                     viewModel.stopAlarm()
                 }) {
-                    Text("停止鬧鈴")
+                    Text(NSLocalizedString("stop_alarm", comment: "停止鬧鈴按鈕"))
                         .font(.system(size: 18, weight: .medium))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -2158,9 +2181,9 @@ struct HeartRateThresholdSettingView: View {
     // 當前閾值顯示
     private var currentThresholdText: String {
         let rhr = viewModel.restingHeartRate
-        guard rhr > 0 else { return "RHR的--%" }
+        guard rhr > 0 else { return NSLocalizedString("rhr_no_data_format", comment: "RHR的--") }
         let percent = Int(round(viewModel.heartRateThreshold / rhr * 100))
-        return "RHR的\(percent)%"
+        return String.localizedStringWithFormat(NSLocalizedString("rhr_percentage_format", comment: "RHR的%@"), "\(percent)%")
     }
     
     var body: some View {
@@ -2168,7 +2191,7 @@ struct HeartRateThresholdSettingView: View {
             VStack(spacing: 20) {
                 // 當前閾值顯示
                 VStack(spacing: 10) {
-                    Text("當前心率閾值")
+                    Text(NSLocalizedString("current_heart_rate_threshold", comment: "當前心率閾值"))
                         .font(.headline)
                         .foregroundColor(.white)
                     
@@ -2177,7 +2200,7 @@ struct HeartRateThresholdSettingView: View {
                         .foregroundColor(.white)
                         .padding(.vertical, 5)
                     
-                    Text("當心率低於此閾值且保持穩定，系統會判定您已進入睡眠狀態")
+                    Text(NSLocalizedString("threshold_description", comment: "當心率低於此閾值且保持穩定，系統會判定您已進入睡眠狀態"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .multilineTextAlignment(.center)
@@ -2199,7 +2222,7 @@ struct HeartRateThresholdSettingView: View {
                                 .foregroundColor(.red)
                                 .font(.system(size: 18))
                             
-                            Text("提高標準 (判定更嚴謹)")
+                            Text(NSLocalizedString("raise_standard_strict_judgment", comment: "提高標準 (判定更嚴謹)"))
                                 .foregroundColor(.white)
                                 .font(.system(size: 16, weight: .medium))
                             
@@ -2224,7 +2247,7 @@ struct HeartRateThresholdSettingView: View {
                                 .foregroundColor(.blue)
                                 .font(.system(size: 18))
                             
-                            Text("降低標準 (判定更寬鬆)")
+                            Text(NSLocalizedString("lower_standard_loose_judgment", comment: "降低標準 (判定更寬鬆)"))
                                 .foregroundColor(.white)
                                 .font(.system(size: 16, weight: .medium))
                             
@@ -2242,18 +2265,18 @@ struct HeartRateThresholdSettingView: View {
                 
                 // 說明
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("心率閾值說明")
+                    Text(NSLocalizedString("heart_rate_threshold_explanation", comment: "心率閾值說明"))
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding(.bottom, 4)
                     
-                    Text("• 判定嚴謹：降低閾值使系統需要更低的心率才會判定入睡，減少誤判但可能延遲檢測")
+                    Text(NSLocalizedString("strict_detection_explanation", comment: "• 判定嚴謹：降低閾值使系統需要更低的心率才會判定入睡，減少誤判但可能延遲檢測"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                     
-                    Text("• 判定寬鬆：提高閾值使系統更容易判定入睡，可能更快檢測但增加誤判機率")
+                    Text(NSLocalizedString("loose_detection_explanation", comment: "• 判定寬鬆：提高閾值使系統更容易判定入睡，可能更快檢測但增加誤判機率"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2266,7 +2289,7 @@ struct HeartRateThresholdSettingView: View {
             .padding(.vertical, 20)
         }
         .background(Color.black)
-        .navigationTitle("心率閾值")
+        .navigationTitle(NSLocalizedString("heart_rate_threshold_title", comment: "心率閾值"))
     }
 }
 
@@ -2305,19 +2328,19 @@ struct SensitivityDetailSettingView: View {
                 
                 // 嚴謹/中性/寬鬆標籤
                     HStack {
-                        Text("嚴謹")
+                        Text(NSLocalizedString("strict", comment: "嚴謹"))
                             .font(.caption)
                             .foregroundColor(.blue)
                         
                         Spacer()
                         
-                        Text("中性")
+                        Text(NSLocalizedString("neutral", comment: "中性"))
                             .font(.caption)
                             .foregroundColor(.gray)
                         
                         Spacer()
                         
-                        Text("寬鬆")
+                        Text(NSLocalizedString("loose", comment: "寬鬆"))
                             .font(.caption)
                             .foregroundColor(.red)
                     }
@@ -2362,18 +2385,18 @@ struct SensitivityDetailSettingView: View {
                 
                 // 說明
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("敏感度調整說明")
+                    Text(NSLocalizedString("sensitivity_adjustment_explanation", comment: "敏感度調整說明"))
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding(.bottom, 4)
                     
-                    Text("• 嚴謹：系統更嚴格判定睡眠狀態，降低誤判率但可能延遲檢測")
+                    Text(NSLocalizedString("strict_sensitivity_explanation", comment: "• 嚴謹：系統更嚴格判定睡眠狀態，降低誤判率但可能延遲檢測"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                     
-                    Text("• 寬鬆：系統更寬鬆判定睡眠狀態，可能更快檢測但增加誤判率")
+                    Text(NSLocalizedString("loose_sensitivity_explanation", comment: "• 寬鬆：系統更寬鬆判定睡眠狀態，可能更快檢測但增加誤判率"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2386,7 +2409,7 @@ struct SensitivityDetailSettingView: View {
             .padding(.vertical, 10) // 減少頂部和底部間距
         }
         .background(Color.black)
-        .navigationTitle("檢測敏感度")
+        .navigationTitle(NSLocalizedString("detection_sensitivity_title", comment: "檢測敏感度"))
     }
 }
 
@@ -2401,7 +2424,7 @@ struct AgeGroupDetailSettingView: View {
             VStack(spacing: 20) {
                 // 當前年齡組
                 if let currentAgeGroup = viewModel.userSelectedAgeGroup {
-                    Text("當前選擇: \(ageGroupTitle(currentAgeGroup))")
+                    Text("\(NSLocalizedString("current_selection", comment: "當前選擇")): \(ageGroupTitle(currentAgeGroup))")
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding(.top, 10)
@@ -2409,22 +2432,22 @@ struct AgeGroupDetailSettingView: View {
                 
                 // 年齡組選項
                 VStack(spacing: 10) {
-                    ageGroupButtonLarge(title: "青少年 (< 18歲)", description: "偏好更快入睡檢測，閾值設為87.5%", ageGroup: .teen)
+                    ageGroupButtonLarge(title: NSLocalizedString("teenager_group", comment: "青少年 (< 18歲)"), description: NSLocalizedString("teenager_description", comment: "偏好更快入睡檢測，閾值設為87.5%"), ageGroup: .teen)
                     
-                    ageGroupButtonLarge(title: "成人 (18-60歲)", description: "標準檢測設定，閾值設為90%", ageGroup: .adult)
+                    ageGroupButtonLarge(title: NSLocalizedString("adult_group", comment: "成人 (18-60歲)"), description: NSLocalizedString("adult_description", comment: "標準檢測設定，閾值設為90%"), ageGroup: .adult)
                     
-                    ageGroupButtonLarge(title: "銀髮族 (> 60歲)", description: "更嚴謹的檢測，閾值設為93.5%", ageGroup: .senior)
+                    ageGroupButtonLarge(title: NSLocalizedString("senior_group", comment: "銀髮族 (> 60歲)"), description: NSLocalizedString("senior_description", comment: "更嚴謹的檢測，閾值設為93.5%"), ageGroup: .senior)
                 }
                 .padding(.horizontal)
                 
                 // 說明
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("年齡組設置說明")
+                    Text(NSLocalizedString("age_group_settings_explanation", comment: "年齡組設置說明"))
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding(.bottom, 4)
                     
-                    Text("選擇您的年齡組可以最佳化睡眠檢測閾值和確認時間。\n• 青少年：更敏感的檢測，確認時間為2分鐘\n• 成人：標準檢測，確認時間為3分鐘\n• 銀髮族：更嚴謹的檢測，確認時間為4分鐘")
+                    Text(NSLocalizedString("age_group_explanation", comment: "選擇您的年齡組可以最佳化睡眠檢測閾值和確認時間。\n• 青少年：更敏感的檢測，確認時間為2分鐘\n• 成人：標準檢測，確認時間為3分鐘\n• 銀髮族：更嚴謹的檢測，確認時間為4分鐘"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2437,14 +2460,14 @@ struct AgeGroupDetailSettingView: View {
             .padding(.vertical, 20)
         }
         .background(Color.black)
-        .navigationTitle("年齡組設置")
+        .navigationTitle(NSLocalizedString("age_group_setting_title", comment: "年齡組設置"))
     }
     
     private func ageGroupTitle(_ ageGroup: AgeGroup) -> String {
         switch ageGroup {
-        case .teen: return "青少年"
-        case .adult: return "成人"
-        case .senior: return "銀髮族"
+        case .teen: return NSLocalizedString("teenager", comment: "青少年")
+        case .adult: return NSLocalizedString("adult", comment: "成人")
+        case .senior: return NSLocalizedString("senior", comment: "銀髮族")
         }
     }
     
@@ -2491,7 +2514,7 @@ struct HeartRateInfoView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("靜息心率:")
+                Text(NSLocalizedString("resting_heart_rate_label", comment: "靜息心率:"))
                     .foregroundColor(.gray)
                 Spacer()
                 Text("\(Int(viewModel.restingHeartRate))")
@@ -2503,7 +2526,7 @@ struct HeartRateInfoView: View {
             }
             
             HStack {
-                Text("睡眠閾值:")
+                Text(NSLocalizedString("sleep_threshold_label", comment: "睡眠閾值:"))
                     .foregroundColor(.gray)
                 Spacer()
                 Text("\(Int(viewModel.heartRateThreshold))")
@@ -2522,17 +2545,17 @@ struct HeartRateInfoView: View {
                     .padding(.vertical, 5)
                 
                 HStack {
-                    Text("自動優化:")
+                    Text(NSLocalizedString("automatic_optimization_label", comment: "自動優化:"))
                         .foregroundColor(.gray)
                     Spacer()
                     
-                    Text("已啟用")
+                    Text(NSLocalizedString("enabled", comment: "已啟用"))
                         .foregroundColor(.green)
                         .font(.system(size: 14, weight: .medium))
                 }
                 
                 HStack {
-                    Text("最近優化:")
+                    Text(NSLocalizedString("recent_optimization_label", comment: "最近優化:"))
                         .foregroundColor(.gray)
                     Spacer()
                     
@@ -2569,7 +2592,7 @@ struct FragmentedSleepSettingView: View {
                 // 開關選項
                 VStack(spacing: 15) {
                     HStack {
-                        Text("啟用碎片化睡眠模式")
+                        Text(NSLocalizedString("enable_fragmented_sleep_mode", comment: "啟用碎片化睡眠模式"))
                             .font(.headline)
                             .foregroundColor(.white)
                         
@@ -2589,35 +2612,35 @@ struct FragmentedSleepSettingView: View {
                 
                 // 說明
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("碎片化睡眠模式說明")
+                    Text(NSLocalizedString("fragmented_sleep_explanation", comment: "碎片化睡眠模式說明"))
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding(.bottom, 4)
                     
-                    Text("如果您經常經歷睡眠碎片化（頻繁短暫醒來），啟用此模式可以提高睡眠檢測準確度。")
+                    Text(NSLocalizedString("fragmented_sleep_description", comment: "如果您經常經歷睡眠碎片化（頻繁短暫醒來），啟用此模式可以提高睡眠檢測準確度。"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                     
-                    Text("啟用後的變化：")
+                    Text(NSLocalizedString("changes_after_enabling", comment: "啟用後的變化："))
                         .font(.subheadline)
                         .foregroundColor(.white)
                         .padding(.top, 4)
                     
-                    Text("• 縮短睡眠確認時間以捕捉短暫睡眠")
+                    Text(NSLocalizedString("shorten_confirmation_time", comment: "• 縮短睡眠確認時間以捕捉短暫睡眠"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                     
-                    Text("• 優化對微覺醒的處理")
+                    Text(NSLocalizedString("optimize_micro_awakening", comment: "• 優化對微覺醒的處理"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                     
-                    Text("• 調整心率監測模式，適應快速變化")
+                    Text(NSLocalizedString("adjust_hr_monitoring", comment: "• 調整心率監測模式，適應快速變化"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2629,24 +2652,24 @@ struct FragmentedSleepSettingView: View {
                 
                 // 適用情境
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("適用情境")
+                    Text(NSLocalizedString("applicable_scenarios", comment: "適用情境"))
                         .font(.headline)
                         .foregroundColor(.white)
                         .padding(.bottom, 4)
                     
-                    Text("• 淺眠者：容易短暫醒來的睡眠習慣")
+                    Text(NSLocalizedString("light_sleeper", comment: "• 淺眠者：容易短暫醒來的睡眠習慣"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                     
-                    Text("• 環境敏感者：對環境聲音或光線敏感")
+                    Text(NSLocalizedString("environment_sensitive", comment: "• 環境敏感者：對環境聲音或光線敏感"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.bottom, 2)
                     
-                    Text("• 午休困難者：難以持續維持午休狀態")
+                    Text(NSLocalizedString("nap_difficulty", comment: "• 午休困難者：難以持續維持午休狀態"))
                         .font(.caption)
                         .foregroundColor(.gray)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2659,10 +2682,352 @@ struct FragmentedSleepSettingView: View {
             .padding(.vertical, 20)
         }
         .background(Color.black)
-        .navigationTitle("碎片化睡眠")
+        .navigationTitle(NSLocalizedString("fragmented_sleep_title", comment: "碎片化睡眠"))
+    }
+}
+
+// OnboardingView：首次啟動前導頁
+struct OnboardingView: View {
+    @Binding var showOnboarding: Bool
+    @State private var page: Int = 0
+    @State private var scrolledToBottom: Bool = false
+    @State private var showIntro: Bool = true
+    @State private var introOpacity: Double = 1.0
+    @State private var shareUsage: Bool = {
+        if let saved = UserDefaults.standard.object(forKey: "shareUsage") as? Bool {
+            return saved
+        }
+        return true // 預設勾選
+    }()
+    
+    var body: some View {
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
+
+            // Intro overlay
+            if showIntro {
+                VStack(spacing: 8) {
+                    Spacer()
+                    Text(NSLocalizedString("welcome_to", comment: "歡迎使用"))
+                        .font(.system(size: 22, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text(NSLocalizedString("powernap", comment: "PowerNap"))
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Spacer()
+                }
+                .opacity(introOpacity)
+                .onAppear {
+                    // 4 秒停留後淡出 0.8 秒
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                        withAnimation(.easeInOut(duration: 0.8)) {
+                            introOpacity = 0
+                        }
+                        // 完成後移除視圖
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                            showIntro = false
+                        }
+                    }
+                }
+            } else {
+                // 主導覽頁 (3 頁)
+                TabView(selection: $page) {
+                    // Page 0 – 產品簡介
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text(NSLocalizedString("what_is_powernap", comment: "什麼是 PowerNap？"))
+                                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.top, 12)
+                                Text(NSLocalizedString("powernap_description", comment: "PowerNap 是專為 Apple Watch 打造的科學小睡工具，結合心率與動作偵測..."))
+                                    .foregroundColor(.white)
+                                    .padding(.bottom, 30)
+                                Button(action: { withAnimation { page = 1 } }) {
+                                    Text(NSLocalizedString("next_page", comment: "下一頁"))
+                                        .font(.system(.headline, design: .rounded))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(scrolledToBottom ? Color.blue : Color.gray)
+                                        .cornerRadius(12)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .disabled(!scrolledToBottom)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
+                                Color.clear.frame(height: 1).id("bottom0")
+                            }
+                            .padding(.horizontal, 24)
+                            .background(GeometryReader { geo in
+                                Color.clear.onAppear { scrolledToBottom = false }
+                                    .onChange(of: geo.frame(in: .named("scroll0")).maxY) { _, _ in
+                                        DispatchQueue.main.async { scrolledToBottom = true }
+                                    }
+                            })
+                        }
+                        .coordinateSpace(name: "scroll0")
+                    }
+                    .tag(0)
+                    // Page 1 – 使用說明 (原 Page 2)
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text(NSLocalizedString("how_to_use_correctly", comment: "如何正確使用？"))
+                                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.top, 12)
+                                Text(NSLocalizedString("how_to_use_description", comment: "PowerNap 會透過心率與動作資料自動判定入睡，初期準確率約 70–90%..."))
+                                    .foregroundColor(.white)
+                                    .padding(.bottom, 30)
+                                Button(action: { withAnimation { page = 2 } }) {
+                                    Text(NSLocalizedString("next_page", comment: "下一頁"))
+                                        .font(.system(.headline, design: .rounded))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(scrolledToBottom ? Color.blue : Color.gray)
+                                        .cornerRadius(12)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .disabled(!scrolledToBottom)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
+                                Color.clear.frame(height: 1).id("bottom1")
+                            }
+                            .padding(.horizontal, 24)
+                            .background(GeometryReader { geo in
+                                Color.clear.onAppear { scrolledToBottom = false }
+                                    .onChange(of: geo.frame(in: .named("scroll1")).maxY) { _, _ in
+                                        DispatchQueue.main.async { scrolledToBottom = true }
+                                    }
+                            })
+                        }
+                        .coordinateSpace(name: "scroll1")
+                    }
+                    .tag(1)
+                    // Page 2 – 反饋教學
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text(NSLocalizedString("how_to_report_accuracy", comment: "如何回報檢測準確度？"))
+                                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.top, 12)
+
+                                Text(NSLocalizedString("how_to_report_description", comment: "準確 － PowerNap 準時以震動喚醒且感受良好時..."))
+                                    .foregroundColor(.white)
+                                    .padding(.bottom, 30)
+
+                                Toggle(isOn: $shareUsage) {
+                                    Text(NSLocalizedString("share_anonymous_usage_data", comment: "分享匿名使用資料"))
+                                        .foregroundColor(.white)
+                                }
+                                .toggleStyle(.switch)
+                                .padding(.horizontal)
+
+                                Text(NSLocalizedString("share_usage_detailed_description", comment: "分享匿名使用資料，協助我們持續優化偵測，讓更多人享有高品質小睡體驗。此設定不會上傳任何可識別個人或健康數據，您可隨時關閉。"))
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.leading)
+                                    .padding(.horizontal)
+
+                                Button(action: {
+                                    UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+                                    UserDefaults.standard.set(shareUsage, forKey: "shareUsage")
+                                    requestInitialPermissions()
+                                    withAnimation { showOnboarding = false }
+                                }) {
+                                    Text(NSLocalizedString("start_using", comment: "開始使用"))
+                                        .font(.system(.headline, design: .rounded))
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(scrolledToBottom ? Color.green : Color.gray)
+                                        .cornerRadius(12)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .disabled(!scrolledToBottom)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 20)
+
+                                Color.clear.frame(height: 1).id("bottom2")
+                            }
+                            .padding(.horizontal, 24)
+                            .background(GeometryReader { geo in
+                                Color.clear.onAppear { scrolledToBottom = false }
+                                    .onChange(of: geo.frame(in: .named("scroll2")).maxY) { _, _ in
+                                        DispatchQueue.main.async { scrolledToBottom = true }
+                                    }
+                            })
+                        }
+                        .coordinateSpace(name: "scroll2")
+                    }
+                    .tag(2)
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .always))
+            }
+        }
+    }
+    
+    private func requestInitialPermissions() {
+        // 通知權限
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        // HealthKit 權限
+        if HKHealthStore.isHealthDataAvailable() {
+            let healthStore = HKHealthStore()
+            let typesToRead: Set<HKObjectType> = [
+                HKObjectType.quantityType(forIdentifier: .heartRate)!,
+                HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
+                HKObjectType.quantityType(forIdentifier: .restingHeartRate)!,
+                HKObjectType.characteristicType(forIdentifier: .dateOfBirth)!
+            ]
+            let typesToShare: Set<HKSampleType> = [
+                HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+            ]
+            healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead) { _, _ in }
+        }
     }
 }
 
 #Preview {
     ContentView()
+}
+
+/// 匿名資料分享設定頁面
+struct ShareUsageSettingView: View {
+    @Binding var shareUsage: Bool
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                Toggle(isOn: $shareUsage) {
+                    Text(NSLocalizedString("share_anonymous_usage_data_toggle", comment: "分享匿名使用資料"))
+                        .foregroundColor(.white)
+                }
+                .toggleStyle(SwitchToggleStyle(tint: .yellow))
+                .padding()
+
+                Text(NSLocalizedString("share_usage_detailed_description_toggle", comment: "分享匿名使用資料，協助我們持續優化偵測，讓更多人享有高品質小睡體驗。此設定不會上傳任何可識別個人或健康數據，您可隨時關閉。"))
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal)
+
+                Spacer()
+            }
+            .padding(.top, 20)
+        }
+        .background(Color.black)
+        .navigationTitle(NSLocalizedString("data_sharing_title", comment: "資料分享"))
+        .onChange(of: shareUsage) { _, newValue in
+            UserDefaults.standard.set(newValue, forKey: "shareUsage")
+        }
+    }
+}
+
+// 說明主選單
+struct InfoMenuView: View {
+    var body: some View {
+        List {
+            NavigationLink(destination: InfoWhatView()) {
+                Label(NSLocalizedString("what_is_powernap_title", comment: "什麼是 PowerNap？"), systemImage: "sparkles")
+            }
+            NavigationLink(destination: InfoHowView()) {
+                Label(NSLocalizedString("how_to_use_correctly_title", comment: "如何正確使用？"), systemImage: "questionmark.circle")
+            }
+            NavigationLink(destination: InfoFeedbackView()) {
+                Label(NSLocalizedString("how_to_report_accuracy_title", comment: "如何回報檢測準確度？"), systemImage: "hand.thumbsup")
+            }
+            NavigationLink(destination: InfoAuthorView()) {
+                Label(NSLocalizedString("authors_message_title", comment: "作者的話"), systemImage: "person.crop.circle")
+            }
+        }
+        .navigationTitle(NSLocalizedString("help_title", comment: "說明"))
+        .background(Color.black)
+    }
+}
+
+// 什麼是 PowerNap（完整版）
+struct InfoWhatView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(NSLocalizedString("what_is_powernap_title", comment: "什麼是 PowerNap？"))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.top, 12)
+                Text(NSLocalizedString("what_is_powernap_full", comment: "PowerNap 是一款專為 Apple Watch 用戶打造的科學小睡應用..."))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+        }
+        .background(Color.black)
+        .navigationTitle(NSLocalizedString("what_is_powernap_title", comment: "什麼是 PowerNap？"))
+    }
+}
+
+// 如何正確使用
+struct InfoHowView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(NSLocalizedString("how_to_use_correctly_title", comment: "如何正確使用？"))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.top, 12)
+                Text(NSLocalizedString("how_to_use_correctly_full", comment: "PowerNap 會透過心率與動作資料自動判定入睡..."))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+        }
+        .background(Color.black)
+        .navigationTitle(NSLocalizedString("how_to_use_correctly_title", comment: "如何正確使用？"))
+    }
+}
+
+// 如何回報檢測準確度
+struct InfoFeedbackView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(NSLocalizedString("how_to_report_accuracy_title", comment: "如何回報檢測準確度？"))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.top, 12)
+                Text(NSLocalizedString("how_to_report_accuracy_full", comment: "準確 － PowerNap 準時以震動喚醒且感受良好時..."))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 30)
+            }
+            .padding(.horizontal, 24)
+        }
+        .background(Color.black)
+        .navigationTitle(NSLocalizedString("how_to_report_accuracy_title", comment: "如何回報檢測準確度？"))
+    }
+}
+
+// 作者的話
+struct InfoAuthorView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Text(NSLocalizedString("authors_message_title", comment: "作者的話"))
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.top, 12)
+
+                Text(NSLocalizedString("authors_message_content", comment: "身為一個曾經每晚醒來 12～15 次、長期受失眠困擾的人..."))
+                    .font(.body)
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 24)
+        }
+        .background(Color.black)
+        .navigationTitle(NSLocalizedString("authors_message_title", comment: "作者的話"))
+    }
 }

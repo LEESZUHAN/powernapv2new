@@ -60,12 +60,12 @@ struct AdvancedLogsView: View {
     private var logFileListView: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack {
-                Text("歷史紀錄")
+                Text(NSLocalizedString("history_records", comment: "歷史紀錄"))
                     .font(.headline)
                     .foregroundColor(.white)
                     .padding(.vertical, 5)
                 if logFiles.isEmpty {
-                    Text("尚無記錄")
+                    Text(NSLocalizedString("no_records", comment: "尚無記錄"))
                         .foregroundColor(.gray)
                         .padding(.top, 20)
                 } else {
@@ -99,7 +99,7 @@ struct AdvancedLogsView: View {
                 Button(action: loadLogFiles) {
                     HStack {
                         Image(systemName: "arrow.clockwise")
-                        Text("重新整理")
+                        Text(NSLocalizedString("refresh", comment: "重新整理"))
                     }
                     .font(.system(size: 14))
                     .foregroundColor(.blue)
@@ -116,13 +116,13 @@ struct AdvancedLogsView: View {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 12) {
                     // 分析標題
-                    Text("睡眠數據分析")
+                    Text(NSLocalizedString("sleep_status_analysis", comment: "睡眠數據分析"))
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .padding(.bottom, 4)
                     // 心率數據
                     HStack {
-                        Text("心率數據")
+                        Text(NSLocalizedString("heart_rate_data", comment: "心率數據"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -136,7 +136,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 偏離比例
                     HStack {
-                        Text("偏離比例")
+                        Text(NSLocalizedString("deviation_ratio", comment: "偏離比例"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -150,7 +150,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 異常評分
                     HStack {
-                        Text("異常評分")
+                        Text(NSLocalizedString("anomaly_score", comment: "異常評分"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -164,7 +164,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 累計分數
                     HStack {
-                        Text("累計分數")
+                        Text(NSLocalizedString("cumulative_score", comment: "累計分數"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -178,7 +178,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 閾值百分比
                     HStack {
-                        Text("閾值百分比")
+                        Text(NSLocalizedString("threshold_percentage", comment: "閾值百分比"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -192,7 +192,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 系統判定
                     HStack {
-                        Text("系統判定")
+                        Text(NSLocalizedString("system_detection", comment: "系統判定"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -206,7 +206,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 漏/誤報
                     HStack {
-                        Text("漏/誤報")
+                        Text(NSLocalizedString("false_positive_negative", comment: "漏/誤報"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -220,13 +220,13 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 用戶反饋
                     HStack {
-                        Text("用戶反饋")
+                        Text(NSLocalizedString("user_feedback", comment: "用戶反饋"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
                         Text(userFeedbackDisplay)
                             .font(.system(size: 12))
-                            .foregroundColor(userFeedbackDisplay == "-" ? .gray : (userFeedbackDisplay == "準確" ? .green : .orange))
+                            .foregroundColor(userFeedbackDisplay == "-" ? .gray : (userFeedbackDisplay == NSLocalizedString("accurate_feedback_comparison", comment: "準確") ? .green : .orange))
                     }
                     .padding(.vertical, 8)
                     .padding(.horizontal, 10)
@@ -234,7 +234,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 閾值調整（合併短/長/來源）
                     HStack {
-                        Text("閾值調整")
+                        Text(NSLocalizedString("hr_threshold_adjustment", comment: "閾值調整"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -248,7 +248,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 確認時間（合併短/長）
                     HStack {
-                        Text("確認時間")
+                        Text(NSLocalizedString("confirmation_time", comment: "確認時間"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -262,7 +262,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // trend
                     HStack {
-                        Text("心率趨勢 (trend)")
+                        Text(NSLocalizedString("heart_rate_trend", comment: "心率趨勢 (trend)"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -276,7 +276,7 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                     // 判定來源
                     HStack {
-                        Text("判定來源")
+                        Text(NSLocalizedString("detection_source", comment: "判定來源"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.white)
                         Spacer()
@@ -296,7 +296,7 @@ struct AdvancedLogsView: View {
                         .background(Color.gray.opacity(0.3))
                         .padding(.vertical, 8)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("原始日誌")
+                        Text(NSLocalizedString("raw_logs", comment: "原始日誌"))
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.gray)
                             .padding(.horizontal)
@@ -448,8 +448,10 @@ struct AdvancedLogsView: View {
                 }
             }
             if let detected = detectedSleep, let accurateFlag = feedbackAccurate {
-                if !accurateFlag {
-                    tmpDetectionError = detected ? "誤報" : "漏報"
+                if accurateFlag {
+                    tmpDetectionError = detected ? NSLocalizedString("accurate_detection_error", comment: "準確") : NSLocalizedString("accurate_detection_error", comment: "準確")
+                } else if feedbackAccurate == false {
+                    tmpDetectionError = detected ? NSLocalizedString("false_positive_detection_error", comment: "誤報") : NSLocalizedString("false_negative_detection_error", comment: "漏報")
                 }
             }
             // 解析 feedback/type、thresholdPercent、minDurationSeconds
@@ -469,13 +471,13 @@ struct AdvancedLogsView: View {
             }
             // 系統判定
             if let detected = detectedSleep {
-                tmpSystemDetection = detected ? "睡著" : "沒睡著"
+                tmpSystemDetection = detected ? NSLocalizedString("sleep", comment: "睡眠") : NSLocalizedString("not_sleeping", comment: "沒睡著")
             }
             // 用戶反饋顯示
             if let accFlag = feedbackAccurate {
-                tmpUserFeedback = accFlag ? "準確" : "不準確"
+                tmpUserFeedback = accFlag ? NSLocalizedString("accurate", comment: "準確") : NSLocalizedString("inaccurate", comment: "不準確")
             } else {
-                tmpUserFeedback = "未評價"
+                tmpUserFeedback = NSLocalizedString("not_evaluated", comment: "未評價")
             }
             // 心率閾值調整 (短期)
             for entry in entries.reversed() {
@@ -503,10 +505,10 @@ struct AdvancedLogsView: View {
                 thresholdLongDisplay = intVal > 0 ? "+\(intVal)%" : "\(intVal)%"
             }
             if deltaDurationShortVal != 0 {
-                confirmationShortDisplay = deltaDurationShortVal > 0 ? "+\(deltaDurationShortVal)秒" : "\(deltaDurationShortVal)秒"
+                confirmationShortDisplay = deltaDurationShortVal > 0 ? "+\(deltaDurationShortVal)\(NSLocalizedString("seconds_unit_suffix", comment: "秒"))" : "\(deltaDurationShortVal)\(NSLocalizedString("seconds_unit_suffix", comment: "秒"))"
             }
             if deltaDurationLongVal != 0 {
-                confirmationLongDisplay = deltaDurationLongVal > 0 ? "+\(deltaDurationLongVal)秒" : "\(deltaDurationLongVal)秒"
+                confirmationLongDisplay = deltaDurationLongVal > 0 ? "+\(deltaDurationLongVal)\(NSLocalizedString("seconds_unit_suffix", comment: "秒"))" : "\(deltaDurationLongVal)\(NSLocalizedString("seconds_unit_suffix", comment: "秒"))"
             }
             // trend
             for entry in entries.reversed() {
@@ -518,6 +520,16 @@ struct AdvancedLogsView: View {
                         tmpDetectSource = src
                     }
                     break
+                }
+            }
+            // 若 detectSource 缺失，嘗試推斷
+            if tmpDetectSource == "-" {
+                if tmpTrend != "-" {
+                    tmpDetectSource = "trend"
+                } else if let detected = detectedSleep, detected {
+                    tmpDetectSource = "window"
+                } else {
+                    tmpDetectSource = "unknown"
                 }
             }
             // 解析 adjustmentSourceShort
