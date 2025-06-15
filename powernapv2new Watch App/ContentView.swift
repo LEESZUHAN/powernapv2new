@@ -156,7 +156,10 @@ struct ContentView: View {
             // 修改為根據確認時間動態調整的時間範圍
             Picker(selection: $viewModel.napMinutes, label: Text(NSLocalizedString("minutes_label", comment: "分鐘數選擇標籤"))) {
                 ForEach(viewModel.validNapDurationRange, id: \.self) { minutes in
-                    Text("\(minutes)").tag(minutes)
+                    Text("\(minutes)")
+                        .font(.system(size: 20, weight: .medium, design: .rounded))
+                        .foregroundColor(.white)
+                        .tag(minutes)
                     }
                 }
             .pickerStyle(WheelPickerStyle())
@@ -456,11 +459,6 @@ struct ContentView: View {
         VStack {
             Spacer().frame(height: 20)
             
-            Text(NSLocalizedString("monitoring_status", comment: "監測中狀態"))
-                .font(.system(size: 28, weight: .medium))
-                .foregroundColor(.white)
-                .padding(.bottom, 10)
-            
             Spacer()
             
             // 等待文字 - 接近置中
@@ -470,15 +468,6 @@ struct ContentView: View {
                 Text(timeString(from: viewModel.remainingTime))
                     .font(.system(size: 48, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-
-                // 睡眠提示訊息
-                Text(NSLocalizedString("sleep_detected", comment: "已偵測到睡眠"))
-                    .font(.system(size: 14))
-                    .foregroundColor(.green)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.green.opacity(0.2))
-                    .cornerRadius(10)
 
                 // 睡眠階段指示器
                 Text(sleepPhaseText)
@@ -567,15 +556,6 @@ struct ContentView: View {
                 .font(.system(size: 48, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
             
-                // 新增：睡眠提示訊息
-                Text(NSLocalizedString("sleep_detected", comment: "已偵測到睡眠"))
-                    .font(.system(size: 14))
-                    .foregroundColor(.green)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.green.opacity(0.2))
-                    .cornerRadius(10)
-            
             // 睡眠階段指示器
             Text(sleepPhaseText)
                 .font(.system(size: 18))
@@ -586,10 +566,6 @@ struct ContentView: View {
                     Text(timeString(from: viewModel.napDuration))
                         .font(.system(size: 48, weight: .bold, design: .rounded))
                         .foregroundColor(.white.opacity(0.6))
-                    
-                    Text(NSLocalizedString("waiting_deep_sleep", comment: "等待深度睡眠"))
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
                 }
                 
                 // 睡眠階段指示器 - 更顯眼
@@ -1328,8 +1304,8 @@ struct ContentView: View {
     private func getSystemDetection() -> (String, Bool) {
         // 新格式：從日誌行中提取系統判定結果
         for line in logContent.components(separatedBy: .newlines) {
-            // 檢查是否包含深度睡眠或輕度睡眠
-            if line.contains("深度睡眠") || line.contains("輕度睡眠") {
+            // 檢查是否包含休息中或初步休息
+            if line.contains(NSLocalizedString("deep_rest", comment: "休息中")) || line.contains("初步休息") {
                 return ("睡眠", true)
             }
             
@@ -1354,7 +1330,7 @@ struct ContentView: View {
         }
         
         // 根據sleepState判斷
-        if logContent.contains("深度睡眠") || logContent.contains("輕度睡眠") {
+        if logContent.contains(NSLocalizedString("deep_rest", comment: "休息中")) || logContent.contains("初步休息") {
             return ("睡眠", true)
         } else if logContent.contains("清醒") || logContent.contains("休息") {
             if getSleepSessionStatus() == "未入睡" {
@@ -1597,17 +1573,17 @@ struct ContentView: View {
         return String(format: "%02d:%02d", minutes, seconds)
     }
     
-    // 獲取當前睡眠階段的描述文本
+    // 根據睡眠階段獲取文本
     private var sleepPhaseText: String {
         switch viewModel.sleepPhase {
         case .awake:
-            return "清醒狀態"
+            return "清醒"
         case .falling:
             return "即將入睡"
         case .light:
-            return "輕度睡眠"
+            return "初步休息"
         case .deep:
-            return "深度睡眠"
+            return NSLocalizedString("deep_rest", comment: "休息中")
         case .rem:
             return "REM睡眠"
         }
@@ -2090,7 +2066,7 @@ struct ContentView: View {
     private func getSleepSessionStatus() -> String {
         // 新格式：從日誌行中提取睡眠會話狀態
         for line in logContent.components(separatedBy: .newlines) {
-            if line.contains("深度睡眠") || line.contains("輕度睡眠") {
+            if line.contains(NSLocalizedString("deep_rest", comment: "休息中")) || line.contains("初步休息") {
                 return "已入睡"
             } else if line.contains("監測中取消") || line.contains("用戶取消監測") {
                 return "監測中取消"
@@ -2113,8 +2089,8 @@ struct ContentView: View {
         // 舊格式
         if logContent.contains("檢測到睡眠") || 
            logContent.contains("系統成功檢測到睡眠") || 
-           logContent.contains("深度睡眠") || 
-           logContent.contains("輕度睡眠") {
+           logContent.contains(NSLocalizedString("deep_rest", comment: "休息中")) || 
+           logContent.contains("初步休息") {
             return "已入睡"
         } else if logContent.contains("監測中取消") || 
                   logContent.contains("用戶取消監測") {

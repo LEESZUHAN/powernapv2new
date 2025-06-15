@@ -20,9 +20,9 @@ public enum SleepState: String, Codable {
         case .resting:
             return "靜止休息"
         case .lightSleep:
-            return "輕度睡眠"
+            return "初步休息"
         case .deepSleep:
-            return "深度睡眠"
+            return NSLocalizedString("deep_rest", comment: "休息中")
         }
     }
 }

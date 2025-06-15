@@ -2057,9 +2057,9 @@ class PowerNapViewModel: ObservableObject {
         case .falling:
             return "即將入睡"
         case .light:
-            return "輕度睡眠"
+            return "初步休息"
         case .deep:
-            return "深度睡眠"
+            return NSLocalizedString("deep_rest", comment: "休息中")
         case .rem:
             return "REM睡眠"
         }
