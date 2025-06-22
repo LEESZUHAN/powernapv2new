@@ -28,7 +28,7 @@ PowerNap與其他睡眠應用的最大區別在於其精確的睡眠檢測技術
 
 ## 隱私政策
 
-PowerNap重視用戶隱私。我們只收集改善應用功能所必要的數據，且不會與第三方共享您的個人信息。詳細信息請參閱我們的[隱私政策](https://leeszuhan.github.io/privacy-policy/)。
+PowerNap重視用戶隱私。我們僅收集改善功能所必要的資料，並**不會**與第三方共享您的健康資訊。若您在 App 內啟用「分享使用資料」，系統僅會上傳*去識別化*的使用統計與崩潰診斷（不含任何健康資料）至 Apple iCloud CloudKit。詳情請參閱[隱私政策](PrivacyPolicy.html)。
 
 ## 版權信息
 

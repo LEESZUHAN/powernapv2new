@@ -47,7 +47,7 @@ PowerNap 應用收集以下類型的資訊：
 
 - 所有健康、心率和睡眠數據都**存儲在您的設備上**，或通過 HealthKit 安全地存儲在 Apple 健康應用中
 - 睡眠數據記錄檔案僅保存在您的設備本地，預設保留14天
-- 我們**不會將您的健康數據上傳到我們的伺服器**或第三方雲端服務
+- 我們**不會將您的健康數據上傳到我們的伺服器**或第三方雲端服務；但為了偵錯與改進演算法，我們會上傳去識別化的使用與診斷資料（不含任何健康資訊）至 Apple iCloud CloudKit 公用資料庫
 - 應用使用 Apple 提供的安全機制保護您的資料
 
 ## 資訊分享
@@ -144,7 +144,7 @@ We use the collected information only for the following purposes:
 
 - All health, heart rate, and sleep data is **stored on your device** or securely stored in the Apple Health app through HealthKit
 - Sleep data log files are saved only locally on your device, retained for 14 days by default
-- We **do not upload your health data to our servers** or third-party cloud services
+- We **do not upload your health data to our servers** or third-party cloud services; but for debugging and improving algorithms, we upload anonymized usage and diagnostic data (no health information) to Apple iCloud CloudKit public database
 - The app uses Apple's security mechanisms to protect your data
 
 ## Information Sharing
@@ -189,3 +189,17 @@ If you have any questions or concerns about this Privacy Policy, please contact 
 ---
 
 This Privacy Policy complies with the requirements of the Apple App Store and the General Data Protection Regulation (GDPR). 
+
+## 使用與診斷資料  
+為了偵測崩潰並評估演算法準確度，PowerNap 會在 **您同意的前提下** 收集「匿名化使用統計」以及「崩潰診斷」。這些資料**不包含任何健康資訊**，僅包含：  
+- 隨機安裝 ID（無法回推個人身分）  
+- 裝置型號、系統版本  
+- 功能事件代碼（session_start / session_end / session_feedback）  
+- 崩潰堆疊 (Crash log)  
+
+**儲存位置**：Apple iCloud CloudKit 公用資料庫（僅開發者可存取，與個人 Apple ID 不關聯）  
+**保留期限**：最長 24 個月  
+**用途**：改善演算法準確度、修復錯誤  
+**選擇權**：您可於「設定 → PowerNap → 分享使用資料」隨時停用  
+
+--- 

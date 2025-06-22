@@ -64,4 +64,6 @@ PowerNap 是一款專為 Apple Watch 設計的應用程式，旨在協助使用�
   * 日誌 payload 新增 `trend`、`detectSource`、`schemaVersion`
   * TechnicalParamsTable.md、HeartRateSystem.md、ConvergenceSystem.md 已同步更新
 
-更多信息請參閱 [docs/README.md](docs/README.md)。 
+更多信息請參閱 [docs/README.md](docs/README.md)。
+
+PowerNap重視用戶隱私。我們僅收集改善功能所必要的資料，並**不會**與第三方共享您的健康資訊。若您在 App 內啟用「分享使用資料」，系統僅會上傳*去識別化*的使用統計與崩潰診斷（不含任何健康資料）至 Apple iCloud CloudKit。詳情請參閱[隱私政策](PrivacyPolicy.html)。 

@@ -246,20 +246,6 @@ struct AdvancedLogsView: View {
                     .padding(.horizontal, 10)
                     .background(Color(white: 0.15))
                     .cornerRadius(8)
-                    // 確認時間（合併短/長）
-                    HStack {
-                        Text(NSLocalizedString("confirmation_time", comment: "確認時間"))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white)
-                        Spacer()
-                        Text([confirmationShortDisplay, confirmationLongDisplay].filter { $0 != "-" }.joined(separator: " "))
-                            .font(.system(size: 12))
-                            .foregroundColor((confirmationShortDisplay == "-" && confirmationLongDisplay == "-") ? .gray : .blue)
-                    }
-                    .padding(.vertical, 8)
-                    .padding(.horizontal, 10)
-                    .background(Color(white: 0.15))
-                    .cornerRadius(8)
                     // trend
                     HStack {
                         Text(NSLocalizedString("heart_rate_trend", comment: "心率趨勢 (trend)"))
@@ -449,7 +435,7 @@ struct AdvancedLogsView: View {
             }
             if let detected = detectedSleep, let accurateFlag = feedbackAccurate {
                 if accurateFlag {
-                    tmpDetectionError = detected ? NSLocalizedString("accurate_detection_error", comment: "準確") : NSLocalizedString("accurate_detection_error", comment: "準確")
+                    tmpDetectionError = "-" // 準確時顯示 -
                 } else if feedbackAccurate == false {
                     tmpDetectionError = detected ? NSLocalizedString("false_positive_detection_error", comment: "誤報") : NSLocalizedString("false_negative_detection_error", comment: "漏報")
                 }

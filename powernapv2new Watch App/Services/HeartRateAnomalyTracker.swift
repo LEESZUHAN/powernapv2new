@@ -1,9 +1,10 @@
-#if USE_HR_TRACKER
 import Foundation
 import os
+import UserNotifications
 
 /// 心率異常追蹤器 - 負責區分暫時和持久性心率異常
 /// 用於提高對用戶睡眠狀態的準確判斷，並適應長期變化
+/// 基線重置系統已關閉，所有方法返回默認值，不進行實際的異常檢測和基線重置
 class HeartRateAnomalyTracker {
     // MARK: - 常量
     /// 異常類型分類閾值
@@ -38,11 +39,11 @@ class HeartRateAnomalyTracker {
     private(set) var downwardAnomalies: Int = 0      // 向下異常計數
     
     // 公開異常狀態，供外部系統使用
-    public enum AnomalyStatus: String {
-        case none = "正常"             // 無異常
-        case temporary = "暫時異常"     // 暫時性異常
-        case persistent = "持久異常"    // 持久性異常
-        case requiresReset = "需要重校準" // 異常程度需要重校準
+    public enum AnomalyStatus: String, CaseIterable {
+        case none = "none"
+        case temporary = "temporary" 
+        case persistent = "persistent"
+        case requiresReset = "requiresReset"
     }
     
     // MARK: - 初始化
@@ -101,125 +102,50 @@ class HeartRateAnomalyTracker {
         return status
     }
     
-    /// 評估心率偏離並計算異常分數 (不對稱異常檢測)
+    /// 評估心率偏離並更新異常狀態
     /// - Parameters:
     ///   - heartRate: 當前心率
     ///   - expectedHR: 預期心率
-    /// - Returns: 異常狀態分類
-    @discardableResult
-    func evaluateHeartRateDeviation(heartRate: Double, expectedHR: Double, date: Date = Date()) -> AnomalyStatus {
-        // 計算偏離百分比
-        let deviation = (heartRate - expectedHR) / expectedHR
-        
-        // 判斷偏離方向
-        if deviation > 0 {
-            // 向上偏離 (心率高於預期) - 維持嚴格檢測
-            return evaluateUpwardDeviation(deviation: deviation, date: date)
-        } else {
-            // 向下偏離 (心率低於預期) - 使用寬鬆標準
-            return evaluateDownwardDeviation(deviation: deviation, date: date)
-        }
+    /// - Returns: 當前異常狀態
+    func evaluateHeartRateDeviation(heartRate: Double, expectedHR: Double) -> AnomalyStatus {
+        // 基線重置系統已關閉，直接返回正常狀態
+        return .none
     }
     
-    /// 評估心率向上偏離 (更嚴格檢測)
-    private func evaluateUpwardDeviation(deviation: Double, date: Date) -> AnomalyStatus {
-        // 超過閾值才記錄異常
-        if deviation < Thresholds.upwardDeviationThreshold {
-            return .none // 在容忍範圍內
-        }
-        
-        // 計算異常嚴重度 (0-10)
-        var anomalySeverity: Double = 0
-        
-        // 非線性映射偏差到異常嚴重度
-        if deviation <= 0.1 {              // 5-10%，輕微異常
-            anomalySeverity = (deviation - Thresholds.upwardDeviationThreshold) * 100  // 0-5
-        } else if deviation <= 0.2 {       // 10-20%，中度異常
-            anomalySeverity = 5.0 + (deviation - 0.1) * 50  // 5-10
-        } else {                           // >20%，嚴重異常
-            anomalySeverity = 10.0  // 最大異常值
-        }
-        
-        // 記錄向上異常
-        upwardAnomalies += 1
-        
-        // 記錄異常並返回異常狀態
-        logger.info("心率向上偏離: +\(String(format: "%.1f", deviation * 100))%, 評分: \(String(format: "%.1f", anomalySeverity))")
-        return recordAnomaly(severity: anomalySeverity, date: date)
+    /// 獲取異常分數
+    func getAnomalyScore() -> Double {
+        return 0.0
     }
     
-    /// 評估心率向下偏離 (使用寬鬆標準)
-    private func evaluateDownwardDeviation(deviation: Double, date: Date) -> AnomalyStatus {
-        // 將負偏差轉為正值 (便於比較)
-        let absDeviation = abs(deviation)
-        
-        // 使用寬鬆閾值，超過閾值才記錄異常
-        if absDeviation < Thresholds.downwardDeviationThreshold {
-            return .none // 在容忍範圍內
-        }
-        
-        // 計算異常嚴重度 (0-10)，採用與向上偏離相同的邏輯，但會減半
-        var anomalySeverity: Double = 0
-        
-        // 非線性映射偏差到異常嚴重度
-        if absDeviation <= 0.15 {              // 8-15%，輕微異常
-            anomalySeverity = (absDeviation - Thresholds.downwardDeviationThreshold) * 70  // 0-4.9
-        } else if absDeviation <= 0.25 {       // 15-25%，中度異常
-            anomalySeverity = 4.9 + (absDeviation - 0.15) * 40  // 4.9-8.9
-        } else {                               // >25%，嚴重異常
-            anomalySeverity = 8.9 + (min(absDeviation - 0.25, 0.05) * 22)  // 8.9-10
-        }
-        
-        // 向下偏離異常分數減半
-        anomalySeverity *= Thresholds.downwardAdjustmentFactor
-        
-        // 記錄向下異常
-        downwardAnomalies += 1
-        
-        // 記錄異常並返回異常狀態
-        logger.info("心率向下偏離: -\(String(format: "%.1f", absDeviation * 100))%, 評分: \(String(format: "%.1f", anomalySeverity)) (已減半)")
-        return recordAnomaly(severity: anomalySeverity, date: date)
+    /// 獲取異常閾值
+    func getAnomalyThreshold() -> Int {
+        return 8
     }
     
     /// 獲取當前異常狀態
     func getCurrentAnomalyStatus() -> AnomalyStatus {
-        if cumulativeScore >= Thresholds.baselineResetThreshold {
-            return .requiresReset
-        } else if cumulativeScore >= Thresholds.persistentThreshold {
-            return .persistent
-        } else if cumulativeScore >= Thresholds.lowAnomalyScore {
-            return .temporary
-        } else {
-            return .none
-        }
+        return .none
     }
     
     /// 重置基線
     /// 用於當系統檢測到長期異常，需要適應新的基線時
     func resetBaseline() {
-        anomalyScores.removeAll()
-        cumulativeScore = 0
-        lastResetDate = Date()
-        baselineResets += 1
-        
-        logger.info("已重置心率異常基線，總重置次數: \(self.baselineResets)")
-        saveAnomalyData()
+        // 基線重置功能已關閉
     }
     
     /// 獲取異常摘要信息
     func getAnomalySummary() -> String {
-        let status = getCurrentAnomalyStatus()
-        return "異常狀態: \(status.rawValue), 累計分數: \(String(format: "%.1f", cumulativeScore)), 暫時異常: \(temporaryAnomalies), 持久異常: \(persistentAnomalies), 向上異常: \(upwardAnomalies), 向下異常: \(downwardAnomalies), 重置次數: \(baselineResets)"
+        return "基線重置系統已關閉"
     }
     
     // MARK: - 公開 Getter
     /// 取得最新一次異常評分 (若無則為 0)
     func getLatestAnomalyScore() -> Double {
-        return anomalyScores.values.max() ?? 0
+        return 0.0
     }
     /// 取得累計異常分數
     func getCumulativeScore() -> Double {
-        return cumulativeScore
+        return 0.0
     }
     
     // MARK: - 私有方法
@@ -305,6 +231,16 @@ class HeartRateAnomalyTracker {
             lastResetDate = Date(timeIntervalSince1970: resetTimeInterval)
         }
     }
+    
+    // MARK: - CloudKit數據記錄（保持格式兼容）
+    func toCloudKitData() -> [String: Any] {
+        return [
+            "cumulativeScore": AdvancedLogger.CodableValue.double(0.0),
+            "lastEvaluationDate": AdvancedLogger.CodableValue.string(""),
+            "anomalyThreshold": AdvancedLogger.CodableValue.int(8),
+            "status": AdvancedLogger.CodableValue.string("disabled")
+        ]
+    }
 }
 
 // 擴展Dictionary以支持mapKeys操作
@@ -316,19 +252,4 @@ extension Dictionary {
         }
         return result
     }
-}
-#else
-import Foundation
-
-struct HeartRateAnomalyTracker {
-    enum AnomalyStatus: String {
-        case none, temporary, persistent, requiresReset
-    }
-    func getCurrentAnomalyStatus() -> AnomalyStatus { .none }
-    func getAnomalySummary() -> String { "" }
-    func evaluateHeartRateDeviation(heartRate: Double, expectedHR: Double, date: Date = Date()) -> AnomalyStatus { .none }
-    func resetBaseline() { /* no-op stub */ }
-    func getLatestAnomalyScore() -> Double { 0 }
-    func getCumulativeScore() -> Double { 0 }
-}
-#endif 
+} 

@@ -36,7 +36,7 @@ PowerNap 是一款專為 Apple Watch 設計的應用程式，旨在協助使用�
   - 10–17 歲（青少年）：心率低於 RHR 的 87.5%，且維持 ≥ 2 分鐘
   - 18–59 歲（成人）：心率低於 RHR 的 90%，且維持 ≥ 3 分鐘
   - ≥ 60 歲（銀髮族）：心率低於 RHR 的 93.5%，需延長觀察窗至 ≥ 4 分鐘
-- 特殊情況處理：針對高訓練運動員（RHR 極低，40 bpm 以下），透過 HeartRateAnomalyTracker 和心率閾值自動優化機制處理異常情況
+- 特殊情況處理：針對高訓練運動員（RHR 極低，40 bpm 以下），透過 HeartRateAnomalyTracker 和心率閾值自動優化機制處理異常情況 **（註：HRAT 自 2025-06 起已暫時停用）**
 - 詳細技術實現請參考 HeartRateThresholdGuideline.md（主要技術文件）、HeartRateAlgorithmGuideline.md（補充文件）和 convergence_algorithm.md（收斂算法）
 
 **2. 活動偵測**：

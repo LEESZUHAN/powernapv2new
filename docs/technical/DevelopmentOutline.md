@@ -68,7 +68,7 @@ PowerNap是一個Apple Watch應用程式，幫助用戶通過短時間休息提�
   - 實現基於年齡組的差異化檢測參數
 
 ### 4. 輔助服務實現
-- 實現HeartRateAnomalyTracker.swift（心率異常追蹤）
+- 實現HeartRateAnomalyTracker.swift（心率異常追蹤） **→ 目前暫停使用，只保留 Stub**
 - 實現HeartRateThresholdOptimizer.swift（閾值優化）
 - 實現SlidingWindow.swift（滑動窗口處理）
 

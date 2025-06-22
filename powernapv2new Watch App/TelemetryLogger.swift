@@ -11,7 +11,19 @@ final class TelemetryLogger {
     
     /// 將事件暫存到快取
     func log(_ name: String, _ parameters: [String: String] = [:]) {
-        buffer.append((name, parameters))
+        var merged = parameters
+
+        // 自動帶入 App 版號與 Build 號，除非呼叫端已手動覆寫
+        if merged["appVersion"] == nil {
+            let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+            merged["appVersion"] = ver
+        }
+        if merged["buildNumber"] == nil {
+            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
+            merged["buildNumber"] = build
+        }
+
+        buffer.append((name, merged))
     }
     
     /// 將快取中的事件全部送出
@@ -36,8 +48,8 @@ final class TelemetryLogger {
         // 測試寫入
         CloudKitLogger.shared.save(name: "test_connection", params: ["test": "true", "timestamp_str": "\(Date())"])
         
-        // 測試讀取（使用不需要索引的方法）
-        CloudKitLogger.shared.fetchAllRecords { records, error in
+        // 測試讀取：改用 queryRecords 避免對 _defaultZone 執行 fetchZoneChanges 產生噪音錯誤
+        CloudKitLogger.shared.queryRecords(recordType: "session_end") { records, error in
             DispatchQueue.main.async {
                 if let error = error {
                     print("[TelemetryLogger] CloudKit test failed: \(error.localizedDescription)")

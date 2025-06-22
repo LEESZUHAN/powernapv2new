@@ -1,0 +1,339 @@
+{
+  "records" : [
+    {
+      "fields" : {
+        "rhr" : {
+          "type" : "stringType",
+          "value" : "63.8"
+        },
+        "trend" : {
+          "value" : "0.000",
+          "type" : "stringType"
+        },
+        "detectedSleep" : {
+          "type" : "stringType",
+          "value" : "false"
+        },
+        "thresholdPercent" : {
+          "value" : "99.0",
+          "type" : "stringType"
+        },
+        "thresholdBPM" : {
+          "type" : "stringType",
+          "value" : "63.2"
+        },
+        "detectSource" : {
+          "value" : "unknown",
+          "type" : "stringType"
+        },
+        "timestamp" : {
+          "type" : "timestampType",
+          "value" : "2025-06-13T06:48:14.847Z"
+        },
+        "ratio" : {
+          "value" : "1.000",
+          "type" : "stringType"
+        },
+        "userId" : {
+          "type" : "stringType",
+          "value" : "2A423E62-6452-48C8-9ECE-255BF2C2FD03"
+        },
+        "classification" : {
+          "value" : "情境4：系統正確未檢測到睡眠 (真陰性)",
+          "type" : "stringType"
+        }
+      },
+      "recordChangeTag" : "mbug4pvo",
+      "recordName" : "70785303-F103-404A-AFC9-997E64147D73",
+      "created" : {
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "timestamp" : "2025-06-13T06:48:15.109Z",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "recordType" : "session_end",
+      "modified" : {
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "timestamp" : "2025-06-13T06:48:15.109Z",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "zone" : {
+        "canonicalName" : "_defaultZone",
+        "zoneName" : "_defaultZone",
+        "zoneType" : "DEFAULT_ZONE",
+        "ownerRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      }
+    },
+    {
+      "recordType" : "session_end",
+      "modified" : {
+        "timestamp" : "2025-06-13T07:52:43.547Z",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "fields" : {
+        "userId" : {
+          "type" : "stringType",
+          "value" : "2A423E62-6452-48C8-9ECE-255BF2C2FD03"
+        },
+        "detectSource" : {
+          "type" : "stringType",
+          "value" : "unknown"
+        },
+        "trend" : {
+          "type" : "stringType",
+          "value" : "0.000"
+        },
+        "rhr" : {
+          "type" : "stringType",
+          "value" : "63.8"
+        },
+        "classification" : {
+          "type" : "stringType",
+          "value" : "情境4：系統正確未檢測到睡眠 (真陰性)"
+        },
+        "detectedSleep" : {
+          "value" : "false",
+          "type" : "stringType"
+        },
+        "thresholdPercent" : {
+          "value" : "99.0",
+          "type" : "stringType"
+        },
+        "ratio" : {
+          "type" : "stringType",
+          "value" : "1.000"
+        },
+        "thresholdBPM" : {
+          "value" : "63.2",
+          "type" : "stringType"
+        },
+        "timestamp" : {
+          "value" : "2025-06-13T07:52:42.289Z",
+          "type" : "timestampType"
+        }
+      },
+      "recordName" : "A540ED39-80B1-417F-906C-95428F3FE0BD",
+      "recordChangeTag" : "mbuifmsa",
+      "created" : {
+        "timestamp" : "2025-06-13T07:52:43.547Z",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB"
+      },
+      "zone" : {
+        "zoneName" : "_defaultZone",
+        "canonicalName" : "_defaultZone",
+        "ownerRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "zoneType" : "DEFAULT_ZONE"
+      }
+    },
+    {
+      "recordName" : "B744A199-4319-4E7D-A8F3-E0D19CD4E75F",
+      "recordChangeTag" : "mbujaduu",
+      "modified" : {
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "timestamp" : "2025-06-13T08:16:38.312Z",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB"
+      },
+      "created" : {
+        "timestamp" : "2025-06-13T08:16:38.312Z",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "recordType" : "session_end",
+      "zone" : {
+        "canonicalName" : "_defaultZone",
+        "zoneName" : "_defaultZone",
+        "zoneType" : "DEFAULT_ZONE",
+        "ownerRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "fields" : {
+        "cumulativeScore" : {
+          "type" : "stringType",
+          "value" : "0.0"
+        },
+        "anomalyScore" : {
+          "type" : "stringType",
+          "value" : "0.0"
+        },
+        "timestamp" : {
+          "value" : "2025-06-13T08:16:37.095Z",
+          "type" : "timestampType"
+        },
+        "userId" : {
+          "value" : "2A423E62-6452-48C8-9ECE-255BF2C2FD03",
+          "type" : "stringType"
+        },
+        "rhr" : {
+          "value" : "63.8",
+          "type" : "stringType"
+        },
+        "detectedSleep" : {
+          "type" : "stringType",
+          "value" : "false"
+        },
+        "thresholdPercent" : {
+          "type" : "stringType",
+          "value" : "99.0"
+        },
+        "detectSource" : {
+          "type" : "stringType",
+          "value" : "unknown"
+        },
+        "trend" : {
+          "value" : "0.000",
+          "type" : "stringType"
+        },
+        "thresholdBPM" : {
+          "type" : "stringType",
+          "value" : "63.2"
+        },
+        "feedbackType" : {
+          "value" : "unknown",
+          "type" : "stringType"
+        },
+        "classification" : {
+          "type" : "stringType",
+          "value" : "情境4：系統正確未檢測到睡眠 (真陰性)"
+        },
+        "deviationPercent" : {
+          "value" : "-",
+          "type" : "stringType"
+        },
+        "avgSleepHR" : {
+          "type" : "stringType",
+          "value" : "-"
+        },
+        "ratio" : {
+          "value" : "1.000",
+          "type" : "stringType"
+        }
+      }
+    },
+    {
+      "fields" : {
+        "thresholdPercent" : {
+          "value" : "99.0",
+          "type" : "stringType"
+        },
+        "userId" : {
+          "type" : "stringType",
+          "value" : "2A423E62-6452-48C8-9ECE-255BF2C2FD03"
+        },
+        "detectedSleep" : {
+          "type" : "stringType",
+          "value" : "false"
+        },
+        "ratio" : {
+          "value" : "1.000",
+          "type" : "stringType"
+        },
+        "detectSource" : {
+          "value" : "unknown",
+          "type" : "stringType"
+        },
+        "rhr" : {
+          "type" : "stringType",
+          "value" : "63.8"
+        },
+        "classification" : {
+          "value" : "情境4：系統正確未檢測到睡眠 (真陰性)",
+          "type" : "stringType"
+        },
+        "trend" : {
+          "type" : "stringType",
+          "value" : "0.000"
+        },
+        "timestamp" : {
+          "value" : "2025-06-13T06:03:46.840Z",
+          "type" : "timestampType"
+        },
+        "thresholdBPM" : {
+          "type" : "stringType",
+          "value" : "63.2"
+        }
+      },
+      "zone" : {
+        "zoneType" : "DEFAULT_ZONE",
+        "zoneName" : "_defaultZone",
+        "canonicalName" : "_defaultZone",
+        "ownerRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "recordName" : "BD2E18D7-387D-4530-9C0F-487F9AA72475",
+      "modified" : {
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "timestamp" : "2025-06-13T06:03:48.332Z",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "created" : {
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "timestamp" : "2025-06-13T06:03:48.332Z",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "recordType" : "session_end",
+      "recordChangeTag" : "mbuejk6i"
+    },
+    {
+      "fields" : {
+        "rhr" : {
+          "type" : "stringType",
+          "value" : "63.6"
+        },
+        "userId" : {
+          "value" : "2A423E62-6452-48C8-9ECE-255BF2C2FD03",
+          "type" : "stringType"
+        },
+        "classification" : {
+          "type" : "stringType",
+          "value" : "情境4：系統正確未檢測到睡眠 (真陰性)"
+        },
+        "detectSource" : {
+          "type" : "stringType",
+          "value" : "trend"
+        },
+        "thresholdPercent" : {
+          "value" : "99.0",
+          "type" : "stringType"
+        },
+        "thresholdBPM" : {
+          "type" : "stringType",
+          "value" : "63.0"
+        },
+        "trend" : {
+          "type" : "stringType",
+          "value" : "-0.667"
+        },
+        "ratio" : {
+          "type" : "stringType",
+          "value" : "1.000"
+        },
+        "detectedSleep" : {
+          "type" : "stringType",
+          "value" : "false"
+        },
+        "timestamp" : {
+          "value" : "2025-06-13T04:43:45.035Z",
+          "type" : "timestampType"
+        }
+      },
+      "recordChangeTag" : "mbubonu8",
+      "recordType" : "session_end",
+      "created" : {
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "timestamp" : "2025-06-13T04:43:47.505Z"
+      },
+      "modified" : {
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "timestamp" : "2025-06-13T04:43:47.505Z"
+      },
+      "zone" : {
+        "zoneType" : "DEFAULT_ZONE",
+        "ownerRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "canonicalName" : "_defaultZone",
+        "zoneName" : "_defaultZone"
+      },
+      "recordName" : "F2AE3DF1-0080-4663-AC6B-4A8F9CCED6E7"
+    }
+  ]
+}

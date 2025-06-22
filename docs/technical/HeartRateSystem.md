@@ -123,6 +123,8 @@ class HeartRateService: HeartRateServiceProtocol {
 ```
 
 ### HeartRateAnomalyTracker 實現
+> ⚠️ **注意：自 2025-06 起，HeartRateAnomalyTracker 評分與基線重置功能已暫時停用**（目前僅保留 Stub 類別以維持接口相容性；異常評分改由 UserSleepProfile 的 ratio→分數→累計分數 系統處理）。
+
 ```swift
 class HeartRateAnomalyTracker {
     // 追蹤心率異常情況

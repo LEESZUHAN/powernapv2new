@@ -1794,9 +1794,23 @@ class PowerNapViewModel: ObservableObject {
         // 計算本次 session 的平均睡眠心率（入睡後）
         var avgSleepHR: Double? = nil
         if let sleepStart = sleepStartTime {
-            let sleepHRs = hrHistoryWindow.filter { $0.timestamp >= sleepStart }.map { $0.value }
+            // 從睡眠開始2分鐘後才開始計算，避免過渡期高心率
+            let stableSleepStart = sleepStart.addingTimeInterval(120) // 睡眠開始後2分鐘
+            
+            let sleepHRs = hrHistoryWindow.filter { 
+                $0.timestamp >= stableSleepStart // 只取穩定睡眠期間的心率
+            }.map { $0.value }
+            
             if !sleepHRs.isEmpty {
                 avgSleepHR = sleepHRs.reduce(0, +) / Double(sleepHRs.count)
+                logger.info("穩定睡眠期心率計算：共\(sleepHRs.count)個數據點，平均值\(String(format: "%.1f", avgSleepHR!))")
+            } else {
+                // 如果穩定期數據不足，仍使用原邏輯作為後備
+                let allSleepHRs = hrHistoryWindow.filter { $0.timestamp >= sleepStart }.map { $0.value }
+                if !allSleepHRs.isEmpty {
+                    avgSleepHR = allSleepHRs.reduce(0, +) / Double(allSleepHRs.count)
+                    logger.info("使用全期睡眠心率（後備）：共\(allSleepHRs.count)個數據點")
+                }
             }
         }
         
@@ -1832,7 +1846,9 @@ class PowerNapViewModel: ObservableObject {
             "avgSleepHR": avgSleepHR != nil ? String(format: "%.1f", avgSleepHR!) : "-",
             "deviationPercent": deviationPercent != nil ? String(format: "%.1f", deviationPercent!) : "-",
             "anomalyScore": String(format: "%.1f", heartRateAnomalyTracker.getLatestAnomalyScore()),
+            "anomalyThreshold": "\(heartRateAnomalyTracker.getAnomalyThreshold())%",
             "cumulativeScore": String(format: "%.1f", heartRateAnomalyTracker.getCumulativeScore()),
+            "profileCumulativeScore": "\(currentUserProfile?.cumulativeScore ?? 0)",
             "feedbackType": String(describing: lastFeedbackType)
         ]
         if let avgSleepHR = avgSleepHR {
@@ -1870,7 +1886,28 @@ class PowerNapViewModel: ObservableObject {
             "trend": .double(hrTrendIndicator),
             "detectSource": .string(detectSourceLocal),
             "adjustmentSourceShort": .string("feedback"),
-            "schemaVersion": .int(2)
+            "schemaVersion": .int(2),
+            "deltaScore": .int({
+                let r = (avgSleepHR != nil && heartRateThreshold > 0) ? (avgSleepHR! / heartRateThreshold) : 1.0
+                if r < 0.94 { return 3 }
+                else if r < 0.97 { return 2 }
+                else if r <= 1.06 { return 0 }
+                else if r < 1.10 { return 2 }
+                else { return 3 }
+            }()),
+            "profileCumulativeScore": .int(currentUserProfile?.cumulativeScore ?? 0)
+        ])
+        AdvancedLogger.shared.log(.anomaly, payload: [
+            "score": .int({
+                let r = ratioValue
+                if r < 0.94 { return 3 }
+                else if r < 0.97 { return 2 }
+                else if r <= 1.06 { return 0 }
+                else if r < 1.10 { return 2 }
+                else { return 3 }
+            }()),
+            "cumulativeScore": .int(currentUserProfile?.cumulativeScore ?? 0),
+            "adjustmentSourceAnomaly": .string("ratio")
         ])
         
         // 記錄到日誌文件
@@ -1899,6 +1936,15 @@ class PowerNapViewModel: ObservableObject {
         telemetryParams["trend"] = String(format: "%.3f", hrTrendIndicator)
         telemetryParams["thresholdPercent"] = String(format: "%.1f", thresholdPercent)
         telemetryParams["detectSource"] = detectSourceLocal
+        let deltaScoreTele: Int = {
+            let r = ratioValue
+            if r < 0.94 { return 3 }
+            else if r < 0.97 { return 2 }
+            else if r <= 1.06 { return 0 }
+            else if r < 1.10 { return 2 }
+            else { return 3 }
+        }()
+        telemetryParams["deltaScore"] = String(deltaScoreTele)
         TelemetryLogger.shared.log("session_end", telemetryParams)
     }
     
@@ -2274,7 +2320,28 @@ class PowerNapViewModel: ObservableObject {
             "trend": .double(hrTrendIndicatorFB),
             "detectSource": .string(detectSourceFB),
             "adjustmentSourceShort": .string("feedback"),
-            "schemaVersion": .int(2)
+            "schemaVersion": .int(2),
+            "deltaScore": .int({
+                let r = (avgSleepHR != nil && heartRateThreshold > 0) ? (avgSleepHR! / heartRateThreshold) : 1.0
+                if r < 0.94 { return 3 }
+                else if r < 0.97 { return 2 }
+                else if r <= 1.06 { return 0 }
+                else if r < 1.10 { return 2 }
+                else { return 3 }
+            }()),
+            "profileCumulativeScore": .int(currentUserProfile?.cumulativeScore ?? 0)
+        ])
+        AdvancedLogger.shared.log(.anomaly, payload: [
+            "score": .int({
+                let r = ratioFB
+                if r < 0.94 { return 3 }
+                else if r < 0.97 { return 2 }
+                else if r <= 1.06 { return 0 }
+                else if r < 1.10 { return 2 }
+                else { return 3 }
+            }()),
+            "cumulativeScore": .int(currentUserProfile?.cumulativeScore ?? 0),
+            "adjustmentSourceAnomaly": .string("ratio")
         ])
         // 結束 session，寫入 csv
         sleepLogger.endSession(summary: "小睡會話已完成（用戶反饋後結束）")
@@ -2287,10 +2354,20 @@ class PowerNapViewModel: ObservableObject {
             "accurate": wasAccurate ? "true" : "false",
             "feedbackType": String(describing: lastFeedbackType),
             "anomalyScore": String(format: "%.1f", heartRateAnomalyTracker.getLatestAnomalyScore()),
+            "anomalyThreshold": "\(heartRateAnomalyTracker.getAnomalyThreshold())%",
             "cumulativeScore": String(format: "%.1f", heartRateAnomalyTracker.getCumulativeScore()),
+            "profileCumulativeScore": "\(currentUserProfile?.cumulativeScore ?? 0)",
             "trend": String(format: "%.3f", hrTrendIndicatorFB),
             "ratio": String(format: "%.3f", ratioFB),
-            "detectSource": detectSourceFB
+            "detectSource": detectSourceFB,
+            "deltaScore": {
+                let r = ratioFB
+                if r < 0.94 { return "3" }
+                else if r < 0.97 { return "2" }
+                else if r <= 1.06 { return "0" }
+                else if r < 1.10 { return "2" }
+                else { return "3" }
+            }()
         ])
         // 立即 flush，避免使用者錯過上傳
         TelemetryLogger.shared.flush()
@@ -2572,6 +2649,13 @@ class PowerNapViewModel: ObservableObject {
     ///   - heartRate: 當前心率
     ///   - expectedRange: 預期範圍
     private func evaluateHeartRateAnomaly(heartRate: Double, expectedRange: ClosedRange<Double>) {
+        // 只在確實睡著的情境下計算異常分數
+        guard isProbablySleeping,
+              let sleepStart = sleepStartTime,
+              Date().timeIntervalSince(sleepStart) >= 180 else { // 至少睡眠3分鐘
+            return
+        }
+        
         // 使用新的不對稱異常檢測邏輯
         
         // 如果心率在預期範圍內，不需要記錄異常
@@ -2842,4 +2926,5 @@ extension PowerNapViewModel {
         
         logger.info("已重置所有異常評分指標和累計數據")
     }
-} 
+}
+

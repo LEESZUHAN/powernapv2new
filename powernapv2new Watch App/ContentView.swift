@@ -1229,26 +1229,36 @@ struct ContentView: View {
     }
     
     private func getCumulativeScore() -> String {
-        // 新格式：查找包含累計分數的行
+        // 解析JSON Lines格式的AdvancedLogger文件
         for line in logContent.components(separatedBy: .newlines) {
-            if line.contains("累計分數") || line.contains("累積分數") {
-                let scoreRegex = try? NSRegularExpression(pattern: "累[計積]分數[^\\d]*(\\d+\\.?\\d*)", options: [])
-                if let match = scoreRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
-                   let scoreRange = Range(match.range(at: 1), in: line) {
-                    return String(line[scoreRange])
+            // 跳過空行
+            if line.trimmingCharacters(in: .whitespaces).isEmpty { continue }
+            
+            // 嘗試解析JSON
+            if let jsonData = line.data(using: .utf8) {
+                do {
+                    if let json = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                       let payload = json["payload"] as? [String: Any],
+                       let profileScore = payload["profileCumulativeScore"] as? String {
+                        return profileScore
+                    }
+                } catch {
+                    // 忽略JSON解析錯誤，繼續處理下一行
+                    continue
                 }
             }
         }
         
-        // 舊格式
-        let scoreRegex = try? NSRegularExpression(pattern: "累計分數: (\\d+)", options: [])
-        
-        if let match = scoreRegex?.firstMatch(in: logContent, options: [], range: NSRange(logContent.startIndex..., in: logContent)),
-           let scoreRange = Range(match.range(at: 1), in: logContent) {
-            return String(logContent[scoreRange])
+        // 如果找不到JSON格式，嘗試舊格式的正則表達式解析
+        let profileScoreRegex = try? NSRegularExpression(pattern: "profileCumulativeScore[\":]\\s*(\\d+)", options: [])
+        for line in logContent.components(separatedBy: .newlines) {
+            if let match = profileScoreRegex?.firstMatch(in: line, options: [], range: NSRange(line.startIndex..., in: line)),
+               let scoreRange = Range(match.range(at: 1), in: line) {
+                return String(line[scoreRange])
+            }
         }
         
-        return "-"  // 修改為無數據符號
+        return "-"  // 無數據
     }
     
     private func getThresholdValues() -> (String, String) {

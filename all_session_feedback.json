@@ -1,0 +1,169 @@
+{
+  "records" : [
+    {
+      "created" : {
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "timestamp" : "2025-06-13T12:06:17.544Z"
+      },
+      "recordName" : "3C6178F1-D57B-463C-BD07-033E77CA95DD",
+      "modified" : {
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "timestamp" : "2025-06-13T12:06:17.544Z"
+      },
+      "recordChangeTag" : "mburhpza",
+      "fields" : {
+        "accurate" : {
+          "type" : "stringType",
+          "value" : "true"
+        },
+        "feedbackType" : {
+          "value" : "accurate",
+          "type" : "stringType"
+        },
+        "cumulativeScore" : {
+          "type" : "stringType",
+          "value" : "0.0"
+        },
+        "timestamp" : {
+          "value" : "2025-06-13T12:06:17.331Z",
+          "type" : "timestampType"
+        },
+        "ratio" : {
+          "value" : "1.000",
+          "type" : "stringType"
+        },
+        "trend" : {
+          "type" : "stringType",
+          "value" : "0.000"
+        },
+        "anomalyScore" : {
+          "value" : "0.0",
+          "type" : "stringType"
+        },
+        "userId" : {
+          "value" : "2A423E62-6452-48C8-9ECE-255BF2C2FD03",
+          "type" : "stringType"
+        }
+      },
+      "recordType" : "session_feedback",
+      "zone" : {
+        "zoneName" : "_defaultZone",
+        "zoneType" : "DEFAULT_ZONE",
+        "ownerRecordName" : "ffffffffffffffff",
+        "canonicalName" : "_defaultZone"
+      }
+    },
+    {
+      "recordName" : "6350646C-0974-4407-A6D6-DF33AAED44B2",
+      "recordType" : "session_feedback",
+      "created" : {
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "timestamp" : "2025-06-13T08:53:29.009Z",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888"
+      },
+      "fields" : {
+        "accurate" : {
+          "type" : "stringType",
+          "value" : "true"
+        },
+        "trend" : {
+          "value" : "-0.091",
+          "type" : "stringType"
+        },
+        "userId" : {
+          "value" : "2A423E62-6452-48C8-9ECE-255BF2C2FD03",
+          "type" : "stringType"
+        },
+        "anomalyScore" : {
+          "value" : "0.0",
+          "type" : "stringType"
+        },
+        "timestamp" : {
+          "value" : "2025-06-13T08:53:28.324Z",
+          "type" : "timestampType"
+        },
+        "cumulativeScore" : {
+          "type" : "stringType",
+          "value" : "0.0"
+        },
+        "feedbackType" : {
+          "type" : "stringType",
+          "value" : "accurate"
+        },
+        "ratio" : {
+          "type" : "stringType",
+          "value" : "1.000"
+        }
+      },
+      "modified" : {
+        "timestamp" : "2025-06-13T08:53:29.009Z",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB"
+      },
+      "recordChangeTag" : "mbuklrn4",
+      "zone" : {
+        "canonicalName" : "_defaultZone",
+        "zoneName" : "_defaultZone",
+        "ownerRecordName" : "ffffffffffffffff",
+        "zoneType" : "DEFAULT_ZONE"
+      }
+    },
+    {
+      "recordName" : "8994A383-3C29-4206-B966-214013E05EEE",
+      "modified" : {
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "timestamp" : "2025-06-13T09:03:25.946Z"
+      },
+      "fields" : {
+        "feedbackType" : {
+          "value" : "accurate",
+          "type" : "stringType"
+        },
+        "timestamp" : {
+          "value" : "2025-06-13T09:03:25.750Z",
+          "type" : "timestampType"
+        },
+        "trend" : {
+          "type" : "stringType",
+          "value" : "-0.286"
+        },
+        "accurate" : {
+          "type" : "stringType",
+          "value" : "true"
+        },
+        "ratio" : {
+          "type" : "stringType",
+          "value" : "1.000"
+        },
+        "anomalyScore" : {
+          "value" : "0.0",
+          "type" : "stringType"
+        },
+        "cumulativeScore" : {
+          "type" : "stringType",
+          "value" : "0.0"
+        },
+        "userId" : {
+          "value" : "2A423E62-6452-48C8-9ECE-255BF2C2FD03",
+          "type" : "stringType"
+        }
+      },
+      "zone" : {
+        "canonicalName" : "_defaultZone",
+        "zoneName" : "_defaultZone",
+        "ownerRecordName" : "ffffffffffffffff",
+        "zoneType" : "DEFAULT_ZONE"
+      },
+      "created" : {
+        "timestamp" : "2025-06-13T09:03:25.946Z",
+        "userRecordName" : "_90ae13cf4db20ab41f4a6ebc62c5a888",
+        "deviceId" : "9A87CB796BDCCD2E6F38FB616E96B6B3A81E88745FE557E9DBD73A7BD22CAECB"
+      },
+      "recordChangeTag" : "mbukyk8o",
+      "recordType" : "session_feedback"
+    }
+  ]
+}
