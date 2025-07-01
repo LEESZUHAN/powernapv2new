@@ -19,6 +19,9 @@ public class SleepDetectionCoordinator {
     /// 睡眠檢測是否正在運行
     private(set) var isMonitoring: Bool = false
     
+    // --- 新增：最後一次觸發來源 (window / trendAssist / trendOnly) ---
+    public private(set) var detectSource: String = "-"
+    
     // MARK: - 私有屬性
     private let motionService: MotionServiceProtocol
     private let heartRateService: HeartRateServiceProtocol
@@ -95,6 +98,8 @@ public class SleepDetectionCoordinator {
         
         isMonitoring = true
         logger.info("睡眠檢測已開始監測")
+        
+        detectSource = "-" // 重置來源
     }
     
     /// 停止監測睡眠
@@ -227,8 +232,13 @@ public class SleepDetectionCoordinator {
         let isCurrentHeartRateLow = isHeartRateLow
         let currentHeartRateTrend = heartRateTrend
         
-        // 更新數據窗口 - 加入當前狀態數據
-        updateDataWindow(heartRateBelowThreshold: isCurrentHeartRateLow, isResting: isCurrentlyStationary)
+        // --- 修正：僅當 HR 真正低於閾值才記錄 heartRateBelowThreshold ---
+        let hrBelowThresholdReal: Bool = {
+            return heartRateService.currentHeartRate < heartRateService.heartRateThreshold
+        }()
+        
+        // 更新數據窗口 - 加入當前狀態數據（改用 hrBelowThresholdReal）
+        updateDataWindow(heartRateBelowThreshold: hrBelowThresholdReal, isResting: isCurrentlyStationary)
         
         // 記錄周期性數據，無論是否檢測到睡眠
         recordPeriodicSleepData()
@@ -397,6 +407,7 @@ public class SleepDetectionCoordinator {
         
         // 1) 主要路徑：滑動視窗 ≥75%
         if hrConditionMet && restingConditionMet {
+            detectSource = "window"
             transitionToState(SleepState.deepSleep)
 
             // 記錄睡眠檢測時間
@@ -412,6 +423,7 @@ public class SleepDetectionCoordinator {
         if hrBelowThresholdRatio >= trendRatioThreshold && restingConditionMet {
             // trend ≤ –0.20 代表 30 秒內每分鐘下降 2BPM 以上
             if heartRateTrend <= -0.20 {
+                detectSource = "trendAssist"
                 transitionToState(SleepState.deepSleep)
 
                 if detectedSleepTime == nil {
@@ -427,6 +439,11 @@ public class SleepDetectionCoordinator {
         // 只有狀態變化時才記錄
         if sleepState != newState {
             logger.info("睡眠狀態從 \(self.sleepState.description) 轉換為 \(newState.description)")
+            
+            // 若進入 deepSleep 但尚未標記來源，視為純 trend
+            if newState == .deepSleep && detectSource == "-" {
+                detectSource = "trendOnly"
+            }
             
             // 更新狀態
             sleepState = newState

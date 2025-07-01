@@ -7,6 +7,9 @@ final class TelemetryLogger {
     static let shared = TelemetryLogger()
     private init() {}
     
+    /// 目前小睡 Session 的唯一標識，於 `startNap()` 生成並在用戶反饋結束後清空。
+    static var currentSessionId: String?
+    
     private var buffer: [(String, [String: String])] = []
     
     /// 將事件暫存到快取
@@ -21,6 +24,11 @@ final class TelemetryLogger {
         if merged["buildNumber"] == nil {
             let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0"
             merged["buildNumber"] = build
+        }
+
+        // 自動帶入 SessionId，除非呼叫端已手動覆寫
+        if merged["sessionId"] == nil, let sid = TelemetryLogger.currentSessionId {
+            merged["sessionId"] = sid
         }
 
         buffer.append((name, merged))

@@ -144,6 +144,9 @@ struct ContentView: View {
                     Group {
                         if viewModel.showingFeedbackPrompt { feedbackPromptView }
                         if viewModel.showingAlarmStopUI { alarmStopView }
+                        if viewModel.showingTimeoutAlert {
+                            TimeoutAlertView(isVisible: Binding(get: { viewModel.showingTimeoutAlert }, set: { viewModel.showingTimeoutAlert = $0 }))
+                        }
                     }
                 )
         }
@@ -3015,5 +3018,40 @@ struct InfoAuthorView: View {
         }
         .background(Color.black)
         .navigationTitle(NSLocalizedString("authors_message_title", comment: "作者的話"))
+    }
+}
+
+struct TimeoutAlertView: View {
+    @Binding var isVisible: Bool
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.8).edgesIgnoringSafeArea(.all)
+            VStack(spacing: 12) {
+                Text(NSLocalizedString("timeout_title", comment: "長時間未入睡"))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                Text(NSLocalizedString("timeout_message", comment: "已 60 分鐘未偵測到入睡，為避免耗電已停止監測。若仍要休息請重新設定計時。"))
+                    .font(.system(size: 14))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+                Button(action: { isVisible = false }) {
+                    Text(NSLocalizedString("confirm", comment: "確認"))
+                        .font(.system(.headline, design: .rounded))
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .cornerRadius(10)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal, 20)
+            }
+            .padding()
+            .background(Color(white: 0.15))
+            .cornerRadius(16)
+            .padding()
+        }
     }
 }

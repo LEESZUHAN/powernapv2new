@@ -261,7 +261,7 @@
 "next_page" = "下一頁";
 "how_to_use_correctly" = "如何正確使用？";
 "how_to_use_description" = "PowerNap 會透過心率與動作資料自動判定入睡，初期準確率約 70–90%。若飲酒、服藥或作息混亂，偵測表現可能受影響，建議同時設定 Apple Watch 內建鬧鐘作為保險。例如：計畫午休至 13:00，或想利用一小時空檔休息時，可先把鬧鐘設在 13:00（或一小時後），再啟動 PowerNap。系統會在連續使用 1–2 週後，透過自動學習進一步提升偵測準確度。若發現誤判或漏報，請於「反饋」頁面回報，協助系統智慧學習。";
-"how_to_report_accuracy" = "如何回報檢測準確度？";
+"how_to_report_accuracy" = "睡醒後請回報：準確／不準確";
 "how_to_report_description" = "準確 － PowerNap 準時以震動喚醒且感受良好時，請點選 \"準確\" ；可協助我們持續校準演算法。\n\n誤報 － 若尚未入睡就看到倒數或被提前叫醒，請點 \"取消\" 並選擇 \"不準確\"，標記為誤報。\n\n漏報 － 若最終是 Apple Watch 內建鬧鐘把你喚醒，代表 PowerNap 未偵測到睡眠，請回到應用點 \"取消\" → \"不準確\"。\n\n手動提前結束 － 途中醒來想結束小睡，可點 \"取消\"。若系統判定正確只是你提早結束，可改選 \"準確\"；若顯示錯誤則選 \"不準確\"。";
 "share_anonymous_usage_data" = "分享匿名使用資料";
 "share_usage_description" = "分享匿名使用資料，協助我們持續優化偵測，讓更多人享有高品質小睡體驗。";
@@ -294,7 +294,7 @@
 "help_title" = "說明";
 "what_is_powernap_title" = "什麼是 PowerNap？";
 "how_to_use_correctly_title" = "如何正確使用？";
-"how_to_report_accuracy_title" = "如何回報檢測準確度？";
+"how_to_report_accuracy_title" = "睡醒後請回報：準確／不準確";
 "authors_message_title" = "作者的話";
 
 /* AdvancedLogsView修正 */
@@ -325,3 +325,8 @@
 "fragmented_sleep_setting" = "碎片化睡眠";
 "data_sharing_setting" = "資料分享";
 "help_setting" = "說明";
+
+/* 新增 timeout 相關本地化字串 */
+"timeout_title" = "長時間未入睡";
+"timeout_message" = "已 60 分鐘未偵測到入睡，為避免耗電已停止監測。若仍要休息請重新設定計時。";
+"confirm" = "確認";

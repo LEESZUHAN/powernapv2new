@@ -260,7 +260,7 @@
 "next_page" = "Next";
 "how_to_use_correctly" = "How to Use Correctly?";
 "how_to_use_description" = "PowerNap automatically detects when you fall asleep using heart rate and motion data, with an initial accuracy of about 70–90%. Detection may be affected by alcohol, medication, or irregular routines, so we recommend also setting the built-in Apple Watch alarm as a backup. For example, if you plan to nap until 1:00 PM or want to rest for an hour, set the alarm for 1:00 PM (or one hour later) before starting PowerNap. After 1–2 weeks of continuous use, the system will further improve accuracy through smart learning. If you notice any false positives or missed detections, please report them on the Feedback page to help the system learn.";
-"how_to_report_accuracy" = "How to Report Detection Accuracy?";
+"how_to_report_accuracy" = "After your nap, tap Accurate or Inaccurate";
 "how_to_report_description" = "Accurate - When PowerNap wakes you on time with vibration and you feel good, please select \"Accurate\" to help us continuously calibrate the algorithm.\n\nFalse Positive - If you see countdown or are woken up before falling asleep, please tap \"Cancel\" and choose \"Inaccurate\", marking it as a false positive.\n\nFalse Negative - If you're ultimately woken by the Apple Watch built-in alarm, it means PowerNap didn't detect sleep. Please return to the app and tap \"Cancel\" → \"Inaccurate\".\n\nManual Early End - If you wake up mid-nap and want to end it, you can tap \"Cancel\". If the system's judgment was correct and you just ended early, you can change to \"Accurate\"; if it shows errors, select \"Inaccurate\".";
 "share_anonymous_usage_data" = "Share Anonymous Usage Data";
 "share_usage_description" = "Share anonymous usage data to help us continuously optimize detection for better quality nap experiences for more people.";
@@ -287,7 +287,7 @@
 "help_title" = "Help";
 "what_is_powernap_title" = "What is PowerNap?";
 "how_to_use_correctly_title" = "How to Use Correctly?";
-"how_to_report_accuracy_title" = "How to Report Detection Accuracy?";
+"how_to_report_accuracy_title" = "After your nap, tap Accurate or Inaccurate";
 "authors_message_title" = "Author's Message";
 
 /* AdvancedLogsView Fixes */
@@ -318,3 +318,8 @@
 "fragmented_sleep_setting" = "Fragmented Sleep";
 "data_sharing_setting" = "Data Sharing";
 "help_setting" = "Help";
+
+/* New: Timeout Strings */
+"timeout_title" = "Not Detected Asleep";
+"timeout_message" = "No sleep detected for 60 minutes. Monitoring stopped to save battery. Start a new session if you still wish to rest.";
+"confirm" = "OK";

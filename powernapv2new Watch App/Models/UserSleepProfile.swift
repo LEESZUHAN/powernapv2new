@@ -377,7 +377,7 @@ public class UserSleepProfileManager {
                         let before = profile.hrThresholdPercentage * 100
                         print("【異常分數觸發 Day: \(dayStr)】累計分數=\(profile.cumulativeScore)，ratio(2日均)=\(String(format: "%.3f", avgRatio))，feedbackType=\(fb.rawValue)")
                         print("調整前閾值: \(String(format: "%.2f", before))%")
-                        adjustHeartRateThreshold(forUserId: session.userId, feedbackType: fb)
+                        adjustHeartRateThreshold(forUserId: session.userId, feedbackType: fb, source: "anomalyScore")
                         if var refreshed = getUserProfile(forUserId: session.userId) {
                             refreshed.cumulativeScore = 0
                             let after = refreshed.hrThresholdPercentage * 100
@@ -721,7 +721,8 @@ public class UserSleepProfileManager {
     /// 根據用戶反饋調整心率閾值（不對稱閾值調整機制）
     public func adjustHeartRateThreshold(
         forUserId userId: String,
-        feedbackType: SleepSession.SleepFeedback
+        feedbackType: SleepSession.SleepFeedback,
+        source: String = "feedback"
     ) {
         // 獲取配置文件
         guard var profile = getUserProfile(forUserId: userId) else { return }
@@ -742,16 +743,23 @@ public class UserSleepProfileManager {
         
         // 應用調整
         let currentThreshold = profile.hrThresholdPercentage
-        let newThreshold: Double
-        if feedbackType == .falsePositive {
-            newThreshold = currentThreshold - adjustmentAmount // 誤報：收緊（-）
-        } else {
-            newThreshold = currentThreshold + adjustmentAmount // 漏報：放寬（+）
-        }
-        
+        let adjustmentDirection = (feedbackType == .falsePositive) ? -1.0 : 1.0
+        let newThreshold = currentThreshold + (adjustmentDirection * adjustmentAmount)
         // 確保在合理範圍內 (70%-120%)
         let finalThreshold = min(max(newThreshold, 0.70), 1.20)
+        let before = currentThreshold * 100
+        let after = finalThreshold * 100
+        print("【feedback觸發】調整前閾值: \(String(format: "%.2f", before))%，調整後閾值: \(String(format: "%.2f", after))%，feedbackType=\(feedbackType.rawValue)，連續次數=\(profile.consecutiveFeedbackAdjustments+1)")
         profile.hrThresholdPercentage = finalThreshold
+        
+        // === 寫入調整量日誌 (.optimization) ===
+        let deltaPercent = (finalThreshold - currentThreshold) * 100
+        AdvancedLogger.shared.log(.optimization, payload: [
+            "oldThreshold": .double(currentThreshold),
+            "newThreshold": .double(finalThreshold),
+            "deltaPercent": .double(deltaPercent),
+            "adjustmentSourceLong": .string(source)
+        ])
         
         // 更新追蹤變數
         profile.lastFeedbackType = feedbackType
@@ -759,8 +767,6 @@ public class UserSleepProfileManager {
         
         // 保存更新後的配置
         saveUserProfile(profile)
-        
-        print("用戶反饋閾值調整：心率閾值調整為\(finalThreshold * 100)% (反饋類型:\(feedbackType.rawValue), 連續次數:\(profile.consecutiveFeedbackAdjustments))")
     }
     
     /// 應用收斂算法調整睡眠確認時間

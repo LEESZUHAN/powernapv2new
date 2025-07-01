@@ -591,6 +591,7 @@ class HeartRateService: HeartRateServiceProtocol {
         
         // 1. 基本閾值檢查 - 心率低於計算的閾值
         let belowThreshold = currentHR <= self.heartRateThreshold
+        let relaxedThreshold = self.heartRateThreshold * 1.05 // Trend-only 放寬 5%
         
         // 2. ΔHR輔助判定 - 即使未低於標準閾值，但有顯著心率下降
         let hrDecreasing = checkSignificantHeartRateDecrease()
@@ -599,7 +600,7 @@ class HeartRateService: HeartRateServiceProtocol {
         let hasDecliningTrend = self.heartRateTrend < -0.20
         
         // 4. 靜息相對性 - 當前心率接近用戶靜息心率
-        let nearRestingHR = currentHR <= restingHeartRate * 1.10
+        _ = currentHR <= restingHeartRate * 1.10 // 計算但不使用，保留以後擴充
         
         // 判斷睡眠條件 - 滿足下列條件之一:
         // a) 心率低於閾值
@@ -611,9 +612,9 @@ class HeartRateService: HeartRateServiceProtocol {
         } else if hrDecreasing {
             isProbablySleeping = true
             logger.info("通過ΔHR檢測到睡眠狀態：顯著心率下降但未低於標準閾值")
-        } else if hasDecliningTrend && nearRestingHR {
-            // 心率有持續下降趨勢且接近靜息值
-            logger.info("透過心率趨勢分析檢測到可能的睡眠狀態：趨勢 \(self.heartRateTrend)，當前心率 \(currentHR)")
+        } else if hasDecliningTrend && currentHR <= relaxedThreshold {
+            // Trend-only 路徑：心率下降趨勢且低於「閾值×1.05」
+            logger.info("透過心率趨勢分析檢測到可能的睡眠狀態（trendOnly，放寬閾值 5%）：趨勢 \(self.heartRateTrend)，當前心率 \(currentHR) <= 放寬閾值 \(relaxedThreshold)")
             isProbablySleeping = true
         } else {
             // 如果沒有滿足任何睡眠條件，設置為未睡眠狀態

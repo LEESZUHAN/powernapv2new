@@ -1201,6 +1201,7 @@ class PowerNapViewModel: ObservableObject {
     // MARK: - 喚醒UI控制相關
     @Published var showingAlarmStopUI: Bool = false // 控制是否顯示鬧鈴停止界面
     @Published var alarmStopped: Bool = false // 鬧鈴是否已停止
+    @Published var showingTimeoutAlert: Bool = false // 超時提示
     
     // MARK: - 新增：心率異常追蹤器
     private let heartRateAnomalyTracker = HeartRateAnomalyTracker()
@@ -1222,6 +1223,9 @@ class PowerNapViewModel: ObservableObject {
     
     // 1. 在 PowerNapViewModel class 層級新增 detectSource
     private var detectSource: String = ""
+    
+    // HR 取樣節拍計數（每 5 秒寫入一次 .hr）
+    private var hrSampleTick: Int = 0
     
     init() {
         // 確保napDuration和napMinutes保持同步
@@ -1305,6 +1309,26 @@ class PowerNapViewModel: ObservableObject {
                         self.sleepStartTime = Date()
                         self.logger.info("檢測到深度睡眠開始，開始倒計時 \(self.napDuration) 秒")
                         
+                        // === 新增：寫入 sleepDetected 高級日誌 ===
+                        // 計算近 20 分鐘心率歷史，用於估算低於閾值的持續時間
+                        let now = Date()
+                        let historyWindow = self.heartRateService.getHeartRateHistory(from: now.addingTimeInterval(-1200), to: now)
+                        var durationBelow: TimeInterval = 0
+                        for sample in historyWindow.reversed() {
+                            if sample.value < self.heartRateThreshold {
+                                durationBelow = now.timeIntervalSince(sample.timestamp)
+                            } else {
+                                break // 遇到第一個高於閾值即停止
+                            }
+                        }
+                        let thresholdPercentVal: Double = self.restingHeartRate > 0 ? (self.heartRateThreshold / self.restingHeartRate * 100) : 0
+                        AdvancedLogger.shared.log(.sleepDetected, payload: [
+                            "bpm": .double(self.currentHeartRate),
+                            "thresholdBPM": .double(self.heartRateThreshold),
+                            "thresholdPercent": .double(thresholdPercentVal),
+                            "durationBelow": .int(Int(durationBelow))
+                        ])
+                        
                         // 更新階段
                         self.napPhase = .sleeping
                     }
@@ -1332,9 +1356,11 @@ class PowerNapViewModel: ObservableObject {
         heartRateService.restingHeartRatePublisher
             .receive(on: RunLoop.main)
             .sink { [weak self] restingHeartRate in
-                self?.restingHeartRate = restingHeartRate
-                // 更新閾值
-                self?.heartRateThreshold = self?.heartRateService.heartRateThreshold ?? 54
+                guard let self = self else { return }
+                // 更新靜息心率
+                self.restingHeartRate = restingHeartRate
+                // 重新計算並套用個人化閾值，避免被 HeartRateService 的默認邏輯覆寫
+                self.updateHeartRateThreshold()
             }
             .store(in: &cancellables)
         
@@ -1607,7 +1633,10 @@ class PowerNapViewModel: ObservableObject {
     func startNap() {
         guard !isNapping else { return }
         
-        logger.info("開始小睡會話，設定時間: \(self.napDuration) 秒")
+        // 生成並保存本次 Session 的唯一 ID，後續所有 Telemetry 事件都帶同一 ID
+        TelemetryLogger.currentSessionId = UUID().uuidString
+        
+        logger.info("開始小睡會話，設定時間: \(self.napDuration) 秒，sessionId: \(TelemetryLogger.currentSessionId ?? "-")")
         
         // Telemetry：紀錄 Session 開始
         TelemetryLogger.shared.log("session_start", [
@@ -1665,33 +1694,36 @@ class PowerNapViewModel: ObservableObject {
         
         // 6. 最後啟動HealthKit會話
         workoutManager.startWorkoutSession()
+        
+        hrSampleTick = 0 // 重置 HR 取樣計數
     }
     
     // 停止小睡
-    func stopNap() {
+    func stopNap(skipFeedbackPrompt: Bool = false) {
         guard isNapping else { return }
         
         logger.info("停止小睡會話")
         
-        // 保存當前狀態，用於確定反饋類型
+        // 保存當前狀態 (在停止監測前快照)
         let currentSleepPhase = sleepPhase
         let currentNapPhase = napPhase
         let hadStartedSleep = sleepStartTime != nil
         
-        // 記錄最終的睡眠數據，無論是否檢測到睡眠
+        // 1️⃣ 先停止各項監測服務，確保 HeartRateService 觸發 saveSleepSession()
+        heartRateService.stopMonitoring()
+        motionManager.stopMonitoring()
+        sleepServices.stopMonitoring()
+        sleepDetection.stopMonitoring()
+        
+        // 2️⃣ 重新載入最新的 UserProfile（其中 cumulativeScore 已更新）
+        loadUserProfile()
+        
+        // 3️⃣ 再寫入 sessionEnd / anomaly 等最終日誌，保證 profileCumulativeScore 正確
         recordFinalSleepData(
             detectedSleep: hadStartedSleep,
             sleepPhase: currentSleepPhase,
             napPhase: currentNapPhase
         )
-        
-        // 按相反順序停止服務，先停止心率與監測查詢
-        heartRateService.stopMonitoring()
-        motionManager.stopMonitoring()
-        
-        // 再停止睡眠監測協調器
-        sleepServices.stopMonitoring()
-        sleepDetection.stopMonitoring()
         
         // 最後結束 Workout 與 Extended Runtime
         workoutManager.stopWorkoutSession()
@@ -1714,13 +1746,14 @@ class PowerNapViewModel: ObservableObject {
         // 新增：會話結束後嘗試優化閾值（由SleepServices內部決定是否執行）
         // 在SleepServices中已經實現在停止監測時嘗試優化閾值
         
-        // 修改後的反饋提示顯示邏輯：只要啟動過小睡就顯示反饋
-        // 延遲一秒顯示反饋提示，讓用戶有時間看到結果
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            if !self.showingFeedbackPrompt {
-                self.showingFeedbackPrompt = true
-                // 移除預設反饋類型，讓用戶根據實際情況自由選擇
-                self.lastFeedbackType = .unknown
+        if !skipFeedbackPrompt {
+            // 延遲一秒顯示反饋提示，讓用戶有時間看到結果
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                if !self.showingFeedbackPrompt {
+                    self.showingFeedbackPrompt = true
+                    // 移除預設反饋類型，讓用戶根據實際情況自由選擇
+                    self.lastFeedbackType = .unknown
+                }
             }
         }
         
@@ -1861,12 +1894,15 @@ class PowerNapViewModel: ObservableObject {
         
         // === 新增：決定判定來源 detectSource ===
         let ratioValue = (avgSleepHR != nil && heartRateThreshold > 0) ? (avgSleepHR! / heartRateThreshold) : 1.0
-        let detectSourceLocal: String
-        if hrTrendIndicator <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
-            detectSourceLocal = "trend"
-        } else {
-            // 預設視為滑動視窗判睡
-            detectSourceLocal = NSLocalizedString("sliding_window", comment: "滑動視窗")
+        // 直接沿用 SleepDetectionCoordinator 的來源分類
+        var detectSourceLocal = sleepDetectionCoordinator.detectSource
+        if detectSourceLocal == "-" {
+            // 若協調器未能給來源，後備以趨勢/視窗簡易判斷
+            if hrTrendIndicator <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
+                detectSourceLocal = "trendOnly"
+            } else {
+                detectSourceLocal = "window"
+            }
         }
         // 更新屬性，供其他流程使用
         self.detectSource = detectSourceLocal
@@ -1945,7 +1981,26 @@ class PowerNapViewModel: ObservableObject {
             else { return 3 }
         }()
         telemetryParams["deltaScore"] = String(deltaScoreTele)
+        telemetryParams["status"] = "pre_feedback" // 標記反饋前
         TelemetryLogger.shared.log("session_end", telemetryParams)
+        
+        // === 計算 deltaScore 並先同步到用戶檔案（確保 sessionEnd 帶最新累計） ===
+        let deltaScoreNow: Int = {
+            if ratioValue < 0.94 { return 3 }
+            else if ratioValue < 0.97 { return 2 }
+            else if ratioValue <= 1.06 { return 0 }
+            else if ratioValue < 1.10 { return 2 }
+            else { return 3 }
+        }()
+
+        if deltaScoreNow != 0 {
+            let uid = getUserId()
+            if var profile = userProfileManager.getUserProfile(forUserId: uid) {
+                profile.cumulativeScore += deltaScoreNow
+                userProfileManager.saveUserProfile(profile)
+                currentUserProfile = profile
+            }
+        }
     }
     
     // 設置小睡計時器
@@ -1960,6 +2015,9 @@ class PowerNapViewModel: ObservableObject {
             case .awaitingSleep:
                 // 等待入睡階段（現在主要依賴於SleepDetectionCoordinator來檢測）
                 // 不需要額外調用checkSleepState，因為我們訂閱了協調器的狀態更新
+                
+                // 連續寫入 HR 取樣，確保判睡前也有完整曲線
+                self.logHeartRateSample()
                 
                 // 檢查是否超時，使用新的超時機制
                 checkSleepWaitTimeout()
@@ -1979,6 +2037,9 @@ class PowerNapViewModel: ObservableObject {
                     
                     // 記錄睡眠數據
                     self.logSleepData()
+                    
+                    // 連續寫入 HR 樣本（與等待期一致），用於判睡後曲線
+                    self.logHeartRateSample()
                     
                     // 檢查是否時間到或符合智能喚醒條件
                     if self.remainingTime <= 0 || self.shouldWakeUpEarly() {
@@ -2140,9 +2201,13 @@ class PowerNapViewModel: ObservableObject {
                     // 優化成功，通知用戶
                     self.logger.info("心率閾值已自動優化：\(String(format: "%.1f", result.previousThreshold * 100))% → \(String(format: "%.1f", result.newThreshold * 100))%")
                     // 高級日誌：參數優化
+                    // 計算百分比差值 (RHR 百分比差)
+                    let deltaPercent = (result.newThreshold - result.previousThreshold) * 100
+
                     AdvancedLogger.shared.log(.optimization, payload: [
                         "oldThreshold": AdvancedLogger.CodableValue.double(result.previousThreshold),
                         "newThreshold": AdvancedLogger.CodableValue.double(result.newThreshold),
+                        "deltaPercent": AdvancedLogger.CodableValue.double(deltaPercent),
                         "adjustmentSourceLong": .string("optimization")
                     ])
                     // 當閾值發生變化時，我們接收到了變化值，但也需要更新自己的閾值記錄
@@ -2298,11 +2363,14 @@ class PowerNapViewModel: ObservableObject {
             hrTrendIndicatorFB = Double(up - down) / Double(hrHistoryWindow.count)
         }
         let ratioFB = (avgSleepHR != nil && heartRateThreshold > 0) ? (avgSleepHR! / heartRateThreshold) : 1.0
-        let detectSourceFB: String
-        if hrTrendIndicatorFB <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
-            detectSourceFB = "trend"
-        } else {
-            detectSourceFB = NSLocalizedString("sliding_window", comment: "滑動視窗")
+        // 直接沿用協調器來源，如果仍為 "-"，以簡易規則後備
+        var detectSourceFB = sleepDetectionCoordinator.detectSource
+        if detectSourceFB == "-" {
+            if hrTrendIndicatorFB <= -0.20 && (avgSleepHR ?? 0) < restingHeartRate * 1.10 {
+                detectSourceFB = "trendOnly"
+            } else {
+                detectSourceFB = "window"
+            }
         }
         self.detectSource = detectSourceFB
 
@@ -2369,8 +2437,43 @@ class PowerNapViewModel: ObservableObject {
                 else { return "3" }
             }()
         ])
+        // 先上傳 post_feedback 的 session_end
+        do {
+            let deltaScoreFB_calc: Int = {
+                let r = ratioFB
+                if r < 0.94 { return 3 }
+                else if r < 0.97 { return 2 }
+                else if r <= 1.06 { return 0 }
+                else if r < 1.10 { return 2 }
+                else { return 3 }
+            }()
+            var sessionEndParamsFB: [String: String] = [
+                "status": "post_feedback",
+                "detectedSleep": detectedSleep ? "true" : "false",
+                "feedbackType": String(describing: lastFeedbackType),
+                "rhr": String(format: "%.1f", restingHeartRate),
+                "thresholdBPM": String(format: "%.1f", heartRateThreshold),
+                "thresholdPercent": String(format: "%.1f", thresholdPercentFB),
+                "ratio": String(format: "%.3f", ratioFB),
+                "trend": String(format: "%.3f", hrTrendIndicatorFB),
+                "detectSource": detectSourceFB,
+                "deltaScore": String(deltaScoreFB_calc),
+                "profileCumulativeScore": "\(currentUserProfile?.cumulativeScore ?? 0)"
+            ]
+            if let avgSleepHR = avgSleepHR {
+                sessionEndParamsFB["avgSleepHR"] = String(format: "%.1f", avgSleepHR)
+            }
+            if let dev = deviationPercentFB {
+                sessionEndParamsFB["deviationPercent"] = String(format: "%.1f", dev)
+            }
+            TelemetryLogger.shared.log("session_end", sessionEndParamsFB)
+        }
+
         // 立即 flush，避免使用者錯過上傳
         TelemetryLogger.shared.flush()
+
+        // 清空 SessionId，準備下一次
+        TelemetryLogger.currentSessionId = nil
     }
     
     // 判斷是否正在模擬反饋(測試模式)
@@ -2443,9 +2546,15 @@ class PowerNapViewModel: ObservableObject {
     
     // 修改等待入睡超時時間為40分鐘
     private func checkSleepWaitTimeout() {
-        if let startTime = self.startTime, Date().timeIntervalSince(startTime) > 40 * 60 {
-            self.logger.info("等待入睡超時(40分鐘)，停止小睡")
-            self.stopNap()
+        if let startTime = self.startTime, Date().timeIntervalSince(startTime) > 60 * 60 {
+            self.logger.info("等待入睡超時(60分鐘)，停止小睡")
+#if os(watchOS)
+            WKInterfaceDevice.current().play(.notification)
+#endif
+            self.stopNap(skipFeedbackPrompt: true)
+            DispatchQueue.main.async {
+                self.showingTimeoutAlert = true
+            }
         }
     }
     
@@ -2850,6 +2959,19 @@ class PowerNapViewModel: ObservableObject {
         // 新增：確保背景沒有 Workout 與 Extended Runtime Session 持續
         workoutManager.stopWorkoutSession()
         runtimeManager.stopSession()
+    }
+    
+    /// 單次寫入即時心率取樣（1 筆）到高級日誌，提供判睡前後連續曲線
+    private func logHeartRateSample() {
+        hrSampleTick += 1
+        // 只在每 5 秒（tick 可被 5 整除）時寫入，避免過量
+        if hrSampleTick % 5 != 0 { return }
+        
+        AdvancedLogger.shared.log(.hr, payload: [
+            "bpm": .double(currentHeartRate),
+            "phase": .string(sleepPhaseText),
+            "acc": .double(currentAcceleration)
+        ])
     }
 }
 

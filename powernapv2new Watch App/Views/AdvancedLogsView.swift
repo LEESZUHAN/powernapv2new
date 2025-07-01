@@ -45,6 +45,13 @@ struct AdvancedLogsView: View {
     @State private var confirmationLongDisplay: String = "-"
     @State private var trendDisplay: String = "-"
     @State private var detectSourceDisplay: String = "-"
+    @State private var timelinePoints: [SleepTimelinePoint] = []
+    @State private var timelineThresholdPercent: Double? = nil
+    @State private var timelineMinutesRange: Double = 7.0
+    @State private var sessionStartTS: Date? = nil
+    @State private var timelineCenterMinute: Double = 0.0
+    @State private var tmpThresholdShortStr: String = "-"
+    @State private var timelineUseFullRange: Bool = false
     
     // MARK: - Body
     var body: some View {
@@ -276,6 +283,11 @@ struct AdvancedLogsView: View {
                     .cornerRadius(8)
                 }
                 .padding(.vertical)
+                // === 新增：判睡前後心率趨勢圖 ===
+                if let threshold = timelineThresholdPercent, !timelinePoints.isEmpty {
+                    SleepDetectionTimelineView(data: timelinePoints, thresholdPercent: threshold, minutesRange: timelineMinutesRange, centerMinute: timelineCenterMinute, useFullRange: timelineUseFullRange)
+                        .padding(.bottom, 10)
+                }
                 // 原始日誌區塊
                 if !logLines.isEmpty {
                     Divider()
@@ -360,11 +372,41 @@ struct AdvancedLogsView: View {
             // tmpAdjustmentSourceAnomaly 與 _newThreshold / _newConfirmation 目前未使用，省略以避免編譯警告
             var detectedSleep: Bool? = nil
             var feedbackAccurate: Bool? = nil // nil 代表未評價
+            // === 新增：時間軸暫存 ===
+            var detectTimestamp: Date? = nil
+            var thresholdPercentForTimeline: Double? = nil
+            var rhrForTimeline: Double? = nil
+            var hrSamples: [(Date, Double)] = []
 
             for line in lines {
                 if let d = line.data(using: .utf8),
                    let entry = try? decoder.decode(AdvancedLogger.LogEntry.self, from: d) {
                     entries.append(entry)
+                    // 收集時間軸相關資料
+                    if entry.type == .sleepDetected {
+                        let date = Self.iso8601.date(from: entry.ts)
+                        detectTimestamp = date
+                        if let tp = entry.payload["thresholdPercent"], let val = tp.doubleValue {
+                            thresholdPercentForTimeline = val
+                        }
+                    } else if entry.type == .sessionStart {
+                        if let rhrValStr = entry.payload["rhr"]?.doubleValue {
+                            rhrForTimeline = rhrValStr
+                        }
+                        sessionStartTS = Self.iso8601.date(from: entry.ts)
+                        // 若尚未取得 thresholdPercent（通常在 sleepDetected 事件），嘗試從 sessionStart 取得
+                        if thresholdPercentForTimeline == nil,
+                           let tp = entry.payload["thresholdPercent"],
+                           let tpVal = tp.doubleValue {
+                            thresholdPercentForTimeline = tpVal
+                        }
+                    } else if entry.type == .hr {
+                        if let bpmVal = entry.payload["bpm"]?.doubleValue {
+                            if let date = Self.iso8601.date(from: entry.ts) {
+                                hrSamples.append((date, bpmVal))
+                            }
+                        }
+                    }
                 }
             }
             // 尋找最後一筆有 avgSleepHR 的 sessionEnd
@@ -395,18 +437,39 @@ struct AdvancedLogsView: View {
                     break
                 }
             }
-            // 解析異常評分 / 累計分數：取最後一筆 anomaly log
+            // 解析異常評分 / 累計分數
+            // 0) 先讀 sessionEnd.deltaScore 作為本次評分
             for entry in entries.reversed() {
-                if let log = entry as? AdvancedLogger.LogEntry, log.type == .anomaly {
-                    if let score = log.payload["score"], let scoreVal = score.doubleValue {
-                        tmpAnomalyScore = String(Int(round(scoreVal)))
-                    }
-                    if let total = log.payload["cumulativeScore"], let totalVal = total.doubleValue {
-                        tmpAnomalyTotal = String(Int(round(totalVal)))
-                    } else if let totalAlt = log.payload["totalScore"], let totalVal = totalAlt.doubleValue {
-                        tmpAnomalyTotal = String(Int(round(totalVal)))
+                if let log = entry as? AdvancedLogger.LogEntry, log.type == .sessionEnd {
+                    if let ds = log.payload["deltaScore"], let val = ds.doubleValue {
+                        tmpAnomalyScore = String(Int(round(val)))
                     }
                     break
+                }
+            }
+            // 1) 取 sessionEnd.profileCumulativeScore 作為累計分數
+            for entry in entries.reversed() {
+                if let log = entry as? AdvancedLogger.LogEntry, log.type == .sessionEnd {
+                    if let profScore = log.payload["profileCumulativeScore"], let valStr = profScore.stringValue, let val = Double(valStr) {
+                        tmpAnomalyTotal = String(Int(round(val)))
+                        break // 找到即可跳出
+                    }
+                }
+            }
+            // 2) 若仍為 "-"，退而求其次使用 anomaly log 的 cumulativeScore
+            if tmpAnomalyTotal == "-" {
+                for entry in entries.reversed() {
+                    if let log = entry as? AdvancedLogger.LogEntry, log.type == .anomaly {
+                        if let score = log.payload["score"], let scoreVal = score.doubleValue {
+                            tmpAnomalyScore = String(Int(round(scoreVal)))
+                        }
+                        if let total = log.payload["cumulativeScore"], let totalVal = total.doubleValue {
+                            tmpAnomalyTotal = String(Int(round(totalVal)))
+                        } else if let totalAlt = log.payload["totalScore"], let totalVal = totalAlt.doubleValue {
+                            tmpAnomalyTotal = String(Int(round(totalVal)))
+                        }
+                        break
+                    }
                 }
             }
             // 解析 sessionEnd 的 detectedSleep 與 feedback log 的 accurate/type，推論漏/誤報
@@ -465,12 +528,16 @@ struct AdvancedLogsView: View {
             } else {
                 tmpUserFeedback = NSLocalizedString("not_evaluated", comment: "未評價")
             }
-            // 心率閾值調整 (短期)
+            // 心率閾值調整 (短期) – 找到第一筆非 0 的 deltaPercentShort 才停止
             for entry in entries.reversed() {
                 if let log = entry as? AdvancedLogger.LogEntry, log.type == .sessionEnd {
-                    if let dps = log.payload["deltaPercentShort"], let v = dps.doubleValue { deltaPercentShortVal += v }
-                    if let dds = log.payload["deltaDurationShort"], let v = dds.doubleValue { deltaDurationShortVal += Int(v) }
-                    break
+                    if let dps = log.payload["deltaPercentShort"], let v = dps.doubleValue {
+                        deltaPercentShortVal = v
+                        // 若值為非零，視為有效調整，結束搜尋
+                        if abs(v) > 0.0001 { }
+                        break
+                    }
+                    if let dds = log.payload["deltaDurationShort"], let v = dds.doubleValue { deltaDurationShortVal = Int(v) }
                 }
             }
             // 心率閾值調整 (長期)
@@ -484,7 +551,7 @@ struct AdvancedLogsView: View {
             // format displays
             if deltaPercentShortVal != 0 {
                 let intVal = Int(round(deltaPercentShortVal))
-                thresholdShortDisplay = intVal > 0 ? "+\(intVal)%" : "\(intVal)%"
+                tmpThresholdShortStr = intVal > 0 ? "+\(intVal)%" : "\(intVal)%"
             }
             if deltaPercentLongVal != 0 {
                 let intVal = Int(round(deltaPercentLongVal))
@@ -536,8 +603,50 @@ struct AdvancedLogsView: View {
                     break
                 }
             }
+            // --- Fallback：若未偵測到睡眠，仍以 sessionStart 為時間軸中心 ---
+            if detectTimestamp == nil {
+                detectTimestamp = sessionStartTS
+                timelineUseFullRange = true
+            } else {
+                timelineUseFullRange = false
+            }
+            // === 新增：時間軸資料計算 ===
+            var generatedTimeline: [SleepTimelinePoint] = []
+            if let detectTS = detectTimestamp, let rhr = rhrForTimeline {
+                // 取偵測前後各7分鐘
+                let windowStart = detectTS.addingTimeInterval(-420)
+                let windowEnd = detectTS.addingTimeInterval(420)
+                let filtered = hrSamples.filter { $0.0 >= windowStart && $0.0 <= windowEnd }
+                let samplesForTimeline: [(Date, Double)] = filtered.isEmpty ? hrSamples : filtered
+                for (ts, bpm) in samplesForTimeline {
+                    let offset = ts.timeIntervalSince(detectTS)
+                    let percent = (rhr > 0) ? (bpm / rhr * 100) : 0
+                    // 只保留 50% – 140% 之間的資料，避免極端值破圖
+                    guard percent >= 50, percent <= 140 else { continue }
+                    generatedTimeline.append(SleepTimelinePoint(offsetSeconds: offset, percent: percent))
+                }
+                // 依時間排序
+                generatedTimeline.sort { $0.offsetSeconds < $1.offsetSeconds }
+            }
+            // 計算 minutesRange (至少 5 分鐘，否則取最大偏移)
+            var computedRange: Double = 5.0
+            if let maxOffset = generatedTimeline.map({ abs($0.offsetSeconds) }).max() {
+                computedRange = max(5.0, ceil(maxOffset / 60.0))
+            }
+            // 預先計算中心分鐘（判睡相對 start）
+            let calculatedCenterMinute: Double = {
+                guard let start = sessionStartTS, let detect = detectTimestamp else { return 0 }
+                return detect.timeIntervalSince(start) / 60.0
+            }()
             DispatchQueue.main.async {
-                self.logLines = entries.map { String(describing: $0) }
+                // 只顯示非 .hr 類型的日誌行，避免畫面被連續 HR 淹沒
+                let filteredDisplayLines: [String] = entries.compactMap { entry in
+                    if let log = entry as? AdvancedLogger.LogEntry {
+                        return log.type == .hr ? nil : String(describing: log)
+                    }
+                    return String(describing: entry)
+                }
+                self.logLines = filteredDisplayLines
                 self.avgSleepHRDisplay = tmpAvgSleepHR
                 self.deviationPercentDisplay = tmpDeviationPercent
                 self.anomalyScoreDisplay = tmpAnomalyScore
@@ -550,8 +659,31 @@ struct AdvancedLogsView: View {
                 self.thresholdPercentDisplay = tmpThresholdPercent
                 self.trendDisplay = tmpTrend
                 self.detectSourceDisplay = tmpDetectSource
-                self.thresholdShortDisplay = thresholdShortDisplay + (tmpAdjustmentSourceShort != "-" ? " (" + tmpAdjustmentSourceShort + ")" : "")
-                self.thresholdLongDisplay = thresholdLongDisplay + (tmpAdjustmentSourceLong != "-" ? " (" + tmpAdjustmentSourceLong + ")" : "")
+                // --- 組合短期/長期閾值變動字串 ---
+                let composedShort: String = {
+                    if tmpThresholdShortStr == "-" { return "-" }
+                    if tmpAdjustmentSourceShort != "-" {
+                        return tmpThresholdShortStr + " (" + tmpAdjustmentSourceShort + ")"
+                    }
+                    return tmpThresholdShortStr
+                }()
+                var tmpThresholdLongStr: String = "-"
+                if thresholdLongDisplay != "-" { tmpThresholdLongStr = thresholdLongDisplay }
+                let composedLong: String = {
+                    if tmpThresholdLongStr == "-" { return "-" }
+                    if tmpAdjustmentSourceLong != "-" {
+                        return tmpThresholdLongStr + " (" + tmpAdjustmentSourceLong + ")"
+                    }
+                    return tmpThresholdLongStr
+                }()
+
+                self.thresholdShortDisplay = composedShort
+                self.thresholdLongDisplay = composedLong
+                self.timelinePoints = generatedTimeline
+                self.timelineThresholdPercent = thresholdPercentForTimeline
+                self.timelineMinutesRange = computedRange
+                self.timelineCenterMinute = calculatedCenterMinute
+                self.timelineUseFullRange = timelineUseFullRange
             }
         })
     }
@@ -590,6 +722,13 @@ struct AdvancedLogsView: View {
         }
         return name
     }
+    
+    // 共用日期解析器
+    private static let iso8601: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 }
 
 struct AdvancedLogsView_Previews: PreviewProvider {
